@@ -59,6 +59,7 @@ export default function DepartmentAssetsScreen() {
               Assigned to
             </Text>
           </View>
+          <View style={styles.yellowLine} />
           <FlatList
             data={ASSET_DATA}
             keyExtractor={(_, idx) => idx.toString()}
@@ -151,5 +152,10 @@ const styles = StyleSheet.create({
     fontWeight : '500',
     color: "#616161",
     textAlign: "center",
+  },
+  yellowLine:{
+    height: 3,
+    backgroundColor: "#FEC200",
+    width: "100%",
   },
 });

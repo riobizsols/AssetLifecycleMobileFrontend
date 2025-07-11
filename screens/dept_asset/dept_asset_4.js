@@ -53,6 +53,7 @@ export default function EmployeeListScreen() {
             </Text>
             <Text style={[styles.tableHeaderText, { flex: 1.2 }]}>Role</Text>
           </View>
+          <View style={styles.yellowLine} />
           <FlatList
             data={EMPLOYEE_LIST}
             keyExtractor={(item) => item.id}
@@ -148,5 +149,10 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: "#616161",
     textAlign: "center",
+  },
+  yellowLine:{
+    height: 3,
+    backgroundColor: "#FEC200",
+    width: "100%",
   },
 });

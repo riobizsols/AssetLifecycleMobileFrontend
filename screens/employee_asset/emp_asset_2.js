@@ -30,6 +30,7 @@ export default function Asset_2() {
         <View style={styles.cardHeader}>
           <Text style={styles.cardHeaderText}>Serial No. 121354</Text>
         </View>
+        <View style={styles.yellowLine} />
         <View style={styles.cardBody}>
           <View style={styles.inputRow}>
             <Text style={styles.label}>Asset Type</Text>
@@ -122,6 +123,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 14,
+  },
+  yellowLine: {
+    height: 3,
+    backgroundColor: "#FEC200",
+    width: "100%",
   },
   label: {
     width: 115,

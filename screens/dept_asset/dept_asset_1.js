@@ -57,7 +57,7 @@ export default function DepartmentScreenMain() {
                 name="line-scan"
                 size={22}
                 color="#FEC200"
-              />{" "}
+              />
             </TouchableOpacity>
           </View>
           <View style={styles.infoRow}>
@@ -100,6 +100,7 @@ export default function DepartmentScreenMain() {
               No. Of. Assets Assigned
             </Text>
           </View>
+           <View style={styles.yellowLine} />
           <FlatList
             data={EMPLOYEE_DATA}
             keyExtractor={(item) => item.id}
@@ -198,6 +199,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 8,
   },
+  yellowLine:{
+    height: 3,
+    backgroundColor: "#FEC200",
+    width: "100%",
+  },
   label: {
     width: 150,
     color: "#616161",
@@ -217,7 +223,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     paddingHorizontal: 10,
     height: 36,
-    marginRight: 60,
+    // marginRight: 60,
     textAlignVertical: "center",
     color: "#616161",
     fontSize: 12,
@@ -231,6 +237,7 @@ const styles = StyleSheet.create({
     fontWeight: 400,
     marginRight: 18,
     textDecorationLine: "underline",
+    marginLeft:10
   },
   tableContainer: {
     margin: 10,

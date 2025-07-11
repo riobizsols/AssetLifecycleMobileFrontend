@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -19,42 +19,53 @@ import { useNavigation } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createStackNavigator } from "@react-navigation/stack";
 import Asset_2 from "./emp_asset_2";
-import * as FileSystem from 'expo-file-system';
-import * as Sharing from 'expo-sharing';
+import * as FileSystem from "expo-file-system";
+import * as Sharing from "expo-sharing";
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
-const assetData = [
-  { type: "Keyboard", serial: "121354", remarks: "All keys are functional" },
-  { type: "Monitor", serial: "121354", remarks: "No Damage or fraying" },
-  { type: "Mouse", serial: "121354", remarks: "No Damage or fraying" },
-  { type: "Power cable", serial: "121354", remarks: "No Damage or fraying" },
-];
-
-// Function to convert assetData to CSV
-const convertToCSV = (data) => {
-  const header = "Asset Type,Serial No,Remarks\n";
-  const rows = data.map(item => `${item.type},${item.serial},${item.remarks}`).join("\n");
-  return header + rows;
-};
-
 export default function Asset_1() {
   const navigation = useNavigation();
+  const [assetData, setAssetData] = useState([
+    { type: "Keyboard", serial: "121354", remarks: "All keys are functional" },
+    { type: "Monitor", serial: "121354", remarks: "No Damage or fraying" },
+    { type: "Mouse", serial: "121354", remarks: "No Damage or fraying" },
+    { type: "Power cable", serial: "121354", remarks: "No Damage or fraying" },
+  ]);
 
-  // Function to handle CSV download
-  const handleDownloadCSV = async () => {
+  // Convert assetData to CSV string
+  const assetDataToCSV = () => {
+    const header = ["Asset Type", "Serial No", "Remarks"];
+    const rows = assetData.map((item) => [
+      item.type,
+      item.serial,
+      item.remarks,
+    ]);
+    const csv = [header, ...rows]
+      .map((row) => row.map((field) => `"${field}"`).join(","))
+      .join("\n");
+    return csv;
+  };
+
+  // Download handler
+  const handleDownload = async () => {
+    console.log("Download icon pressed");
     try {
-      const csv = convertToCSV(assetData);
-      const fileUri = FileSystem.documentDirectory + "employee_assets.csv";
-      await FileSystem.writeAsStringAsync(fileUri, csv, { encoding: FileSystem.EncodingType.UTF8 });
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(fileUri);
-      } else {
-        alert("CSV file saved to: " + fileUri);
-      }
+      const csv = assetDataToCSV();
+      const fileName = "employee_assets.csv";
+      const fileUri = FileSystem.documentDirectory + fileName;
+      await FileSystem.writeAsStringAsync(fileUri, csv, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
+      await Sharing.shareAsync(fileUri, {
+        mimeType: "text/csv",
+        dialogTitle: "Share Employee Asset CSV",
+        UTI: "public.comma-separated-values-text",
+      });
     } catch (error) {
-      alert("Failed to save CSV: " + error.message);
+      console.error("Error exporting CSV:", error);
+      alert("Error exporting CSV: " + error.message);
     }
   };
 
@@ -63,12 +74,15 @@ export default function Asset_1() {
       <SafeAreaView style={{ flex: 1, backgroundColor: "#EEEEEE" }}>
         <Appbar.Header style={styles.appbar}>
           <Appbar.Action icon="menu" color="#FEC200" onPress={() => {}} />
-          {/* Centered Title */}
-          <View style={styles.centerTitleContainer}>
+          <View style={styles.titleRow}>
             <Text style={styles.appbarTitle}>Employee Asset</Text>
           </View>
-          {/* Right side empty to balance layout */}
-          <View style={{ width: 40 }} />
+          <TouchableOpacity
+            onPress={handleDownload}
+            style={styles.downloadIcon}
+          >
+            <MaterialCommunityIcons name="download" size={22} color="#FEC200" />
+          </TouchableOpacity>
         </Appbar.Header>
 
         {/* Form */}
@@ -78,7 +92,6 @@ export default function Asset_1() {
               style={styles.assetInput}
               placeholder="AF1001"
               placeholderTextColor="#B6B7B8"
-              
             />
             <TouchableOpacity style={styles.qrButton}>
               <MaterialCommunityIcons
@@ -114,6 +127,7 @@ export default function Asset_1() {
             <Text style={[styles.tableHeaderText, { flex: 1 }]}>Serial No</Text>
             <Text style={[styles.tableHeaderText, { flex: 1 }]}>Remarks</Text>
           </View>
+          <View style={styles.yellowLine} />
           <FlatList
             data={assetData}
             keyExtractor={(item) => item.type}
@@ -136,10 +150,12 @@ export default function Asset_1() {
                     style={[
                       styles.tableCell,
                       {
+                        // flex: 1,
                         color: "#003667",
                         textDecorationLine: "underline",
                       },
                     ]}
+                    // onPress={() => navigation.navigate("asset_2")}
                   >
                     {item.serial}
                   </Text>
@@ -151,22 +167,6 @@ export default function Asset_1() {
               </View>
             )}
           />
-        </View>
-
-        {/* Download as CSV Button */}
-        <View style={{ padding: 16 }}>
-          <TouchableOpacity
-            style={{
-              backgroundColor: "#003667",
-              padding: 12,
-              borderRadius: 8,
-              alignItems: "center",
-              marginTop: 10,
-            }}
-            onPress={handleDownloadCSV}
-          >
-            <Text style={{ color: "#fff", fontWeight: "bold" }}>Download as CSV</Text>
-          </TouchableOpacity>
         </View>
       </SafeAreaView>
     </SafeAreaProvider>
@@ -181,6 +181,7 @@ const styles = StyleSheet.create({
     height: 60,
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "flex-start",
     position: "relative",
   },
   centerTitleContainer: {
@@ -189,6 +190,15 @@ const styles = StyleSheet.create({
     right: 0,
     alignItems: "center",
     zIndex: 1,
+  },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    flex: 1,
+  },
+  downloadIcon: {
+    marginRight: 10,
   },
   appbarTitle: {
     color: "#fff",
@@ -220,13 +230,12 @@ const styles = StyleSheet.create({
     // textAlign: 'center',           // Center text horizontally
     textAlignVertical: "center", // Center text vertically (mainly for Android)
     paddingVertical: 0,
-    
   },
   qrButton: {
     marginLeft: 8,
     backgroundColor: "#003667",
     height: 45,
-    width: "10%",
+    width: 40,
     alignContent: "center",
     alignItems: "center",
     justifyContent: "center",
@@ -258,7 +267,8 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     paddingHorizontal: 10,
     height: 35,
-    marginRight: 60,
+    // width: "10%",
+    // marginRight: 60,
     textAlignVertical: "center",
     color: "#616161",
     fontSize: 12,
@@ -285,6 +295,11 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     fontSize: 13,
   },
+  yellowLine: {
+    height: 3,
+    backgroundColor: "#FEC200",
+    width: "100%",
+  },
   tableRow: {
     flexDirection: "row",
     paddingVertical: 12,
@@ -294,6 +309,6 @@ const styles = StyleSheet.create({
   tableCell: {
     fontSize: 12,
     color: "#616161",
-    fontWeight : '500'
+    fontWeight: "500",
   },
 });
