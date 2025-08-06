@@ -1,21 +1,23 @@
-import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useState } from "react";
 import {
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
   View,
+  Text,
+  StyleSheet,
+  SafeAreaView,
+  TouchableOpacity,
   Alert,
   ActivityIndicator,
 } from "react-native";
 import { Appbar } from "react-native-paper";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { API_CONFIG, getApiHeaders, API_ENDPOINTS } from "../../config/api";
 
-export default function App() {
+export default function EmployeeAssetAssign() {
   const navigation = useNavigation();
+  const route = useRoute();
+  const { employeeId, employeeName } = route.params || {};
   const [showCamera, setShowCamera] = useState(false);
   const [barcode, setBarcode] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -55,7 +57,7 @@ export default function App() {
       });
       
       clearTimeout(timeoutId);
-      
+
       if (!response.ok) {
         if (response.status === 404) {
           Alert.alert(
@@ -85,7 +87,7 @@ export default function App() {
         }
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const data = await response.json();
       console.log('Asset data received:');
       console.log('Data type:', typeof data);
@@ -102,8 +104,8 @@ export default function App() {
       }
       
       if (assetId) {
-        // Call API to get asset assignment data
-        await getAssetAssignment(assetId);
+        // Check if asset is already assigned
+        await checkAssetAssignment(assetId, data);
       } else {
         Alert.alert(
           "Asset Not Found",
@@ -135,9 +137,10 @@ export default function App() {
     }
   };
 
-  const getAssetAssignment = async (assetId) => {
+  // Check asset assignment status
+  const checkAssetAssignment = async (assetId, assetData) => {
     try {
-      console.log(`Getting asset assignment for asset ID: ${assetId}`);
+      console.log(`Checking asset assignment for asset ID: ${assetId}`);
       const url = `${API_CONFIG.BASE_URL}${API_ENDPOINTS.GET_ASSET_ASSIGNMENT(assetId)}`;
       console.log('API URL:', url);
       
@@ -152,13 +155,15 @@ export default function App() {
       
       clearTimeout(timeoutId);
       console.log('Asset assignment data received:');
+
       if (!response.ok) {
         if (response.status === 404) {
-          Alert.alert(
-            "No Assignment Found",
-            "This asset is not assigned to any employee.",
-            [{ text: "OK" }]
-          );
+          // Asset is not assigned, navigate to assignment page
+          navigation.navigate('EmployeeAssetAssignment', { 
+            assetId: assetId,
+            barcode: barcode,
+            assetData: assetData
+          });
           return;
         }
         if (response.status === 401) {
@@ -181,7 +186,7 @@ export default function App() {
         }
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const data = await response.json();
       console.log('Asset assignment data received:');
       
@@ -195,23 +200,31 @@ export default function App() {
         console.log('Filtered assignments:', filteredAssignments);
         
         if (filteredAssignments.length > 0) {
-          // Navigate to asset_2.js with the filtered asset assignment data
-          navigation.navigate('AssetDetails', { 
+          // Asset is already assigned, navigate to details page
+          navigation.navigate('EmployeeAssetDetails', { 
             assetAssignment: filteredAssignments[0],
-            barcode: barcode 
+            barcode: barcode,
+            employeeId: employeeId,
+            employeeName: employeeName
           });
         } else {
-          // Navigate to asset_3.js for unassigned assets or assets without matching criteria
-          navigation.navigate('AssetAssignment', { 
+          // Asset is not assigned, navigate to assignment page
+          navigation.navigate('EmployeeAssetAssignment', { 
             assetId: assetId,
-            barcode: barcode 
+            barcode: barcode,
+            assetData: assetData,
+            employeeId: employeeId,
+            employeeName: employeeName
           });
         }
       } else {
-        // Navigate to asset_3.js for unassigned assets
-        navigation.navigate('AssetAssignment', { 
+        // Asset is not assigned, navigate to assignment page
+        navigation.navigate('EmployeeAssetAssignment', { 
           assetId: assetId,
-          barcode: barcode 
+          barcode: barcode,
+          assetData: assetData,
+          employeeId: employeeId,
+          employeeName: employeeName
         });
       }
     } catch (error) {
@@ -282,9 +295,13 @@ export default function App() {
     <SafeAreaView style={{ flex: 1, backgroundColor: "#EEEEEE" }}>
       {/* AppBar */}
       <Appbar.Header style={styles.appbar}>
-        <Appbar.Action icon="menu" color="#FEC200" onPress={() => {}} />
+        <Appbar.Action
+          icon="arrow-left"
+          color="#FEC200"
+          onPress={() => navigation.goBack()}
+        />
         <View style={styles.centerTitleContainer}>
-          <Text style={styles.appbarTitle}>Asset</Text>
+          <Text style={styles.appbarTitle}>Employee Asset Assign</Text>
         </View>
       </Appbar.Header>
 
@@ -292,11 +309,11 @@ export default function App() {
       <View style={styles.container}>
         {/* Card */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Scan Barcode</Text>
+          <Text style={styles.cardTitle}>Assign Asset</Text>
           <Text style={styles.cardSubtitle}>
-            Hold your device over a barcode to{"\n"}scan
+            Select an asset to assign to{"\n"}this employee
           </Text>
-          <View style={styles.barcodeContainer}>
+          <View style={styles.iconContainer}>
             <MaterialCommunityIcons
               name="barcode-scan"
               size={140}
@@ -317,13 +334,28 @@ export default function App() {
           )}
         </View>
 
-        {/* Scan Button */}
+        {/* Scan QR Button */}
         <TouchableOpacity
           style={[styles.button, loading && styles.buttonDisabled]}
           onPress={openCamera}
           disabled={loading}
         >
           <Text style={styles.buttonText}>Scan Asset</Text>
+        </TouchableOpacity>
+
+        {/* Assign Button */}
+        <TouchableOpacity
+          style={[styles.button, styles.secondaryButton]}
+          onPress={() => {
+            // Navigate to Select Asset page
+            console.log("Assign asset button pressed");
+            navigation.navigate('EmployeeAssetSelect', {
+              employeeId: employeeId,
+              employeeName: employeeName
+            });
+          }}
+        >
+          <Text style={styles.buttonText}>Assign Asset</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -348,15 +380,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     zIndex: 1,
   },
-  titleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    flex: 1,
-  },
-  downloadIcon: {
-    marginLeft: 8,
-  },
   appbarTitle: {
     color: "#FFFFFF",
     fontWeight: "600",
@@ -367,15 +390,12 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    // paddingTop: 32,
   },
   card: {
     width: "85%",
     height: "65%",
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
-    // paddingVertical: 32,
-    // paddingHorizontal: 16,
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#000",
@@ -400,7 +420,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 25,
   },
-  barcodeContainer: {
+  iconContainer: {
     backgroundColor: "#FFFFFF",
     width: 140,
     height: 140,
@@ -430,12 +450,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     elevation: 2,
   },
+  secondaryButton: {
+    marginTop: 16,
+    backgroundColor: "#FEC200",
+  },
   buttonDisabled: {
     backgroundColor: "#cccccc",
   },
   buttonText: {
     color: "#fff",
-    fontWeight: '500',
+    fontWeight: "500",
     fontSize: 12,
   },
   loadingContainer: {

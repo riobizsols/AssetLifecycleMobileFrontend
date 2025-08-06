@@ -27,24 +27,16 @@ const departments = [
 const employees = [
   { label: "Select Department First", value: "" },
 ];
-const statuses = [
-  { label: "Assigned", value: "assigned" },
-  { label: "Unassigned", value: "unassigned" },
-  { label: "Available", value: "available" },
-];
 
-export default function App() {
+export default function EmployeeAssetAssignment() {
   const navigation = useNavigation();
   const route = useRoute();
-  const { assetId, barcode } = route.params || {};
+  const { assetId, barcode, employeeId, employeeName, assetData } = route.params || {};
   const [serial] = useState(assetId || "122101");
   const [department, setDepartment] = useState("");
   const [employee, setEmployee] = useState("");
-  const [status, setStatus] = useState("");
   const [effectiveDate, setEffectiveDate] = useState(new Date());
-  const [returnDate, setReturnDate] = useState(new Date());
   const [showEffective, setShowEffective] = useState(false);
-  const [showReturn, setShowReturn] = useState(false);
   const [departmentsList, setDepartmentsList] = useState(departments);
   const [loadingDepartments, setLoadingDepartments] = useState(false);
   const [employeesList, setEmployeesList] = useState(employees);
@@ -187,14 +179,6 @@ export default function App() {
       errors.push("Please select effective date");
     }
     
-    if (!returnDate) {
-      errors.push("Please select return date");
-    }
-    
-    if (effectiveDate && returnDate && effectiveDate > returnDate) {
-      errors.push("Effective date cannot be after return date");
-    }
-    
     return errors;
   };
 
@@ -219,22 +203,6 @@ export default function App() {
     } catch (error) {
       console.error('Error validating employee:', error);
       return false;
-    }
-  };
-
-  // Helper function to get action type based on context
-  const getActionType = (context) => {
-    switch (context) {
-      case 'assign':
-        return 'ASSIGN';
-      case 'unassign':
-        return 'UNASSIGN';
-      case 'transfer':
-        return 'TRANSFER';
-      case 'return':
-        return 'RETURN';
-      default:
-        return 'ASSIGN';
     }
   };
 
@@ -385,10 +353,108 @@ export default function App() {
     }
   };
 
+  // Fetch employee details and set defaults
+  const fetchEmployeeDetailsAndSetDefaults = async () => {
+    if (!employeeId) return;
+
+    try {
+      // First try to get employee by emp_int_id (internal ID)
+      const url = `${API_CONFIG.BASE_URL}${API_ENDPOINTS.GET_EMPLOYEE(employeeId)}`;
+      console.log("Fetching employee details for defaults:", url);
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: getApiHeaders(),
+      });
+
+      if (response.ok) {
+        const employeeData = await response.json();
+        console.log("Employee data for defaults:", employeeData);
+        
+        if (employeeData && employeeData.dept_id) {
+          // Set department as default
+          setDepartment(employeeData.dept_id);
+          // Fetch employees for this department
+          await fetchEmployeesByDepartment(employeeData.dept_id);
+          // Set employee as default
+          setEmployee(employeeId);
+        }
+      } else {
+        // Try to find employee by searching through all departments
+        await searchEmployeeInAllDepartments();
+      }
+    } catch (error) {
+      console.error("Error fetching employee details for defaults:", error);
+      // Try to find employee by searching through all departments
+      await searchEmployeeInAllDepartments();
+    }
+  };
+
+  // Search for employee in all departments
+  const searchEmployeeInAllDepartments = async () => {
+    try {
+      const departmentsUrl = `${API_CONFIG.BASE_URL}${API_ENDPOINTS.GET_DEPARTMENTS()}`;
+      const deptResponse = await fetch(departmentsUrl, {
+        method: "GET",
+        headers: getApiHeaders(),
+      });
+
+      if (!deptResponse.ok) {
+        console.error("Failed to fetch departments for employee search");
+        return;
+      }
+
+      const departments = await deptResponse.json();
+      
+      // Search through each department for the employee
+      for (const dept of departments) {
+        try {
+          const employeesUrl = `${API_CONFIG.BASE_URL}${API_ENDPOINTS.GET_EMPLOYEES_BY_DEPARTMENT(dept.dept_id)}`;
+          const empResponse = await fetch(employeesUrl, {
+            method: "GET",
+            headers: getApiHeaders(),
+          });
+
+          if (empResponse.ok) {
+            const employees = await empResponse.json();
+            
+            // Look for employee by emp_int_id
+            const foundEmployee = employees.find(
+              (emp) => emp.emp_int_id === employeeId
+            );
+            if (foundEmployee) {
+              console.log("Employee found in department search for defaults:", foundEmployee);
+              // Set department as default
+              setDepartment(foundEmployee.dept_id || dept.dept_id);
+              // Fetch employees for this department
+              await fetchEmployeesByDepartment(foundEmployee.dept_id || dept.dept_id);
+              // Set employee as default
+              setEmployee(employeeId);
+              return;
+            }
+          }
+        } catch (error) {
+          console.error(`Error searching department ${dept.dept_id}:`, error);
+        }
+      }
+
+      console.warn(`Employee with ID ${employeeId} not found in any department for defaults`);
+    } catch (error) {
+      console.error("Error in employee search for defaults:", error);
+    }
+  };
+
   // Fetch departments on component mount
   useEffect(() => {
     fetchDepartments();
   }, []);
+
+  // Set defaults when employeeId changes
+  useEffect(() => {
+    if (employeeId && departmentsList.length > 1) { // Check if departments are loaded
+      fetchEmployeeDetailsAndSetDefaults();
+    }
+  }, [employeeId, departmentsList]);
 
   // Custom searchable dropdown component
   const renderSearchableDropdown = (
@@ -468,261 +534,230 @@ export default function App() {
       <Appbar.Header style={styles.appbar}>
         <Appbar.Action icon="arrow-left" color="#FEC200" onPress={() => navigation.goBack()} />
         <View style={styles.centerTitleContainer}>
-          <Text style={styles.appbarTitle}>Asset Assignment</Text>
+          <Text style={styles.appbarTitle}>Employee Asset Assignment</Text>
         </View>
       </Appbar.Header>
-              <ScrollView contentContainerStyle={styles.scroll}>
-          {/* Search Bar */}
-          <View style={styles.searchRow}>
-            <TextInput
-              style={styles.searchInput}
-              placeholder={serial || "627384567868"}
-              placeholderTextColor="#888"
-              value={serial || ''}
-              editable={false}
-            />
-            <TouchableOpacity style={styles.qrButton}>
-              <MaterialCommunityIcons name="line-scan" size={22} color="#FEC200" />
-            </TouchableOpacity>
+      <ScrollView contentContainerStyle={styles.scroll}>
+        {/* Search Bar */}
+        <View style={styles.searchRow}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder={serial || "627384567868"}
+            placeholderTextColor="#888"
+            value={serial || ''}
+            editable={false}
+          />
+          <TouchableOpacity style={styles.qrButton}>
+            <MaterialCommunityIcons name="line-scan" size={22} color="#FEC200" />
+          </TouchableOpacity>
+        </View>
+        {/* Asset Details Card */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardHeaderText}>Asset Assignment</Text>
           </View>
-          {/* Asset Details Card */}
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Text style={styles.cardHeaderText}>Asset Details</Text>
+          <View style={styles.yellowLine} />
+          <View style={styles.cardBody}>
+            {/* Serial Number */}
+            <View style={styles.formRow}>
+              <Text style={styles.label}>Serial Number</Text>
+              <Text style={styles.colon}>:</Text>
+              <TextInput style={styles.input} value={serial} editable={false} />
             </View>
-            <View style={styles.yellowLine} />
-            <View style={styles.cardBody}>
-              {/* Serial Number */}
-              <View style={styles.formRow}>
-                <Text style={styles.label}>Serial Number</Text>
-                <Text style={styles.colon}>:</Text>
-                <TextInput style={styles.input} value={serial} editable={false} />
-              </View>
-              {/* Department */}
-              <View style={styles.formRow}>
-                <Text style={styles.label}>Department</Text>
-                <Text style={styles.colon}>:</Text>
-                {loadingDepartments ? (
-                  <View style={styles.dropdownWrapper}>
-                    <ActivityIndicator size="small" color="#003667" />
-                    <Text style={{ marginLeft: 8, color: "#616161" }}>Loading...</Text>
-                  </View>
-                ) : (
-                  renderSearchableDropdown(
-                    department,
-                    handleDepartmentChange,
-                    getFilteredDepartments(),
-                    "Select Department...",
-                    departmentSearchText,
-                    setDepartmentSearchText,
-                    showDepartmentDropdown,
-                    setShowDepartmentDropdown
-                  )
-                )}
-              </View>
-              {/* Employee */}
-              <View style={styles.formRow}>
-                <Text style={styles.label}>Employee</Text>
-                <Text style={styles.colon}>:</Text>
-                {loadingEmployees ? (
-                  <View style={styles.dropdownWrapper}>
-                    <ActivityIndicator size="small" color="#003667" />
-                    <Text style={{ marginLeft: 8, color: "#616161" }}>Loading...</Text>
-                  </View>
-                ) : (
-                  renderSearchableDropdown(
-                    employee,
-                    setEmployee,
-                    getFilteredEmployees(),
-                    "Select Employee...",
-                    employeeSearchText,
-                    setEmployeeSearchText,
-                    showEmployeeDropdown,
-                    setShowEmployeeDropdown
-                  )
-                )}
-              </View>
-              {/* Status */}
-              {/* <View style={styles.formRow}>
-                <Text style={styles.label}>Status</Text>
-                <Text style={styles.colon}>:</Text>
-                {renderDropdown(status, setStatus, statuses)}
-              </View> */}
-              {/* Effective Date */}
-              <View style={styles.formRow}>
-                <Text style={styles.label}>Effective Date</Text>
-                <Text style={styles.colon}>:</Text>
-                <TouchableOpacity
-                  style={styles.inputWithIcon}
-                  onPress={() => setShowEffective(true)}
-                >
-                  <Text style={{ flex: 1, color: "#616161" }}>
-                    {effectiveDate.toLocaleDateString()}
-                  </Text>
-                  <Icon name="calendar-today" size={20} color="#003366" />
-                </TouchableOpacity>
-                {showEffective && (
-                  <DateTimePicker
-                    value={effectiveDate}
-                    mode="date"
-                    display={Platform.OS === "ios" ? "spinner" : "default"}
-                    onChange={(e, date) => {
-                      setShowEffective(false);
-                      if (date) setEffectiveDate(date);
-                    }}
-                  />
-                )}
-              </View>
-              {/* Return Date */}
-              {/* <View style={styles.formRow}>
-                <Text style={styles.label}>Return Date</Text>
-                <Text style={styles.colon}>:</Text>
-                <TouchableOpacity
-                  style={styles.inputWithIcon}
-                  onPress={() => setShowReturn(true)}
-                >
-                  <Text style={{ flex: 1, color: "#616161" }}>
-                    {returnDate.toLocaleDateString()}
-                  </Text>
-                  <Icon name="calendar-today" size={20} color="#003366" />
-                </TouchableOpacity>
-                {showReturn && (
-                  <DateTimePicker
-                    value={returnDate}
-                    mode="date"
-                    display={Platform.OS === "ios" ? "spinner" : "default"}
-                    onChange={(e, date) => {
-                      setShowReturn(false);
-                      if (date) setReturnDate(date);
-                    }}
-                  />
-                )}
-              </View> */}
+            {/* Department */}
+            <View style={styles.formRow}>
+              <Text style={styles.label}>Department</Text>
+              <Text style={styles.colon}>:</Text>
+              {loadingDepartments ? (
+                <View style={styles.dropdownWrapper}>
+                  <ActivityIndicator size="small" color="#003667" />
+                  <Text style={{ marginLeft: 8, color: "#616161" }}>Loading...</Text>
+                </View>
+              ) : (
+                renderSearchableDropdown(
+                  department,
+                  handleDepartmentChange,
+                  getFilteredDepartments(),
+                  "Select Department...",
+                  departmentSearchText,
+                  setDepartmentSearchText,
+                  showDepartmentDropdown,
+                  setShowDepartmentDropdown
+                )
+              )}
+            </View>
+            {/* Employee */}
+            <View style={styles.formRow}>
+              <Text style={styles.label}>Employee</Text>
+              <Text style={styles.colon}>:</Text>
+              {loadingEmployees ? (
+                <View style={styles.dropdownWrapper}>
+                  <ActivityIndicator size="small" color="#003667" />
+                  <Text style={{ marginLeft: 8, color: "#616161" }}>Loading...</Text>
+                </View>
+              ) : (
+                renderSearchableDropdown(
+                  employee,
+                  setEmployee,
+                  getFilteredEmployees(),
+                  "Select Employee...",
+                  employeeSearchText,
+                  setEmployeeSearchText,
+                  showEmployeeDropdown,
+                  setShowEmployeeDropdown
+                )
+              )}
+            </View>
+            {/* Effective Date */}
+            <View style={styles.formRow}>
+              <Text style={styles.label}>Effective Date</Text>
+              <Text style={styles.colon}>:</Text>
+              <TouchableOpacity
+                style={styles.inputWithIcon}
+                onPress={() => setShowEffective(true)}
+              >
+                <Text style={{ flex: 1, color: "#616161" }}>
+                  {effectiveDate.toLocaleDateString()}
+                </Text>
+                <Icon name="calendar-today" size={20} color="#003366" />
+              </TouchableOpacity>
+              {showEffective && (
+                <DateTimePicker
+                  value={effectiveDate}
+                  mode="date"
+                  display={Platform.OS === "ios" ? "spinner" : "default"}
+                  onChange={(e, date) => {
+                    setShowEffective(false);
+                    if (date) setEffectiveDate(date);
+                  }}
+                />
+              )}
             </View>
           </View>
-        </ScrollView>
-        
-        {/* Dropdown Overlays - Positioned outside ScrollView */}
-        {showDepartmentDropdown && (
-          <TouchableOpacity 
-            style={styles.dropdownOverlay}
-            activeOpacity={1}
-            onPress={() => setShowDepartmentDropdown(false)}
-          >
-            <View style={styles.dropdownList}>
-              {/* Search Input */}
-              <View style={styles.searchContainer}>
-                <TextInput
-                  style={styles.dropdownSearchInput}
-                  placeholder="Search..."
-                  placeholderTextColor="#888"
-                  value={departmentSearchText}
-                  onChangeText={setDepartmentSearchText}
-                  autoFocus={true}
-                />
-                {departmentSearchText.length > 0 && (
-                  <TouchableOpacity
-                    style={styles.clearButton}
-                    onPress={() => setDepartmentSearchText("")}
-                  >
-                    <Icon name="close" size={16} color="#888" />
-                  </TouchableOpacity>
-                )}
-              </View>
-              
-              {/* Options List */}
-              <ScrollView style={styles.optionsList} nestedScrollEnabled={true}>
-                {getFilteredDepartments().map((option, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={[
-                      styles.optionItem,
-                      option.value === department && styles.selectedOption
-                    ]}
-                    onPress={() => {
-                      handleDepartmentChange(option.value);
-                      setDepartmentSearchText("");
-                      setShowDepartmentDropdown(false);
-                    }}
-                  >
-                    <Text style={[
-                      styles.optionText,
-                      option.value === department && styles.selectedOptionText
-                    ]}>
-                      {option.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
+        </View>
+      </ScrollView>
+      
+      {/* Dropdown Overlays - Positioned outside ScrollView */}
+      {showDepartmentDropdown && (
+        <TouchableOpacity 
+          style={styles.dropdownOverlay}
+          activeOpacity={1}
+          onPress={() => setShowDepartmentDropdown(false)}
+        >
+          <View style={styles.dropdownList}>
+            {/* Search Input */}
+            <View style={styles.searchContainer}>
+              <TextInput
+                style={styles.dropdownSearchInput}
+                placeholder="Search..."
+                placeholderTextColor="#888"
+                value={departmentSearchText}
+                onChangeText={setDepartmentSearchText}
+                autoFocus={true}
+              />
+              {departmentSearchText.length > 0 && (
+                <TouchableOpacity
+                  style={styles.clearButton}
+                  onPress={() => setDepartmentSearchText("")}
+                >
+                  <Icon name="close" size={16} color="#888" />
+                </TouchableOpacity>
+              )}
             </View>
-          </TouchableOpacity>
-        )}
-        
-        {showEmployeeDropdown && (
-          <TouchableOpacity 
-            style={styles.dropdownOverlay}
-            activeOpacity={1}
-            onPress={() => setShowEmployeeDropdown(false)}
-          >
-            <View style={styles.dropdownList}>
-              {/* Search Input */}
-              <View style={styles.searchContainer}>
-                <TextInput
-                  style={styles.dropdownSearchInput}
-                  placeholder="Search..."
-                  placeholderTextColor="#888"
-                  value={employeeSearchText}
-                  onChangeText={setEmployeeSearchText}
-                  autoFocus={true}
-                />
-                {employeeSearchText.length > 0 && (
-                  <TouchableOpacity
-                    style={styles.clearButton}
-                    onPress={() => setEmployeeSearchText("")}
-                  >
-                    <Icon name="close" size={16} color="#888" />
-                  </TouchableOpacity>
-                )}
-              </View>
-              
-              {/* Options List */}
-              <ScrollView style={styles.optionsList} nestedScrollEnabled={true}>
-                {getFilteredEmployees().map((option, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={[
-                      styles.optionItem,
-                      option.value === employee && styles.selectedOption
-                    ]}
-                    onPress={() => {
-                      setEmployee(option.value);
-                      setEmployeeSearchText("");
-                      setShowEmployeeDropdown(false);
-                    }}
-                  >
-                    <Text style={[
-                      styles.optionText,
-                      option.value === employee && styles.selectedOptionText
-                    ]}>
-                      {option.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
+            
+            {/* Options List */}
+            <ScrollView style={styles.optionsList} nestedScrollEnabled={true}>
+              {getFilteredDepartments().map((option, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.optionItem,
+                    option.value === department && styles.selectedOption
+                  ]}
+                  onPress={() => {
+                    handleDepartmentChange(option.value);
+                    setDepartmentSearchText("");
+                    setShowDepartmentDropdown(false);
+                  }}
+                >
+                  <Text style={[
+                    styles.optionText,
+                    option.value === department && styles.selectedOptionText
+                  ]}>
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      )}
+      
+      {showEmployeeDropdown && (
+        <TouchableOpacity 
+          style={styles.dropdownOverlay}
+          activeOpacity={1}
+          onPress={() => setShowEmployeeDropdown(false)}
+        >
+          <View style={styles.dropdownList}>
+            {/* Search Input */}
+            <View style={styles.searchContainer}>
+              <TextInput
+                style={styles.dropdownSearchInput}
+                placeholder="Search..."
+                placeholderTextColor="#888"
+                value={employeeSearchText}
+                onChangeText={setEmployeeSearchText}
+                autoFocus={true}
+              />
+              {employeeSearchText.length > 0 && (
+                <TouchableOpacity
+                  style={styles.clearButton}
+                  onPress={() => setEmployeeSearchText("")}
+                >
+                  <Icon name="close" size={16} color="#888" />
+                </TouchableOpacity>
+              )}
             </View>
-          </TouchableOpacity>
-        )}
+            
+            {/* Options List */}
+            <ScrollView style={styles.optionsList} nestedScrollEnabled={true}>
+              {getFilteredEmployees().map((option, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.optionItem,
+                    option.value === employee && styles.selectedOption
+                  ]}
+                  onPress={() => {
+                    setEmployee(option.value);
+                    setEmployeeSearchText("");
+                    setShowEmployeeDropdown(false);
+                  }}
+                >
+                  <Text style={[
+                    styles.optionText,
+                    option.value === employee && styles.selectedOptionText
+                  ]}>
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      )}
       {/* Footer */}
       <View style={styles.footer}>
-        <TouchableOpacity 
+        {/* <TouchableOpacity 
           style={styles.historyLink}
-          onPress={() => navigation.navigate('AssetHistory', { 
+          onPress={() => navigation.navigate('EmployeeAssetHistory', { 
             assetId: assetId,
             assetAssignment: null 
           })}
         >
           <Text style={styles.historyLinkText}>View History</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
         
         <View style={styles.buttonContainer}>
           <TouchableOpacity 
@@ -861,9 +896,6 @@ const styles = StyleSheet.create({
   formRow: {
     flexDirection: "row",
     alignItems: "stretch",
-    // alignContent : 'flex-start',
-    // justifyContent :"flex-start",
-
     marginBottom: 14,
   },
   label: {
@@ -935,12 +967,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#f9f9f9",
     flexDirection: "row",
     alignItems: "center",
-    // fontSize: 18,
-    // fontWeight : "400",
   },
   footer: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "flex-end",
     alignItems: "center",
     padding: 16,
     backgroundColor: "#fff",
@@ -1080,4 +1110,4 @@ const styles = StyleSheet.create({
     width: "100%",
     marginBottom: 8,
   },
-});
+}); 

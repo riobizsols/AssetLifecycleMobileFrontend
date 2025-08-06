@@ -1,0 +1,997 @@
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  SafeAreaView,
+  Alert,
+  ActivityIndicator,
+  FlatList,
+  ScrollView,
+  Modal,
+} from "react-native";
+import { Appbar } from "react-native-paper";
+import { useNavigation, useRoute } from "@react-navigation/native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import Icon from "react-native-vector-icons/MaterialIcons";
+import { API_CONFIG, getApiHeaders, API_ENDPOINTS } from "../../config/api";
+
+export default function EmployeeAssetSelect() {
+  const navigation = useNavigation();
+  const route = useRoute();
+  const { employeeId, employeeName } = route.params || {};
+  
+  const [selectedAssetType, setSelectedAssetType] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [assets, setAssets] = useState([]);
+  const [searchPerformed, setSearchPerformed] = useState(false);
+  const [assetTypes, setAssetTypes] = useState([]);
+  const [showAssetTypeDropdown, setShowAssetTypeDropdown] = useState(false);
+  const [assetTypeSearchText, setAssetTypeSearchText] = useState("");
+  const [loadingAssetTypes, setLoadingAssetTypes] = useState(false);
+  
+  // Asset selection states
+  const [selectedAsset, setSelectedAsset] = useState("");
+  const [showAssetDropdown, setShowAssetDropdown] = useState(false);
+  const [assetSearchText, setAssetSearchText] = useState("");
+
+  // Fetch asset types
+  const fetchAssetTypes = async () => {
+    setLoadingAssetTypes(true);
+    try {
+      const url = `${API_CONFIG.BASE_URL}/api/asset-types/assignment-type/User`;
+      console.log('Fetching asset types:', url);
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: getApiHeaders(),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('Asset types data received:', data);
+      
+      // Transform the data to match our component structure
+      // Using asset_type_id as key and text as value
+      const transformedAssetTypes = data.map(item => ({
+        id: item.asset_type_id,
+        name: item.text,
+        description: item.text // Using text as description for now
+      }));
+      
+      setAssetTypes(transformedAssetTypes);
+    } catch (error) {
+      console.error("Error fetching asset types:", error);
+      Alert.alert("Error", "Failed to load asset types. Please try again.");
+      // Fallback to mock data for testing
+      const mockAssetTypes = [
+        { id: "1", name: "Laptop", description: "Portable computers" },
+        { id: "2", name: "Desktop", description: "Desktop computers" },
+        { id: "3", name: "Monitor", description: "Display screens" },
+        { id: "4", name: "Keyboard", description: "Input devices" },
+        { id: "5", name: "Mouse", description: "Pointing devices" },
+        { id: "6", name: "Printer", description: "Printing devices" },
+        { id: "7", name: "Scanner", description: "Scanning devices" },
+        { id: "8", name: "Phone", description: "Communication devices" },
+        { id: "9", name: "Tablet", description: "Portable tablets" },
+        { id: "10", name: "Server", description: "Server computers" },
+      ];
+      setAssetTypes(mockAssetTypes);
+    } finally {
+      setLoadingAssetTypes(false);
+    }
+  };
+
+  // Filter asset types based on search text
+  const getFilteredAssetTypes = () => {
+    const filtered = !assetTypeSearchText ? assetTypes : assetTypes.filter(type => 
+      type.name.toLowerCase().includes(assetTypeSearchText.toLowerCase()) ||
+      type.description.toLowerCase().includes(assetTypeSearchText.toLowerCase())
+    );
+    console.log('Filtered asset types:', filtered.length, filtered);
+    return filtered;
+  };
+
+  // Filter assets based on search text
+  const getFilteredAssets = () => {
+    const filtered = !assetSearchText ? assets : assets.filter(asset => 
+      asset.serial_number.toLowerCase().includes(assetSearchText.toLowerCase()) ||
+      asset.description.toLowerCase().includes(assetSearchText.toLowerCase()) ||
+      asset.asset_id.toLowerCase().includes(assetSearchText.toLowerCase())
+    );
+    console.log('Filtered assets:', filtered.length, filtered);
+    return filtered;
+  };
+
+  // Fetch inactive assets by asset type
+  const fetchInactiveAssets = async (assetTypeId) => {
+    if (!assetTypeId) {
+      console.log('No asset type ID provided');
+      return;
+    }
+
+    setLoading(true);
+    setSearchPerformed(true);
+    
+    try {
+      // Call API to get inactive assets by asset type
+      const url = `${API_CONFIG.BASE_URL}/api/assets/type/${assetTypeId}/inactive`;
+      console.log('Fetching inactive assets for type:', url);
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: getApiHeaders(),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('API Response status:', response.status);
+        console.log('API Response data type:', typeof data);
+        console.log('API Response data:', data);
+        console.log('Is data an array?', Array.isArray(data));
+        console.log('Data length:', data ? data.length : 'undefined');
+        
+        // Check if data is an array and not empty
+        let assetsArray = data;
+        
+        // Handle different possible response formats
+        if (data && typeof data === 'object' && !Array.isArray(data)) {
+          // If data is an object, check for common property names
+          if (data.assets && Array.isArray(data.assets)) {
+            assetsArray = data.assets;
+          } else if (data.data && Array.isArray(data.data)) {
+            assetsArray = data.data;
+          } else if (data.results && Array.isArray(data.results)) {
+            assetsArray = data.results;
+          } else {
+            console.log('Data is an object but no array found in common properties:', data);
+            assetsArray = [];
+          }
+        } else if (data && Array.isArray(data)) {
+          assetsArray = data;
+        } else {
+          console.log('No data or data is not an array:', data);
+          assetsArray = [];
+        }
+        
+        if (assetsArray && assetsArray.length > 0) {
+          // Transform the data to match our display format
+          const transformedAssets = assetsArray.map(asset => ({
+            asset_id: asset.asset_id || asset.id || asset.assetId,
+            serial_number: asset.serial_number || asset.serialNumber || asset.serial,
+            description: asset.description || asset.text || asset.name || 'Unknown Asset',
+            status: asset.status || 'Inactive',
+            type: asset.asset_type_id || asset.assetTypeId || asset.type
+          }));
+          
+          setAssets(transformedAssets);
+        } else {
+          console.log('No assets found in array:', assetsArray);
+          setAssets([]);
+          Alert.alert("No Inactive Assets Found", "No inactive assets found for the selected type.");
+        }
+      } else if (response.status === 404) {
+        setAssets([]);
+        Alert.alert("No Inactive Assets Found", "No inactive assets found for the selected type.");
+      } else {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+    } catch (error) {
+      console.error("Error fetching inactive assets:", error);
+      Alert.alert("Error", "Failed to fetch inactive assets. Please try again.");
+      setAssets([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Search assets by asset type (keeping for backward compatibility)
+  const searchAssets = async () => {
+    if (!selectedAssetType) {
+      Alert.alert("Error", "Please select an asset type");
+      return;
+    }
+
+    // Use the new fetchInactiveAssets function
+    await fetchInactiveAssets(selectedAssetType);
+  };
+
+  // Select an asset for assignment
+  const selectAsset = (asset) => {
+    Alert.alert(
+      "Select Asset",
+      `Do you want to assign ${asset.description} (${asset.serial_number}) to ${employeeName || employeeId}?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Select",
+          onPress: () => {
+            // Navigate to assignment page with selected asset
+            navigation.navigate('EmployeeAssetAssignment', {
+              assetId: asset.asset_id,
+              barcode: asset.serial_number,
+              assetData: asset,
+              employeeId: employeeId,
+              employeeName: employeeName
+            });
+          }
+        }
+      ]
+    );
+  };
+
+  // Remove automatic fetch - now we fetch only when dropdown is clicked
+
+  // Custom searchable dropdown component
+  const renderSearchableDropdown = (
+    value, 
+    setValue, 
+    options, 
+    placeholder, 
+    searchText, 
+    setSearchText, 
+    showDropdown, 
+    setShowDropdown
+  ) => {
+    const selectedOption = options.find(option => option.id === value);
+    const displayText = selectedOption ? selectedOption.name : placeholder;
+
+    return (
+      <View style={styles.dropdownWrapper}>
+        <TouchableOpacity
+          style={styles.dropdownButton}
+          onPress={() => {
+            // Fetch asset types when dropdown is opened
+            if (!showDropdown) {
+              fetchAssetTypes();
+            }
+            setShowDropdown(!showDropdown);
+          }}
+        >
+          <Text style={styles.dropdownButtonText}>
+            {displayText}
+          </Text>
+          <Icon 
+            name={showDropdown ? "arrow-drop-up" : "arrow-drop-down"} 
+            size={22} 
+            color="#888" 
+          />
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  // Render asset item
+  const renderAssetItem = ({ item, index }) => (
+    <TouchableOpacity
+      style={[
+        styles.assetItem,
+        { backgroundColor: index % 2 === 0 ? "#fff" : "#f0f4f8" }
+      ]}
+      onPress={() => selectAsset(item)}
+    >
+      <View style={styles.assetInfo}>
+        <Text style={styles.assetName}>{item.description}</Text>
+        <Text style={styles.assetSerial}>Serial: {item.serial_number}</Text>
+        <Text style={styles.assetStatus}>Status: {item.status}</Text>
+      </View>
+      <MaterialCommunityIcons
+        name="chevron-right"
+        size={24}
+        color="#003667"
+      />
+    </TouchableOpacity>
+  );
+
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#EEEEEE" }}>
+      {/* AppBar */}
+      <Appbar.Header style={styles.appbar}>
+        <Appbar.Action
+          icon="arrow-left"
+          color="#FEC200"
+          onPress={() => navigation.goBack()}
+        />
+        <View style={styles.centerTitleContainer}>
+          <Text style={styles.appbarTitle}>Select Asset</Text>
+        </View>
+      </Appbar.Header>
+
+      {/* Employee Info */}
+      <View style={styles.employeeInfo}>
+        <Text style={styles.employeeInfoTitle}>Employee Information</Text>
+        <View style={styles.infoRow}>
+          <Text style={styles.label}>Employee ID:</Text>
+          <Text style={styles.value}>{employeeId || "N/A"}</Text>
+        </View>
+        <View style={styles.infoRow}>
+          <Text style={styles.label}>Employee Name:</Text>
+          <Text style={styles.value}>{employeeName || "N/A"}</Text>
+        </View>
+      </View>
+
+      {/* Search Section */}
+                  <View style={styles.searchContainer}>
+              <Text style={styles.searchTitle}>Select Asset Type</Text>
+        <View style={styles.searchRow}>
+          {loadingAssetTypes ? (
+            <View style={styles.dropdownWrapper}>
+              <ActivityIndicator size="small" color="#003667" />
+              <Text style={{ marginLeft: 8, color: "#616161" }}>Loading...</Text>
+            </View>
+          ) : (
+            renderSearchableDropdown(
+              selectedAssetType,
+              setSelectedAssetType,
+              getFilteredAssetTypes(),
+              "Select Asset Type...",
+              assetTypeSearchText,
+              setAssetTypeSearchText,
+              showAssetTypeDropdown,
+              setShowAssetTypeDropdown
+            )
+          )}
+          {/* <TouchableOpacity
+            style={styles.searchButton}
+            onPress={searchAssets}
+            disabled={loading || !selectedAssetType}
+          >
+            {loading ? (
+              <ActivityIndicator size="small" color="#FEC200" />
+            ) : (
+              <MaterialCommunityIcons
+                name="magnify"
+                size={22}
+                color="#FEC200"
+              />
+            )}
+          </TouchableOpacity> */}
+        </View>
+      </View>
+
+            {/* Asset Selection Section */}
+      {selectedAssetType && (
+        <View style={styles.assetSelectionContainer}>
+          <Text style={styles.assetSelectionTitle}>Select Asset</Text>
+          <View style={styles.assetSelectionRow}>
+            {loading ? (
+              <View style={styles.dropdownWrapper}>
+                <ActivityIndicator size="small" color="#003667" />
+                <Text style={{ marginLeft: 8, color: "#616161" }}>Loading assets...</Text>
+              </View>
+            ) : (
+              renderSearchableDropdown(
+                selectedAsset,
+                setSelectedAsset,
+                getFilteredAssets(),
+                "Select an asset...",
+                assetSearchText,
+                setAssetSearchText,
+                showAssetDropdown,
+                setShowAssetDropdown
+              )
+            )}
+          </View>
+        </View>
+      )}
+      
+      {/* Asset Type Selection Modal */}
+      <Modal
+        visible={showAssetTypeDropdown}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowAssetTypeDropdown(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Asset Type</Text>
+              <TouchableOpacity
+                onPress={() => setShowAssetTypeDropdown(false)}
+                style={styles.closeButton}
+              >
+                <Icon name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+            
+            {/* Search Input */}
+            <View style={styles.modalSearchContainer}>
+              <TextInput
+                style={styles.modalSearchInput}
+                placeholder="Search asset types..."
+                placeholderTextColor="#888"
+                value={assetTypeSearchText}
+                onChangeText={setAssetTypeSearchText}
+              />
+              {assetTypeSearchText.length > 0 && (
+                <TouchableOpacity
+                  style={styles.clearButton}
+                  onPress={() => setAssetTypeSearchText("")}
+                >
+                  <Icon name="close" size={16} color="#888" />
+                </TouchableOpacity>
+              )}
+            </View>
+            
+            {/* Options List */}
+            <ScrollView
+              style={styles.modalScrollView}
+              showsVerticalScrollIndicator={true}
+              contentContainerStyle={styles.modalContentContainer}
+            >
+              {loadingAssetTypes ? (
+                <View style={styles.modalLoadingContainer}>
+                  <ActivityIndicator size="large" color="#003667" />
+                  <Text style={styles.modalLoadingText}>Loading asset types...</Text>
+                </View>
+              ) : getFilteredAssetTypes().length === 0 ? (
+                <View style={styles.modalEmptyContainer}>
+                  <Text style={styles.modalEmptyText}>No asset types found</Text>
+                  <Text style={styles.modalEmptySubtext}>
+                    {assetTypeSearchText ? "Try a different search term" : "No asset types available"}
+                  </Text>
+                </View>
+              ) : (
+                getFilteredAssetTypes().map((item) => (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={[
+                      styles.modalOptionItem,
+                      item.id === selectedAssetType && styles.modalSelectedOption
+                    ]}
+                                      onPress={() => {
+                    setSelectedAssetType(item.id);
+                    setAssetTypeSearchText("");
+                    setShowAssetTypeDropdown(false);
+                    // Automatically fetch inactive assets for the selected type
+                    fetchInactiveAssets(item.id);
+                  }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[
+                      styles.modalOptionText,
+                      item.id === selectedAssetType && styles.modalSelectedOptionText
+                    ]}>
+                      {item.name}
+                    </Text>
+                    <Text style={[
+                      styles.modalOptionSubtext,
+                      item.id === selectedAssetType && styles.modalSelectedOptionSubtext
+                    ]}>
+                      {item.description}
+                    </Text>
+                  </TouchableOpacity>
+                ))
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Asset Selection Modal */}
+      <Modal
+        visible={showAssetDropdown}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowAssetDropdown(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Asset</Text>
+              <TouchableOpacity
+                onPress={() => setShowAssetDropdown(false)}
+                style={styles.closeButton}
+              >
+                <Icon name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+            
+            {/* Search Input */}
+            <View style={styles.modalSearchContainer}>
+              <TextInput
+                style={styles.modalSearchInput}
+                placeholder="Search assets..."
+                placeholderTextColor="#888"
+                value={assetSearchText}
+                onChangeText={setAssetSearchText}
+              />
+              {assetSearchText.length > 0 && (
+                <TouchableOpacity
+                  style={styles.clearButton}
+                  onPress={() => setAssetSearchText("")}
+                >
+                  <Icon name="close" size={16} color="#888" />
+                </TouchableOpacity>
+              )}
+            </View>
+            
+            {/* Options List */}
+            <ScrollView
+              style={styles.modalScrollView}
+              showsVerticalScrollIndicator={true}
+              contentContainerStyle={styles.modalContentContainer}
+            >
+              {loading ? (
+                <View style={styles.modalLoadingContainer}>
+                  <ActivityIndicator size="large" color="#003667" />
+                  <Text style={styles.modalLoadingText}>Loading assets...</Text>
+                </View>
+              ) : getFilteredAssets().length === 0 ? (
+                <View style={styles.modalEmptyContainer}>
+                  <Text style={styles.modalEmptyText}>No assets found</Text>
+                  <Text style={styles.modalEmptySubtext}>
+                    {assetSearchText ? "Try a different search term" : "No assets available"}
+                  </Text>
+                </View>
+              ) : (
+                getFilteredAssets().map((item) => (
+                  <TouchableOpacity
+                    key={item.asset_id}
+                    style={[
+                      styles.modalOptionItem,
+                      item.asset_id === selectedAsset && styles.modalSelectedOption
+                    ]}
+                    onPress={() => {
+                      setSelectedAsset(item.asset_id);
+                      setAssetSearchText("");
+                      setShowAssetDropdown(false);
+                      // Navigate to assignment page with selected asset
+                      selectAsset(item);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[
+                      styles.modalOptionText,
+                      item.asset_id === selectedAsset && styles.modalSelectedOptionText
+                    ]}>
+                      {item.serial_number}
+                    </Text>
+                    <Text style={[
+                      styles.modalOptionSubtext,
+                      item.asset_id === selectedAsset && styles.modalSelectedOptionSubtext
+                    ]}>
+                      {item.description} - {item.status}
+                    </Text>
+                  </TouchableOpacity>
+                ))
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  appbar: {
+    backgroundColor: "#003667",
+    elevation: 0,
+    shadowOpacity: 0,
+    height: 60,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-start",
+    position: "relative",
+  },
+  centerTitleContainer: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    alignItems: "center",
+    zIndex: 1,
+  },
+  appbarTitle: {
+    color: "#FFFFFF",
+    fontWeight: "600",
+    fontSize: 16,
+    alignSelf: "center",
+  },
+  employeeInfo: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 8,
+    padding: 16,
+    margin: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  employeeInfoTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#003667",
+    marginBottom: 12,
+  },
+  infoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  label: {
+    width: 120,
+    color: "#616161",
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  value: {
+    flex: 1,
+    color: "#333",
+    fontSize: 14,
+    fontWeight: "400",
+  },
+  searchContainer: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 8,
+    padding: 16,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  searchTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#003667",
+    marginBottom: 12,
+  },
+  searchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  searchInput: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 4,
+    paddingHorizontal: 12,
+    height: 45,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    textAlignVertical: "center",
+  },
+  searchButton: {
+    marginLeft: 8,
+    backgroundColor: "#003667",
+    height: 45,
+    width: 45,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 6,
+  },
+  resultsContainer: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 8,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  resultsTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#003667",
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e0e0e0",
+  },
+  assetItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e0e0e0",
+  },
+  assetInfo: {
+    flex: 1,
+  },
+  assetName: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 4,
+  },
+  assetSerial: {
+    fontSize: 14,
+    color: "#666",
+    marginBottom: 2,
+  },
+  assetStatus: {
+    fontSize: 12,
+    color: "#003667",
+    fontWeight: "500",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 40,
+  },
+  loadingText: {
+    marginTop: 10,
+    color: "#003667",
+    fontWeight: "500",
+    fontSize: 14,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 40,
+  },
+  emptyText: {
+    marginTop: 16,
+    color: "#666",
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  emptySubtext: {
+    marginTop: 8,
+    color: "#999",
+    fontSize: 14,
+    textAlign: "center",
+  },
+  initialContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 40,
+  },
+  initialText: {
+    marginTop: 16,
+    color: "#666",
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  initialSubtext: {
+    marginTop: 8,
+    color: "#999",
+    fontSize: 14,
+    textAlign: "center",
+  },
+  dropdownWrapper: {
+    flex: 1,
+    position: "relative",
+  },
+  dropdownButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 4,
+    backgroundColor: "#f9f9f9",
+    height: 45,
+    paddingHorizontal: 12,
+  },
+  dropdownButtonText: {
+    color: "#616161",
+    fontSize: 14,
+    fontWeight: "400",
+    flex: 1,
+  },
+  dropdownOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 999,
+  },
+  dropdownOverlayTouchable: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.3)",
+  },
+  dropdownList: {
+    position: "absolute",
+    top: 200,
+    left: 20,
+    right: 20,
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    maxHeight: 300,
+    minHeight: 100,
+    zIndex: 1000,
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    overflow: "hidden",
+  },
+
+  dropdownContentContainer: {
+    flexGrow: 1,
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContainer: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    width: "90%",
+    height: "70%",
+    elevation: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#333",
+  },
+  closeButton: {
+    padding: 4,
+  },
+  modalSearchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+  },
+  modalSearchInput: {
+    flex: 1,
+    height: 40,
+    fontSize: 14,
+    color: "#333",
+    paddingHorizontal: 12,
+    backgroundColor: "#f5f5f5",
+    borderRadius: 6,
+  },
+  modalScrollView: {
+    flex: 1,
+    minHeight: 200,
+  },
+  modalContentContainer: {
+    paddingBottom: 16,
+  },
+  modalOptionItem: {
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  modalSelectedOption: {
+    backgroundColor: "#e3f2fd",
+  },
+  modalOptionText: {
+    fontSize: 16,
+    color: "#333",
+    fontWeight: "500",
+  },
+  modalSelectedOptionText: {
+    color: "#003667",
+    fontWeight: "600",
+  },
+  modalOptionSubtext: {
+    fontSize: 14,
+    color: "#666",
+    marginTop: 4,
+  },
+  modalSelectedOptionSubtext: {
+    color: "#003667",
+  },
+  modalLoadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 40,
+  },
+  modalLoadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: "#666",
+  },
+  modalEmptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 40,
+  },
+  modalEmptyText: {
+    fontSize: 16,
+    color: "#666",
+    fontWeight: "500",
+  },
+  modalEmptySubtext: {
+    marginTop: 8,
+    fontSize: 14,
+    color: "#999",
+    textAlign: "center",
+  },
+  // Asset selection styles
+  assetSelectionContainer: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 8,
+    padding: 16,
+    margin: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  assetSelectionTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#003667",
+    marginBottom: 12,
+  },
+  assetSelectionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  dropdownSearchInput: {
+    flex: 1,
+    height: 40,
+    fontSize: 14,
+    color: "#333",
+    paddingHorizontal: 12,
+    backgroundColor: "transparent",
+  },
+  clearButton: {
+    padding: 8,
+    marginLeft: 4,
+  },
+  optionItem: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  selectedOption: {
+    backgroundColor: "#e3f2fd",
+  },
+  optionText: {
+    fontSize: 14,
+    color: "#333",
+    fontWeight: "500",
+  },
+  selectedOptionText: {
+    color: "#003667",
+    fontWeight: "600",
+  },
+  optionSubtext: {
+    fontSize: 12,
+    color: "#666",
+    marginTop: 2,
+  },
+  selectedOptionSubtext: {
+    color: "#003667",
+  },
+}); 

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,19 +7,211 @@ import {
   FlatList,
   StyleSheet,
   SafeAreaView,
+  Alert,
+  ActivityIndicator,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Appbar } from "react-native-paper";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
-
-const ASSET_DATA = [
-  { type: "Keyboard", serial: "121354", remarks: "All keys are functional" },
-  { type: "Monitor", serial: "121354", remarks: "No Damage or fraying" },
-];
+import { useNavigation, useRoute } from "@react-navigation/native";
+import { API_CONFIG, getApiHeaders, API_ENDPOINTS } from "../../config/api";
 
 export default function EmployeeAssetDetailScreen() {
-    const navigation = useNavigation();
+  const navigation = useNavigation();
+  const route = useRoute();
+  const { employeeId, employeeName, departmentId } = route.params || {};
+  const [loading, setLoading] = useState(false);
+  const [assetData, setAssetData] = useState([]);
+  const [employeeInfo, setEmployeeInfo] = useState({
+    id: "",
+    name: "",
+    department: "",
+    assetCount: 0
+  });
+  const [departments, setDepartments] = useState({});
+
+  // Fetch departments data
+  const fetchDepartments = async () => {
+    try {
+      const url = `${API_CONFIG.BASE_URL}${API_ENDPOINTS.GET_DEPARTMENTS()}`;
+      console.log("Fetching departments for employee details:", url);
+      
+      const response = await fetch(url, {
+        method: "GET",
+        headers: getApiHeaders(),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log("Departments data received for employee details:", data);
+      
+      // Create a map of dept_id to department name
+      const deptMap = {};
+      data.forEach(dept => {
+        deptMap[dept.dept_id] = dept.text || dept.name || dept.dept_name;
+      });
+      
+      setDepartments(deptMap);
+    } catch (error) {
+      console.error("Error fetching departments:", error);
+    }
+  };
+
+  // Fetch employee active assets
+  const fetchEmployeeActiveAssets = async (empId) => {
+    if (!empId) {
+      Alert.alert("Error", "Employee ID is required");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      console.log(`Fetching active assets for employee: ${empId}`);
+      const url = `${API_CONFIG.BASE_URL}/api/asset-assignments/employee/${empId}/active`;
+      console.log('API URL:', url);
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: getApiHeaders(),
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        if (response.status === 404) {
+          Alert.alert(
+            "No Active Assets Found",
+            "No active assets found for this employee.",
+            [{ text: "OK" }]
+          );
+          setAssetData([]);
+          setEmployeeInfo({
+            id: employeeId || "",
+            name: employeeName || "",
+            department: departments[departmentId] || departmentId || "",
+            assetCount: 0
+          });
+          return;
+        }
+        if (response.status === 401) {
+          Alert.alert(
+            "Authentication Error",
+            "Please check your authorization token.",
+            [{ text: "OK" }]
+          );
+          return;
+        }
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('Employee active assets data received:', data);
+      
+      // Process the assignment data to get asset details
+      const processedAssets = [];
+      
+      // Handle the new API response structure
+      if (data && data.data && Array.isArray(data.data)) {
+        // Fetch asset details for each assignment
+        for (const assignment of data.data) {
+          try {
+            const assetUrl = `${API_CONFIG.BASE_URL}/api/assets/${assignment.asset_id}`;
+            console.log(`Fetching asset details from: ${assetUrl}`);
+            
+            const assetResponse = await fetch(assetUrl, {
+              method: 'GET',
+              headers: getApiHeaders(),
+            });
+            
+            if (assetResponse.ok) {
+              const assetDetails = await assetResponse.json();
+              console.log(`Asset details for ${assignment.asset_id}:`, assetDetails);
+              
+              // Handle the asset details response structure
+              let assetDescription = "Unknown Asset";
+              let serialNumber = `SN-${assignment.asset_id}`;
+              
+              if (Array.isArray(assetDetails) && assetDetails.length > 0) {
+                assetDescription = assetDetails[0].description || assetDetails[0].text || assetDetails[0].name || `Asset ${assignment.asset_id}`;
+                serialNumber = assetDetails[0].serial_number || `SN-${assignment.asset_id}`;
+              } else if (assetDetails && typeof assetDetails === 'object') {
+                assetDescription = assetDetails.description || assetDetails.text || assetDetails.name || `Asset ${assignment.asset_id}`;
+                serialNumber = assetDetails.serial_number || `SN-${assignment.asset_id}`;
+              }
+              
+              console.log(`Processed asset: ${assetDescription} (${serialNumber})`);
+              
+              processedAssets.push({
+                type: assetDescription,
+                serial: serialNumber,
+                remarks: assignment.remarks || "Active",
+                assetId: assignment.asset_id,
+                assignmentId: assignment.asset_assign_id
+              });
+            } else {
+              console.log(`Asset details not available for ${assignment.asset_id}, using fallback`);
+              // Fallback if asset details not available
+              processedAssets.push({
+                type: `Asset ${assignment.asset_id}`,
+                serial: `SN-${assignment.asset_id}`,
+                remarks: assignment.remarks || "Active",
+                assetId: assignment.asset_id,
+                assignmentId: assignment.asset_assign_id
+              });
+            }
+          } catch (error) {
+            console.error(`Error fetching asset details for ${assignment.asset_id}:`, error);
+            // Fallback if asset details fetch fails
+            processedAssets.push({
+              type: `Asset ${assignment.asset_id}`,
+              serial: `SN-${assignment.asset_id}`,
+              remarks: assignment.remarks || "Active",
+              assetId: assignment.asset_id,
+              assignmentId: assignment.asset_assign_id
+            });
+          }
+        }
+      }
+      
+      setAssetData(processedAssets);
+      setEmployeeInfo({
+        id: data.employee?.emp_int_id || data.employee?.employee_id || employeeId || "",
+        name: data.employee?.employee_name || employeeName || "",
+        department: data.department?.department_name || departments[departmentId] || departmentId || "",
+        assetCount: data.count || processedAssets.length
+      });
+      
+    } catch (error) {
+      console.error("Error fetching employee active assets:", error);
+      if (error.name === 'AbortError') {
+        Alert.alert("Timeout", "Request timed out. Please try again.");
+      } else {
+        Alert.alert("Error", "Failed to fetch employee assets. Please try again.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load data when component mounts
+  useEffect(() => {
+    fetchDepartments();
+  }, []);
+
+  // Fetch employee assets when employeeId changes
+  useEffect(() => {
+    if (employeeId) {
+      fetchEmployeeActiveAssets(employeeId);
+    }
+  }, [employeeId]);
+
   return (
     <SafeAreaProvider>
       <SafeAreaView style={{ flex: 1, backgroundColor: "#EEEEEE" }}>
@@ -48,7 +240,7 @@ export default function EmployeeAssetDetailScreen() {
             <Text style={styles.colon}>:</Text>
             <TextInput
               style={styles.valueInput}
-              value="AF101"
+              value={employeeInfo.id}
               editable={false}
             />
           </View>
@@ -57,19 +249,27 @@ export default function EmployeeAssetDetailScreen() {
             <Text style={styles.colon}>:</Text>
             <TextInput
               style={styles.valueInput}
-              value="Jerome Bell"
+              value={employeeInfo.name}
               editable={false}
             />
           </View>
           <View style={styles.infoRow}>
             <Text style={styles.label}>Department</Text>
             <Text style={styles.colon}>:</Text>
-            <TextInput style={styles.valueInput} value="HR" editable={false} />
+            <TextInput 
+              style={styles.valueInput} 
+              value={employeeInfo.department} 
+              editable={false} 
+            />
           </View>
           <View style={styles.infoRow}>
             <Text style={styles.label}>No. of. assets</Text>
             <Text style={styles.colon}>:</Text>
-            <TextInput style={styles.valueInput} value="2" editable={false} />
+            <TextInput 
+              style={styles.valueInput} 
+              value={employeeInfo.assetCount.toString()} 
+              editable={false} 
+            />
           </View>
         </View>
 
@@ -77,7 +277,7 @@ export default function EmployeeAssetDetailScreen() {
         <View style={styles.tableContainer}>
           <View style={styles.tableHeader}>
             <Text style={[styles.tableHeaderText, { flex: 1.5 }]}>
-              Asset Type
+              Asset
             </Text>
             <Text style={[styles.tableHeaderText, { flex: 1 }]}>
               Serial No.
@@ -85,40 +285,65 @@ export default function EmployeeAssetDetailScreen() {
             <Text style={[styles.tableHeaderText, { flex: 2 }]}>Remarks</Text>
           </View>
           <View style={styles.yellowLine} />
-          <FlatList
-            data={ASSET_DATA}
-            keyExtractor={(_, idx) => idx.toString()}
-            renderItem={({ item, index }) => (
-              <View
-                style={[
-                  styles.tableRow,
-                  { backgroundColor: index % 2 === 0 ? "#fff" : "#f0f4f8" },
-                ]}
-              >
-                <Text style={[styles.tableCell, { flex: 1.5 }]}>
-                  {item.type}
-                </Text>
-                <TouchableOpacity style={{ flex: 1 }}>
-                  <Text
-                    style={[
-                      styles.tableCell,
-                      {
-                        color: "#003366",
-                        textDecorationLine: "underline",
-                        textAlign: "center",
-                      },
-                    ]}
-                  >
-                    {item.serial}
+          
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#003667" />
+              <Text style={styles.loadingText}>Loading employee assets...</Text>
+            </View>
+          ) : assetData.length > 0 ? (
+            <FlatList
+              data={assetData}
+              keyExtractor={(item, index) => index.toString()}
+              renderItem={({ item, index }) => (
+                <View
+                  style={[
+                    styles.tableRow,
+                    { backgroundColor: index % 2 === 0 ? "#fff" : "#f0f4f8" },
+                  ]}
+                >
+                  <Text style={[styles.tableCell, { flex: 1.5 }]}>
+                    {item.type}
                   </Text>
-                </TouchableOpacity>
-                <Text style={[styles.tableCell, { flex: 2 }]}>
-                  {item.remarks}
-                </Text>
-              </View>
-            )}
-            ListFooterComponent={<View style={{ height: 120 }} />}
-          />
+                  <TouchableOpacity 
+                    style={{ flex: 1 }}
+                    onPress={() =>
+                      navigation.navigate("Dept_Asset_6", {
+                        assetId: item.assetId,
+                        serialNumber: item.serial,
+                        employeeId: employeeId,
+                        employeeName: employeeName,
+                        departmentId: departmentId
+                      })
+                    }
+                  >
+                    <Text
+                      style={[
+                        styles.tableCell,
+                        {
+                          color: "#003366",
+                          textDecorationLine: "underline",
+                          textAlign: "center",
+                        },
+                      ]}
+                    >
+                      {item.serial}
+                    </Text>
+                  </TouchableOpacity>
+                  <Text style={[styles.tableCell, { flex: 2 }]}>
+                    {item.remarks}
+                  </Text>
+                </View>
+              )}
+              ListFooterComponent={<View style={{ height: 120 }} />}
+            />
+          ) : (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>
+                {employeeId ? "No active assets found for this employee" : "No employee data available"}
+              </Text>
+            </View>
+          )}
         </View>
       </SafeAreaView>
     </SafeAreaProvider>
@@ -219,5 +444,25 @@ const styles = StyleSheet.create({
     height: 3,
     backgroundColor: "#FEC200",
     width: "100%",
+  },
+  loadingContainer: {
+    padding: 40,
+    alignItems: "center",
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: "#666",
+  },
+  emptyContainer: {
+    // padding: 40,
+    alignItems: "center",
+    flex:1,
+    justifyContent:'center',
+
+  },
+  emptyText: {
+    fontSize: 16,
+    color: "#666",
   },
 });

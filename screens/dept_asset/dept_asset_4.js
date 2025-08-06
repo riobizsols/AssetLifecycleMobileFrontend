@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -6,21 +6,31 @@ import {
   FlatList,
   StyleSheet,
   SafeAreaView,
+  Alert,
+  ActivityIndicator,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Appbar } from "react-native-paper";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
-
-const EMPLOYEE_LIST = [
-  { id: "AF101", name: "Jerome Bell", role: "Developer" },
-  { id: "AF102", name: "Brooklyn Simmons", role: "Developer" },
-  { id: "AF103", name: "Kathryn Murphy", role: "HR" },
-  { id: "AF104", name: "Cody Fisher", role: "HR" },
-];
+import { useNavigation, useRoute } from "@react-navigation/native";
+import { API_CONFIG, getApiHeaders, API_ENDPOINTS } from "../../config/api";
 
 export default function EmployeeListScreen() {
   const navigation = useNavigation();
+  const route = useRoute();
+  const { departmentId, employeeData } = route.params || {};
+  const [loading, setLoading] = useState(false);
+  const [employees, setEmployees] = useState([]);
+
+  // Set employee data when component loads or when employeeData changes
+  useEffect(() => {
+    if (employeeData && Array.isArray(employeeData)) {
+      setEmployees(employeeData);
+    } else {
+      setEmployees([]);
+    }
+  }, [employeeData]);
+
   return (
     <SafeAreaProvider>
       <SafeAreaView style={{ flex: 1, backgroundColor: "#f4f4f4" }}>
@@ -51,48 +61,75 @@ export default function EmployeeListScreen() {
             <Text style={[styles.tableHeaderText, { flex: 2 }]}>
               Employee name
             </Text>
-            <Text style={[styles.tableHeaderText, { flex: 1.2 }]}>Role</Text>
+            <Text style={[styles.tableHeaderText, { flex: 1.5 }]}>
+              No. Of. Assets Assigned
+            </Text>
           </View>
           <View style={styles.yellowLine} />
-          <FlatList
-            data={EMPLOYEE_LIST}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item, index }) => (
-              <View
-                style={[
-                  styles.tableRow,
-                  { backgroundColor: index % 2 === 0 ? "#fff" : "#f0f4f8" },
-                ]}
-              >
-                <Text style={[styles.tableCell, { flex: 1.2 }]}>{item.id}</Text>
-                {/* <Text style={[styles.tableCell, { flex: 2 }]}>{item.name}</Text> */}
-                <TouchableOpacity
-                  style={{ flex: 1 }}
-                  onPress={() =>
-                    navigation.navigate("Dept_Asset_5", { serial: item.name })
-                  }
+
+          {employees.length > 0 ? (
+            <FlatList
+              data={employees}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item, index }) => (
+                <View
+                  style={[
+                    styles.tableRow,
+                    { backgroundColor: index % 2 === 0 ? "#fff" : "#f0f4f8" },
+                  ]}
                 >
-                  <Text
-                    style={[
-                      styles.tableCell,
-                      { flex: 2 },
-                      {
-                        color: "#003366",
-                        textDecorationLine: "underline",
-                        textAlign: "center",
-                      },
-                    ]}
-                  >
-                    {item.name}
+                  <Text style={[styles.tableCell, { flex: 1.2 }]}>
+                    {item.id}
                   </Text>
-                </TouchableOpacity>
-                <Text style={[styles.tableCell, { flex: 1.2 }]}>
-                  {item.role}
-                </Text>
-              </View>
-            )}
-            ListFooterComponent={<View style={{ height: 120 }} />}
-          />
+                                     <TouchableOpacity 
+                     style={{ flex: 2 }}
+                     onPress={() =>
+                       navigation.navigate("Dept_Asset_5", {
+                         employeeId: item.id,
+                         employeeName: item.name,
+                         departmentId: departmentId
+                       })
+                     }
+                   >
+                     <Text
+                       style={[
+                         styles.tableCell,
+                         {
+                           color: "#003366",
+                           textDecorationLine: "underline",
+                           textAlign: "center",
+                         },
+                       ]}
+                     >
+                       {item.name}
+                     </Text>
+                   </TouchableOpacity>
+                   <Text
+                      style={[
+                        styles.tableCell,
+                        {
+                          color: "#003366",
+                          // textDecorationLine: "underline",
+                          textAlign: "center",
+                          flex: 1.5 
+                        },
+                      ]}
+                    >
+                      {item.assets}
+                    </Text>
+                </View>
+              )}
+              ListFooterComponent={<View style={{ height: 120 }} />}
+            />
+          ) : (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>
+                {departmentId
+                  ? "No employees found for this department"
+                  : "No employee data available"}
+              </Text>
+            </View>
+          )}
         </View>
       </SafeAreaView>
     </SafeAreaProvider>
@@ -150,9 +187,17 @@ const styles = StyleSheet.create({
     color: "#616161",
     textAlign: "center",
   },
-  yellowLine:{
+  yellowLine: {
     height: 3,
     backgroundColor: "#FEC200",
     width: "100%",
+  },
+  emptyContainer: {
+    padding: 40,
+    alignItems: "center",
+  },
+  emptyText: {
+    fontSize: 16,
+    color: "#666",
   },
 });

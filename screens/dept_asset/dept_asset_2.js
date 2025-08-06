@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -6,25 +6,288 @@ import {
   FlatList,
   StyleSheet,
   SafeAreaView,
+  Alert,
+  ActivityIndicator,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Appbar } from "react-native-paper";
-import { useNavigation } from "@react-navigation/native";
-
-const ASSET_DATA = [
-  { type: "Keyboard", serial: "121354", assigned: "Jerome Bell" },
-  { type: "Monitor", serial: "121354", assigned: "Brooklyn Simmons" },
-  { type: "Mouse", serial: "121354", assigned: "Kathryn Murphy" },
-  { type: "Power cable", serial: "121354", assigned: "Brooklyn Simmons" },
-  { type: "Keyboard", serial: "121354", assigned: "Jerome Bell" },
-  { type: "Monitor", serial: "121354", assigned: "Brooklyn Simmons" },
-  { type: "Mouse", serial: "121354", assigned: "Kathryn Murphy" },
-  { type: "Power cable", serial: "121354", assigned: "Cody Fisher" },
-];
+import { useNavigation, useRoute } from "@react-navigation/native";
+import { API_CONFIG, getApiHeaders, API_ENDPOINTS } from "../../config/api";
 
 export default function DepartmentAssetsScreen() {
   const navigation = useNavigation();
+  const route = useRoute();
+  const { departmentId } = route.params || {};
+  const [loading, setLoading] = useState(false);
+  const [assetData, setAssetData] = useState([]);
+  const [departmentInfo, setDepartmentInfo] = useState({
+    name: "",
+    assetCount: 0
+  });
+  const [employees, setEmployees] = useState({});
+
+  // Fetch employees data for department
+  const fetchEmployees = async () => {
+    try {
+      const url = `${API_CONFIG.BASE_URL}${API_ENDPOINTS.GET_DEPARTMENTS()}`;
+      const response = await fetch(url, {
+        method: "GET",
+        headers: getApiHeaders(),
+      });
+
+      if (response.ok) {
+        const departments = await response.json();
+        
+        // Fetch employees for each department
+        const employeeMap = {};
+        for (const dept of departments) {
+          try {
+            const empUrl = `${API_CONFIG.BASE_URL}${API_ENDPOINTS.GET_EMPLOYEES_BY_DEPARTMENT(dept.dept_id)}`;
+            const empResponse = await fetch(empUrl, {
+              method: "GET",
+              headers: getApiHeaders(),
+            });
+
+            if (empResponse.ok) {
+              const empData = await empResponse.json();
+              empData.forEach(emp => {
+                employeeMap[emp.employee_int_id] = emp.employee_name || emp.name || emp.full_name || "Unknown";
+              });
+            }
+          } catch (error) {
+            console.error(`Error fetching employees for department ${dept.dept_id}:`, error);
+          }
+        }
+        
+        setEmployees(employeeMap);
+      }
+    } catch (error) {
+      console.error("Error fetching employees:", error);
+    }
+  };
+
+  // Fetch department assets
+  const fetchDepartmentAssets = async (deptId) => {
+    if (!deptId) {
+      Alert.alert("Error", "Department ID is required");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      console.log(`Fetching assets for department: ${deptId}`);
+      const url = `${API_CONFIG.BASE_URL}/api/asset-assignments/department/${deptId}/assignments`;
+      console.log('API URL:', url);
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: getApiHeaders(),
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        if (response.status === 404) {
+          Alert.alert(
+            "No Assets Found",
+            "No assets found for this department.",
+            [{ text: "OK" }]
+          );
+          setAssetData([]);
+          setDepartmentInfo({ name: "", assetCount: 0 });
+          return;
+        }
+        if (response.status === 401) {
+          Alert.alert(
+            "Authentication Error",
+            "Please check your authorization token.",
+            [{ text: "OK" }]
+          );
+          return;
+        }
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('Department assets data received:', data);
+      
+      // Process the assignment data to get asset details
+      const processedAssets = [];
+      
+      // Handle the API response structure with assignedAssets array
+      if (data && data.assignedAssets && Array.isArray(data.assignedAssets)) {
+        console.log(`Processing ${data.assignedAssets.length} assigned assets`);
+        
+        for (const assignment of data.assignedAssets) {
+          console.log(`Processing asset: ${assignment.asset_name} (${assignment.serial_number})`);
+          
+          // Get employee name from the employees array if available
+          let employeeName = "Unknown";
+          if (data.employees && Array.isArray(data.employees)) {
+            const employee = data.employees.find(emp => emp.emp_int_id === assignment.employee_int_id);
+            if (employee) {
+              employeeName = employee.employee_name;
+            }
+          }
+          
+          processedAssets.push({
+            type: assignment.asset_name || assignment.asset_type_name || `Asset ${assignment.asset_id}`,
+            serial: assignment.serial_number || `SN-${assignment.asset_id}`,
+            assigned: employeeName,
+            assetId: assignment.asset_id,
+            assignmentId: assignment.asset_assign_id,
+            // Pass the complete assignment data for asset details
+            assignmentData: assignment
+          });
+        }
+      } else if (data && data.data && Array.isArray(data.data)) {
+        // Fallback: Process assignments array
+        for (const assignment of data.data) {
+          try {
+            const assetUrl = `${API_CONFIG.BASE_URL}/api/assets/${assignment.asset_id}`;
+            console.log(`Fetching asset details from: ${assetUrl}`);
+            
+            const assetResponse = await fetch(assetUrl, {
+              method: 'GET',
+              headers: getApiHeaders(),
+            });
+            
+            if (assetResponse.ok) {
+              const assetDetails = await assetResponse.json();
+              console.log(`Asset details for ${assignment.asset_id}:`, assetDetails);
+              
+              // Handle the asset details response structure
+              let assetDescription = "Unknown Asset";
+              let serialNumber = `SN-${assignment.asset_id}`;
+              
+              if (Array.isArray(assetDetails) && assetDetails.length > 0) {
+                assetDescription = assetDetails[0].description || assetDetails[0].text || assetDetails[0].name || `Asset ${assignment.asset_id}`;
+                serialNumber = assetDetails[0].serial_number || `SN-${assignment.asset_id}`;
+              } else if (assetDetails && typeof assetDetails === 'object') {
+                assetDescription = assetDetails.description || assetDetails.text || assetDetails.name || `Asset ${assignment.asset_id}`;
+                serialNumber = assetDetails.serial_number || `SN-${assignment.asset_id}`;
+              }
+              
+              console.log(`Processed asset: ${assetDescription} (${serialNumber})`);
+              
+              processedAssets.push({
+                type: assetDescription,
+                serial: serialNumber,
+                assigned: employees[assignment.employee_int_id] || assignment.employee_int_id || "Unknown",
+                assetId: assignment.asset_id,
+                assignmentId: assignment.asset_assign_id
+              });
+            } else {
+              console.log(`Asset details not available for ${assignment.asset_id}, using fallback`);
+              // Fallback if asset details not available
+              processedAssets.push({
+                type: `Asset ${assignment.asset_id}`,
+                serial: `SN-${assignment.asset_id}`,
+                assigned: employees[assignment.employee_int_id] || assignment.employee_int_id || "Unknown",
+                assetId: assignment.asset_id,
+                assignmentId: assignment.asset_assign_id
+              });
+            }
+          } catch (error) {
+            console.error(`Error fetching asset details for ${assignment.asset_id}:`, error);
+            // Fallback if asset details fetch fails
+            processedAssets.push({
+              type: `Asset ${assignment.asset_id}`,
+              serial: `SN-${assignment.asset_id}`,
+              assigned: employees[assignment.employee_int_id] || assignment.employee_int_id || "Unknown",
+              assetId: assignment.asset_id,
+              assignmentId: assignment.asset_assign_id
+            });
+          }
+        }
+      } else if (data && Array.isArray(data)) {
+        // If response is directly an array of assignments
+        for (const assignment of data) {
+          try {
+            const assetUrl = `${API_CONFIG.BASE_URL}/api/assets/${assignment.asset_id}`;
+            const assetResponse = await fetch(assetUrl, {
+              method: 'GET',
+              headers: getApiHeaders(),
+            });
+            
+            if (assetResponse.ok) {
+              const assetDetails = await assetResponse.json();
+              let assetDescription = "Unknown Asset";
+              let serialNumber = `SN-${assignment.asset_id}`;
+              
+              if (Array.isArray(assetDetails) && assetDetails.length > 0) {
+                assetDescription = assetDetails[0].description || assetDetails[0].text || assetDetails[0].name || `Asset ${assignment.asset_id}`;
+                serialNumber = assetDetails[0].serial_number || `SN-${assignment.asset_id}`;
+              } else if (assetDetails && typeof assetDetails === 'object') {
+                assetDescription = assetDetails.description || assetDetails.text || assetDetails.name || `Asset ${assignment.asset_id}`;
+                serialNumber = assetDetails.serial_number || `SN-${assignment.asset_id}`;
+              }
+              
+              processedAssets.push({
+                type: assetDescription,
+                serial: serialNumber,
+                assigned: employees[assignment.employee_int_id] || assignment.employee_int_id || "Unknown",
+                assetId: assignment.asset_id,
+                assignmentId: assignment.asset_assign_id
+              });
+            } else {
+              processedAssets.push({
+                type: `Asset ${assignment.asset_id}`,
+                serial: `SN-${assignment.asset_id}`,
+                assigned: employees[assignment.employee_int_id] || assignment.employee_int_id || "Unknown",
+                assetId: assignment.asset_id,
+                assignmentId: assignment.asset_assign_id
+              });
+            }
+          } catch (error) {
+            console.error(`Error fetching asset details for ${assignment.asset_id}:`, error);
+            processedAssets.push({
+              type: `Asset ${assignment.asset_id}`,
+              serial: `SN-${assignment.asset_id}`,
+              assigned: employees[assignment.employee_int_id] || assignment.employee_int_id || "Unknown",
+              assetId: assignment.asset_id,
+              assignmentId: assignment.asset_assign_id
+            });
+          }
+        }
+      }
+      
+      console.log('Final processed assets:', processedAssets);
+      setAssetData(processedAssets);
+      setDepartmentInfo({
+        name: data.department?.department_name || departmentId,
+        assetCount: data.assetCount || processedAssets.length
+      });
+      
+    } catch (error) {
+      console.error("Error fetching department assets:", error);
+      if (error.name === 'AbortError') {
+        Alert.alert("Timeout", "Request timed out. Please try again.");
+      } else {
+        Alert.alert("Error", "Failed to fetch department assets. Please try again.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load data when component mounts
+  useEffect(() => {
+    fetchEmployees();
+  }, []);
+
+  // Fetch department assets when departmentId changes
+  useEffect(() => {
+    if (departmentId) {
+      fetchDepartmentAssets(departmentId);
+    }
+  }, [departmentId]);
+
   return (
     <SafeAreaProvider>
       <SafeAreaView style={{ flex: 1, backgroundColor: "#f4f4f4" }}>
@@ -49,53 +312,76 @@ export default function DepartmentAssetsScreen() {
         {/* Table */}
         <View style={styles.tableContainer}>
           <View style={styles.tableHeader}>
-            <Text style={[styles.tableHeaderText, { flex: 1.5 }]}>
-              Asset Type
+            <Text style={[styles.tableHeaderText, { flex: 1 }]}>
+              Asset
             </Text>
             <Text style={[styles.tableHeaderText, { flex: 1 }]}>
               Serial No.
             </Text>
-            <Text style={[styles.tableHeaderText, { flex: 2 }]}>
+            {/* <Text style={[styles.tableHeaderText, { flex: 2 }]}>
               Assigned to
-            </Text>
+            </Text> */}
           </View>
           <View style={styles.yellowLine} />
-          <FlatList
-            data={ASSET_DATA}
-            keyExtractor={(_, idx) => idx.toString()}
-            renderItem={({ item, index }) => (
-              <View
-                style={[
-                  styles.tableRow,
-                  { backgroundColor: index % 2 === 0 ? "#fff" : "#f0f4f8" },
-                ]}
-              >
-                <Text style={[styles.tableCell, { flex: 1.5 }]}>
-                  {item.type}
-                </Text>
-                <TouchableOpacity style={{ flex: 1 } }  onPress={() =>
-                    navigation.navigate("Dept_Asset_3", { serial: item.serial })
-                  }>
-                  <Text
-                    style={[
-                      styles.tableCell,
-                      {
-                        color: "#003366",
-                        textDecorationLine: "underline",
-                        textAlign: "center",
-                      },
-                    ]}
-                  >
-                    {item.serial}
+          
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#003667" />
+              <Text style={styles.loadingText}>Loading department assets...</Text>
+            </View>
+          ) : assetData.length > 0 ? (
+            <FlatList
+              data={assetData}
+              keyExtractor={(item, index) => index.toString()}
+              renderItem={({ item, index }) => (
+                <View
+                  style={[
+                    styles.tableRow,
+                    { backgroundColor: index % 2 === 0 ? "#fff" : "#f0f4f8" },
+                  ]}
+                >
+                  <Text style={[styles.tableCell, { flex: 1 }]}>
+                    {item.type}
                   </Text>
-                </TouchableOpacity>
-                <Text style={[styles.tableCell, { flex: 2 }]}>
-                  {item.assigned}
-                </Text>
-              </View>
-            )}
-            ListFooterComponent={<View style={{ height: 120 }} />}
-          />
+                  <TouchableOpacity 
+                    style={{ flex: 1 }}
+                    onPress={() =>
+                      navigation.navigate("Dept_Asset_3", { 
+                        assetData: item,
+                        serialNumber: item.serial,
+                        assetId: item.assetId,
+                        assignmentId: item.assignmentId,
+                        assignmentData: item.assignmentData
+                      })
+                    }
+                  >
+                    <Text
+                      style={[
+                        styles.tableCell,
+                        {
+                          color: "#003366",
+                          textDecorationLine: "underline",
+                          textAlign: "center",
+                        },
+                      ]}
+                    >
+                      {item.serial}
+                    </Text>
+                  </TouchableOpacity>
+                  {/* <Text style={[styles.tableCell, { flex: 2 }]}>
+                    {item.assigned}
+                  </Text> */}
+                </View>
+              )}
+              ListFooterComponent={<View style={{ height: 120 }} />}
+            />
+          ) : (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>
+                {departmentId ? "No assets found for this department" : "No department data available"}
+              </Text>
+            </View>
+          )}
         </View>
       </SafeAreaView>
     </SafeAreaProvider>
@@ -116,6 +402,11 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontSize: 16,
     alignSelf: "center",
+  },
+  centerTitleContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
   },
   backRow: {
     backgroundColor: "#ededed",
@@ -157,5 +448,22 @@ const styles = StyleSheet.create({
     height: 3,
     backgroundColor: "#FEC200",
     width: "100%",
+  },
+  loadingContainer: {
+    padding: 40,
+    alignItems: "center",
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: "#666",
+  },
+  emptyContainer: {
+    padding: 40,
+    alignItems: "center",
+  },
+  emptyText: {
+    fontSize: 16,
+    color: "#666",
   },
 });

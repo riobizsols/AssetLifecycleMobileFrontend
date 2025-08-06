@@ -15,10 +15,10 @@ import { Appbar } from "react-native-paper";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { API_CONFIG, getApiHeaders, API_ENDPOINTS } from "../../config/api";
 
-export default function App() {
+export default function EmployeeAssetDetails() {
   const navigation = useNavigation();
   const route = useRoute();
-  const { assetAssignment, barcode } = route.params || {};
+  const { assetData, assetAssignment, barcode, serialNumber, employeeId, employeeName } = route.params || {};
   const [loading, setLoading] = useState(false);
   const [departmentDetails, setDepartmentDetails] = useState(null);
   const [employeeDetails, setEmployeeDetails] = useState(null);
@@ -74,9 +74,7 @@ export default function App() {
 
     try {
       // First try to get employee by emp_int_id (internal ID)
-      const url = `${API_CONFIG.BASE_URL}${API_ENDPOINTS.GET_EMPLOYEE(
-        employeeId
-      )}`;
+      const url = `${API_CONFIG.BASE_URL}${API_ENDPOINTS.GET_EMPLOYEE(employeeId)}`;
       console.log("Fetching employee details by emp_int_id:", url);
 
       const response = await fetch(url, {
@@ -85,9 +83,7 @@ export default function App() {
       });
 
       if (!response.ok) {
-        console.warn(
-          `Employee not found by emp_int_id ${employeeId}, trying alternative methods`
-        );
+        console.warn(`Employee not found by emp_int_id ${employeeId}, trying alternative methods`);
         // Try to find employee by searching through all employees
         await searchEmployeeById(employeeId);
         return;
@@ -119,9 +115,7 @@ export default function App() {
 
       // Try to get all employees and find the one we need
       // We'll need to get employees from all departments
-      const departmentsUrl = `${
-        API_CONFIG.BASE_URL
-      }${API_ENDPOINTS.GET_DEPARTMENTS()}`;
+      const departmentsUrl = `${API_CONFIG.BASE_URL}${API_ENDPOINTS.GET_DEPARTMENTS()}`;
       const deptResponse = await fetch(departmentsUrl, {
         method: "GET",
         headers: getApiHeaders(),
@@ -138,9 +132,7 @@ export default function App() {
       // Search through each department for the employee
       for (const dept of departments) {
         try {
-          const employeesUrl = `${
-            API_CONFIG.BASE_URL
-          }${API_ENDPOINTS.GET_EMPLOYEES_BY_DEPARTMENT(dept.dept_id)}`;
+          const employeesUrl = `${API_CONFIG.BASE_URL}${API_ENDPOINTS.GET_EMPLOYEES_BY_DEPARTMENT(dept.dept_id)}`;
           const empResponse = await fetch(employeesUrl, {
             method: "GET",
             headers: getApiHeaders(),
@@ -156,10 +148,7 @@ export default function App() {
             );
             if (foundEmployee) {
               console.log("Employee found in department search:");
-              console.log(
-                "Employee fields available:",
-                Object.keys(foundEmployee)
-              );
+              console.log("Employee fields available:", Object.keys(foundEmployee));
               setEmployeeDetails(foundEmployee);
               return;
             }
@@ -169,9 +158,7 @@ export default function App() {
         }
       }
 
-      console.warn(
-        `Employee with ID ${employeeId} not found in any department`
-      );
+      console.warn(`Employee with ID ${employeeId} not found in any department`);
     } catch (error) {
       console.error("Error in employee search:", error);
     }
@@ -179,21 +166,68 @@ export default function App() {
 
   // Fetch all details when component loads
   const fetchAssignmentDetails = async () => {
-    if (!assetAssignment) return;
+    // Handle both assetData (from API call) and assetAssignment (from scanning)
+    const dataToUse = assetData || assetAssignment;
+    if (!dataToUse) return;
 
     setLoadingDetails(true);
     try {
-      console.log("Fetching assignment details for:", assetAssignment);
-      console.log("Department ID:", assetAssignment.dept_id);
-      console.log("Employee ID (emp_int_id):", assetAssignment.employee_id);
+      console.log("Fetching assignment details for:", dataToUse);
+      
+      // If we have assetData from API call, we need to fetch assignment details
+      if (assetData && !assetAssignment) {
+        // Fetch asset assignment details to get department and employee info
+        try {
+          const assetId = assetData.asset_id || assetData.id;
+          if (assetId) {
+            const assignmentUrl = `${API_CONFIG.BASE_URL}${API_ENDPOINTS.GET_ASSET_ASSIGNMENT(assetId)}`;
+            console.log('Fetching asset assignment:', assignmentUrl);
+            
+            const assignmentResponse = await fetch(assignmentUrl, {
+              method: 'GET',
+              headers: getApiHeaders(),
+            });
+            
+            if (assignmentResponse.ok) {
+              const assignmentData = await assignmentResponse.json();
+              console.log('Asset assignment data received:', assignmentData);
+              
+              if (assignmentData && Array.isArray(assignmentData) && assignmentData.length > 0) {
+                // Find the latest active assignment
+                const activeAssignment = assignmentData.find(assignment => 
+                  assignment.latest_assignment_flag === true && 
+                  assignment.action === "A"
+                );
+                
+                if (activeAssignment) {
+                  // Fetch department and employee details for the active assignment
+                  await Promise.all([
+                    fetchDepartmentDetails(activeAssignment.dept_id),
+                    fetchEmployeeDetails(activeAssignment.employee_int_id || activeAssignment.employee_id)
+                  ]);
+                } else {
+                  // No active assignment found, just show asset details
+                  console.log('No active assignment found for this asset');
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching asset assignment:", error);
+        }
+      } else if (assetAssignment) {
+        // Use existing assetAssignment data
+        console.log("Department ID:", assetAssignment.dept_id);
+        console.log("Employee ID (emp_int_id):", assetAssignment.employee_id);
 
-      // Fetch department and employee details in parallel
-      await Promise.all([
-        fetchDepartmentDetails(assetAssignment.dept_id),
-        fetchEmployeeDetails(
-          assetAssignment.employee_int_id || assetAssignment.employee_id
-        ), // Use employee_int_id if available, fallback to employee_id
-      ]);
+        // Fetch department and employee details in parallel
+        await Promise.all([
+          fetchDepartmentDetails(assetAssignment.dept_id),
+          fetchEmployeeDetails(
+            assetAssignment.employee_int_id || assetAssignment.employee_id
+          ),
+        ]);
+      }
     } catch (error) {
       console.error("Error fetching assignment details:", error);
     } finally {
@@ -204,35 +238,58 @@ export default function App() {
   // Fetch details when component loads
   useEffect(() => {
     fetchAssignmentDetails();
-  }, [assetAssignment]);
-
-  // Helper function to get action type based on context
-  const getActionType = (context) => {
-    switch (context) {
-      case "assign":
-        return "ASSIGN";
-      case "unassign":
-        return "UNASSIGN";
-      case "transfer":
-        return "TRANSFER";
-      case "return":
-        return "RETURN";
-      default:
-        return "ASSIGN";
-    }
-  };
+  }, [assetData, assetAssignment]);
 
   // Function to handle cancel assignment via API - creates new row and updates existing
   const handleCancelAssignment = async () => {
-    if (!assetAssignment?.asset_id) {
+    // Get asset ID from either assetData or assetAssignment
+    const assetId = assetData?.asset_id || assetData?.id || assetAssignment?.asset_id;
+    
+    if (!assetId) {
       Alert.alert("Error", "Asset ID not found");
       return;
     }
 
     setLoading(true);
     try {
+      // If we have assetData but no assetAssignment, we need to fetch the current assignment first
+      let currentAssignment = assetAssignment;
+      if (assetData && !assetAssignment) {
+        try {
+          const assignmentUrl = `${API_CONFIG.BASE_URL}${API_ENDPOINTS.GET_ASSET_ASSIGNMENT(assetId)}`;
+          console.log('Fetching current assignment for cancellation:', assignmentUrl);
+          
+          const assignmentResponse = await fetch(assignmentUrl, {
+            method: 'GET',
+            headers: getApiHeaders(),
+          });
+          
+          if (assignmentResponse.ok) {
+            const assignmentData = await assignmentResponse.json();
+            console.log('Current assignment data:', assignmentData);
+            
+            if (assignmentData && Array.isArray(assignmentData) && assignmentData.length > 0) {
+              // Find the latest active assignment
+              currentAssignment = assignmentData.find(assignment => 
+                assignment.latest_assignment_flag === true && 
+                assignment.action === "A"
+              );
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching current assignment:", error);
+          Alert.alert("Error", "Failed to fetch current assignment details");
+          return;
+        }
+      }
+      
+      if (!currentAssignment) {
+        Alert.alert("Error", "No active assignment found for this asset");
+        return;
+      }
+
       // First API call: Update existing assignment to set latest_assignment_flag to false
-      const updateUrl = `${API_CONFIG.BASE_URL}/api/asset-assignments/asset/${assetAssignment.asset_id}`;
+      const updateUrl = `${API_CONFIG.BASE_URL}/api/asset-assignments/asset/${assetId}`;
       console.log("Updating existing assignment:", updateUrl);
 
       const updateData = {
@@ -260,13 +317,13 @@ export default function App() {
       // Create new assignment row with cancellation data
       const newAssignmentData = {
         asset_assign_id: assetAssignId,
-        dept_id: assetAssignment.dept_id,
-        asset_id: assetAssignment.asset_id,
-        org_id: assetAssignment.org_id || "ORG001",
-        employee_int_id: assetAssignment.employee_int_id,
+        dept_id: currentAssignment.dept_id,
+        asset_id: assetId,
+        org_id: currentAssignment.org_id || "ORG001",
+        employee_int_id: currentAssignment.employee_int_id,
         action: "C", // Unassign action
         action_on: new Date().toISOString(),
-        action_by: "Nivetha",
+        action_by: "SYSTEM",
         latest_assignment_flag: false,
       };
 
@@ -300,76 +357,6 @@ export default function App() {
     }
   };
 
-  // Function to cancel assignment
-  const cancelAssignment = async () => {
-    if (!assetAssignment?.asset_assign_id) {
-      Alert.alert("Error", "Assignment ID not found");
-      return;
-    }
-
-    Alert.alert(
-      "Cancel Assignment",
-      "Are you sure you want to cancel this assignment?",
-      [
-        { text: "No", style: "cancel" },
-        {
-          text: "Yes",
-          style: "destructive",
-          onPress: async () => {
-            setLoading(true);
-            try {
-              const url = `${
-                API_CONFIG.BASE_URL
-              }${API_ENDPOINTS.UPDATE_ASSET_ASSIGNMENT(
-                assetAssignment.asset_assign_id
-              )}`;
-              console.log("Updating assignment to unassigned:", url);
-
-              // Update the assignment with UNASSIGN action
-              const updateData = {
-                action: getActionType("unassign"),
-                action_on: new Date().toISOString(),
-                action_by: "SYSTEM", // You can replace this with actual user ID
-                latest_assignment_flag: false,
-                status: "Unassigned",
-                changed_by: "SYSTEM", // You can replace this with actual user ID
-                changed_on: new Date().toISOString(),
-              };
-
-              const response = await fetch(url, {
-                method: "PUT",
-                headers: getApiHeaders(),
-                body: JSON.stringify(updateData),
-              });
-
-              if (response.ok) {
-                Alert.alert("Success", "Assignment cancelled successfully", [
-                  {
-                    text: "OK",
-                    onPress: () => navigation.goBack(),
-                  },
-                ]);
-              } else {
-                const errorData = await response.json().catch(() => ({}));
-                console.error("Server error details:", errorData);
-                throw new Error(`HTTP error! status: ${response.status}`);
-              }
-            } catch (error) {
-              console.error("Error cancelling assignment:", error);
-              Alert.alert(
-                "Error",
-                "Failed to cancel assignment. Please try again.",
-                [{ text: "OK" }]
-              );
-            } finally {
-              setLoading(false);
-            }
-          },
-        },
-      ]
-    );
-  };
-
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#EEEEEE" }}>
       {/* AppBar */}
@@ -380,7 +367,7 @@ export default function App() {
           onPress={() => navigation.goBack()}
         />
         <View style={styles.centerTitleContainer}>
-          <Text style={styles.appbarTitle}>Asset Details</Text>
+          <Text style={styles.appbarTitle}>Asset Assignment Details</Text>
         </View>
       </Appbar.Header>
 
@@ -389,9 +376,9 @@ export default function App() {
         <View style={styles.searchRow}>
           <TextInput
             style={styles.searchInput}
-            placeholder={assetAssignment?.asset_id || "N/A"}
+            placeholder="Serial Number"
             placeholderTextColor="#7A7A7A"
-            value={barcode || ""}
+            value={serialNumber || barcode || ""}
             editable={false}
           />
           <TouchableOpacity style={styles.qrButton}>
@@ -411,19 +398,27 @@ export default function App() {
           <View style={styles.yellowLine} />
           <View style={styles.detailsTable}>
             <DetailRow
+              label="Asset ID"
+              value={assetData?.asset_id || assetData?.id || assetAssignment?.asset_id || "N/A"}
+            />
+            <DetailRow
               label="Serial Number"
-              value={assetAssignment?.asset_id || "N/A"}
+              value={serialNumber || assetData?.serial_number || assetAssignment?.asset_id || "N/A"}
+            />
+            <DetailRow
+              label="Description"
+              value={assetData?.description || assetData?.text || assetData?.name || "N/A"}
             />
             <DetailRow
               label="Department"
               value={
                 loadingDetails
                   ? "Loading..."
-                  : departmentDetails?.text || assetAssignment?.dept_id || "N/A"
+                  : departmentDetails?.text || departmentDetails?.name || "N/A"
               }
             />
             <DetailRow
-              label="Employee"
+              label="Assigned To"
               value={
                 loadingDetails
                   ? "Loading..."
@@ -432,34 +427,12 @@ export default function App() {
                     employeeDetails.full_name ||
                     employeeDetails.employee_name ||
                     "Unknown Name"
-                  : assetAssignment?.employee_int_id ||
-                    assetAssignment?.employee_id ||
-                    "N/A"
+                  : "N/A"
               }
             />
-            {/* <DetailRow 
-              label="Status" 
-              value={assetAssignment?.status || 'N/A'} 
-            /> */}
-            <DetailRow
+            {/* <DetailRow
               label="Effective Date"
               value={formatDate(assetAssignment?.action_on)}
-            />
-            {/* <DetailRow
-              label="Created By"
-              value={assetAssignment?.created_by || "N/A"}
-            />
-            <DetailRow
-              label="Created On"
-              value={formatDate(assetAssignment?.created_on)}
-            />
-            <DetailRow
-              label="Changed By"
-              value={assetAssignment?.changed_by || "N/A"}
-            />
-            <DetailRow
-              label="Changed On"
-              value={formatDate(assetAssignment?.changed_on)}
             /> */}
           </View>
         </View>
@@ -470,12 +443,12 @@ export default function App() {
         <View style={styles.footerRow}>
           <TouchableOpacity 
             style={styles.linkButton}
-            onPress={() => navigation.navigate('AssetHistory', { 
-              assetId: assetAssignment?.asset_id,
-              assetAssignment: assetAssignment 
-            })}
+            // onPress={() => navigation.navigate('EmployeeAssetHistory', { 
+            //   assetId: assetAssignment?.asset_id,
+            //   assetAssignment: assetAssignment 
+            // })}
           >
-            <Text style={styles.linkText}>View History</Text>
+            {/* <Text style={styles.linkText}>View History</Text> */}
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.cancelBtn, loading && styles.buttonDisabled]}
@@ -564,7 +537,6 @@ const styles = StyleSheet.create({
     width: 40,
   },
   card: {
-    // height : "50%",
     marginHorizontal: 8,
     backgroundColor: "#fff",
     borderRadius: 10,
@@ -574,8 +546,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 4,
     elevation: 2,
-    // paddingBottom: 16,
-    // justifyContent : 'space-around'
   },
   cardHeader: {
     backgroundColor: "#003667",
@@ -583,8 +553,6 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 10,
     paddingVertical: 10,
     alignItems: "center",
-    // justifyContent : 'space-around',
-    // marginBottom: 8,
   },
   cardHeaderText: {
     color: "#FFFFFF",
@@ -593,17 +561,12 @@ const styles = StyleSheet.create({
   },
   detailsTable: {
     paddingHorizontal: 16,
-    // paddingVertical : 10,
-    // margin : 10,
     paddingTop: 8,
-    // marginVertical : 30
-    // justifyContent : 'space-evenly'
   },
   detailRow: {
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 20,
-    // justifyContent :
   },
   detailLabel: {
     width: 100,
@@ -626,7 +589,6 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     paddingHorizontal: 8,
     height: "140%",
-    // backgroundColor: '#f3f3f3',
     color: "#616161",
     fontSize: 12,
     fontWeight: "400",
@@ -662,7 +624,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     elevation: 2,
     flex: 1,
-    marginLeft: 60,
+    marginLeft: 90,
   },
   cancelBtnText: {
     color: "#fff",
@@ -682,4 +644,4 @@ const styles = StyleSheet.create({
   buttonDisabled: {
     backgroundColor: "#cccccc",
   },
-});
+}); 
