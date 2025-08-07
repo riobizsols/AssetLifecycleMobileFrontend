@@ -2,6 +2,7 @@ import * as React from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { NavigationProvider } from "./context/NavigationContext";
 import Employee_Asset from "./app/index"; // or wherever your Asset_1 is
 import AnotherPage from "./app/Dept_Asset";
 import Emp_Asset_2 from "./screens/employee_asset/emp_asset_2";
@@ -20,53 +21,43 @@ import EmployeeAssetAssign from "./screens/employee_asset/emp_asset_assign";
 import EmployeeAssetDetails from "./screens/employee_asset/emp_asset_details";
 import EmployeeAssetAssignment from "./screens/employee_asset/emp_asset_assignment";
 import EmployeeAssetSelect from "./screens/employee_asset/emp_asset_select";
+import LoginScreen from "./screens/auth/LoginScreen";
+import LoadingScreen from "./screens/auth/LoadingScreen";
+import HomeScreen from "./screens/HomeScreen";
 
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
-function TabNavigator() {
-  return (
-    <Tab.Navigator>
-      <Tab.Screen
-        name="Asset"
-        component={Asset_1}
-        options={{ headerShown: false }}
-      />
-      <Tab.Screen
-        name="Employee Asset"
-        component={Employee_Asset}
-        options={{ headerShown: false }}
-      />
-      <Tab.Screen
-        name="Department Asset"
-        component={Dept_Asset_1}
-        options={{ headerShown: false }}
-      />
-    </Tab.Navigator>
-  );
-}
+// TabNavigator removed - Employee and Department assets are now separate stack screens
 
 export default function App() {
   return (
-    <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="MainTabs" component={TabNavigator} />
-        <Stack.Screen name="Emp_Asset_2" component={Emp_Asset_2} />
-        <Stack.Screen name="Dept_Asset_2" component={Dept_Asset_2} />
-        <Stack.Screen name="Dept_Asset_3" component={Dept_Asset_3} />
-        <Stack.Screen name="Dept_Asset_4" component={Dept_Asset_4} />
-        <Stack.Screen name="Dept_Asset_5" component={Dept_Asset_5} />
-        <Stack.Screen name="Dept_Asset_6" component={Dept_Asset_6} />
-        <Stack.Screen name="AssetDetails" component={Asset_2} />
-        <Stack.Screen name="AssetAssignment" component={Asset_3} />
-        <Stack.Screen name="AssetHistory" component={AssetHistory} />
-        <Stack.Screen name="EmployeeAssetHistory" component={EmployeeAssetHistory} />
-        <Stack.Screen name="EmployeeAssetAssign" component={EmployeeAssetAssign} />
-        <Stack.Screen name="EmployeeAssetDetails" component={EmployeeAssetDetails} />
-        <Stack.Screen name="EmployeeAssetAssignment" component={EmployeeAssetAssignment} />
-        <Stack.Screen name="EmployeeAssetSelect" component={EmployeeAssetSelect} />
-      </Stack.Navigator>
-    </NavigationContainer>
+    <NavigationProvider>
+      <NavigationContainer>
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="Loading" component={LoadingScreen} />
+          <Stack.Screen name="Login" component={LoginScreen} />
+          <Stack.Screen name="Home" component={HomeScreen} />
+          <Stack.Screen name="Asset" component={Asset_1} />
+          <Stack.Screen name="EmployeeAsset" component={Employee_Asset} />
+          <Stack.Screen name="DepartmentAsset" component={Dept_Asset_1} />
+          <Stack.Screen name="Emp_Asset_2" component={Emp_Asset_2} />
+          <Stack.Screen name="Dept_Asset_2" component={Dept_Asset_2} />
+          <Stack.Screen name="Dept_Asset_3" component={Dept_Asset_3} />
+          <Stack.Screen name="Dept_Asset_4" component={Dept_Asset_4} />
+          <Stack.Screen name="Dept_Asset_5" component={Dept_Asset_5} />
+          <Stack.Screen name="Dept_Asset_6" component={Dept_Asset_6} />
+          <Stack.Screen name="AssetDetails" component={Asset_2} />
+          <Stack.Screen name="AssetAssignment" component={Asset_3} />
+          <Stack.Screen name="AssetHistory" component={AssetHistory} />
+          <Stack.Screen name="EmployeeAssetHistory" component={EmployeeAssetHistory} />
+          <Stack.Screen name="EmployeeAssetAssign" component={EmployeeAssetAssign} />
+          <Stack.Screen name="EmployeeAssetDetails" component={EmployeeAssetDetails} />
+          <Stack.Screen name="EmployeeAssetAssignment" component={EmployeeAssetAssignment} />
+          <Stack.Screen name="EmployeeAssetSelect" component={EmployeeAssetSelect} />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </NavigationProvider>
   );
 }

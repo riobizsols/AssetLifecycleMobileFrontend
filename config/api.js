@@ -2,7 +2,7 @@
 export const API_CONFIG = {
   // For development on mobile device, use your computer's IP address instead of localhost
   // BASE_URL: 'http://localhost:4000', // Use this for web development
-  BASE_URL: 'http://192.168.0.106:4000', // Your computer's IP address
+  BASE_URL: 'http://192.168.29.30:4000', // Your computer's IP address
   ACCESS_TOKEN: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJvcmdfaWQiOiJPUkcwMDEiLCJ1c2VyX2lkIjoiVVNSMDAyIiwiZW1haWwiOiJuYXJlbnJpbzc1NkBnbWFpbC5jb20iLCJqb2Jfcm9sZV9pZCI6IkpSMDAxIiwiaWF0IjoxNzU0Mzc1NjkyLCJleHAiOjE3NTQ5ODA0OTJ9.5KfufndBAJbIWdR6zAsaySbwP9KWOys7HCTlN0ETB2w',
   TIMEOUT: 10000, // 10 seconds
 };

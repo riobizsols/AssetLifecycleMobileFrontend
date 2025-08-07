@@ -13,6 +13,7 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { API_CONFIG, getApiHeaders, API_ENDPOINTS } from "../../config/api";
+import CustomAlert from "../../components/CustomAlert";
 
 export default function EmployeeAssetAssign() {
   const navigation = useNavigation();
@@ -22,6 +23,36 @@ export default function EmployeeAssetAssign() {
   const [barcode, setBarcode] = useState(null);
   const [loading, setLoading] = useState(false);
   const [permission, requestPermission] = useCameraPermissions();
+  const [alertConfig, setAlertConfig] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'info',
+    onConfirm: () => {},
+    onCancel: () => {},
+    confirmText: 'OK',
+    cancelText: 'Cancel',
+    showCancel: false,
+  });
+
+  const showAlert = (title, message, type = 'info', onConfirm = () => {}, showCancel = false) => {
+    setAlertConfig({
+      visible: true,
+      title,
+      message,
+      type,
+      onConfirm: () => {
+        setAlertConfig(prev => ({ ...prev, visible: false }));
+        onConfirm();
+      },
+      onCancel: () => {
+        setAlertConfig(prev => ({ ...prev, visible: false }));
+      },
+      confirmText: 'OK',
+      cancelText: 'Cancel',
+      showCancel,
+    });
+  };
 
   const openCamera = async () => {
     if (!permission?.granted) {
@@ -60,29 +91,17 @@ export default function EmployeeAssetAssign() {
 
       if (!response.ok) {
         if (response.status === 404) {
-          Alert.alert(
-            "Asset Not Found",
-            "No asset found with this serial number.",
-            [{ text: "OK" }]
-          );
+          showAlert("Asset Not Found", "No asset found with this serial number.", "error");
           return;
         }
         if (response.status === 401) {
-          Alert.alert(
-            "Authentication Error",
-            "Please check your authorization token.",
-            [{ text: "OK" }]
-          );
+          showAlert("Authentication Error", "Please check your authorization token.", "error");
           return;
         }
         if (response.status === 500) {
           const errorData = await response.json().catch(() => ({}));
           console.error('Server error details:', errorData);
-          Alert.alert(
-            "Server Error",
-            "The server encountered an error. Please try again later.",
-            [{ text: "OK" }]
-          );
+          showAlert("Server Error", "The server encountered an error. Please try again later.", "error");
           return;
         }
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -107,11 +126,7 @@ export default function EmployeeAssetAssign() {
         // Check if asset is already assigned
         await checkAssetAssignment(assetId, data);
       } else {
-        Alert.alert(
-          "Asset Not Found",
-          "No asset found with this serial number.",
-          [{ text: "OK" }]
-        );
+        showAlert("Asset Not Found", "No asset found with this serial number.", "error");
       }
     } catch (error) {
       console.error("Error checking serial number:", error);
@@ -127,11 +142,7 @@ export default function EmployeeAssetAssign() {
         errorMessage = "Unable to connect to server. Please check if the backend is running.";
       }
       
-      Alert.alert(
-        "Network Error",
-        errorMessage,
-        [{ text: "OK" }]
-      );
+      showAlert("Network Error", errorMessage, "error");
     } finally {
       setLoading(false);
     }
@@ -358,6 +369,20 @@ export default function EmployeeAssetAssign() {
           <Text style={styles.buttonText}>Assign Asset</Text>
         </TouchableOpacity>
       </View>
+      
+      {/* Custom Alert */}
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onConfirm={alertConfig.onConfirm}
+        onCancel={alertConfig.onCancel}
+        confirmText={alertConfig.confirmText}
+        cancelText={alertConfig.cancelText}
+        showCancel={alertConfig.showCancel}
+        onClose={() => setAlertConfig(prev => ({ ...prev, visible: false }))}
+      />
     </SafeAreaView>
   );
 }

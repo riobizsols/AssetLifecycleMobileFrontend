@@ -13,13 +13,78 @@ import { Appbar } from "react-native-paper";
 import { useNavigation } from "@react-navigation/native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { API_CONFIG, getApiHeaders, API_ENDPOINTS } from "../../config/api";
+import { authUtils } from "../../utils/auth";
+import CustomAlert from "../../components/CustomAlert";
+import SideMenu from "../../components/SideMenu";
+import { useNavigation as useNavigationContext } from "../../context/NavigationContext";
 
 export default function App() {
   const navigation = useNavigation();
+  const { hasAccess } = useNavigationContext();
   const [showCamera, setShowCamera] = useState(false);
   const [barcode, setBarcode] = useState(null);
   const [loading, setLoading] = useState(false);
   const [permission, requestPermission] = useCameraPermissions();
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [alertConfig, setAlertConfig] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'info',
+    onConfirm: () => {},
+    onCancel: () => {},
+    confirmText: 'OK',
+    cancelText: 'Cancel',
+    showCancel: false,
+  });
+
+  const showAlert = (title, message, type = 'info', onConfirm = () => {}, showCancel = false) => {
+    setAlertConfig({
+      visible: true,
+      title,
+      message,
+      type,
+      onConfirm: () => {
+        setAlertConfig(prev => ({ ...prev, visible: false }));
+        onConfirm();
+      },
+      onCancel: () => {
+        setAlertConfig(prev => ({ ...prev, visible: false }));
+      },
+      confirmText: 'OK',
+      cancelText: 'Cancel',
+      showCancel,
+    });
+  };
+
+  const handleLogout = async () => {
+    showAlert(
+      "Logout",
+      "Are you sure you want to logout?",
+      'warning',
+      async () => {
+        try {
+          await authUtils.removeToken();
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'Login' }],
+          });
+        } catch (error) {
+          console.error('Logout error:', error);
+          showAlert('Error', 'Failed to logout. Please try again.', 'error');
+        }
+      },
+      true
+    );
+  };
+
+  const toggleMenu = () => {
+    setMenuVisible(!menuVisible);
+  };
+
+  const closeMenu = () => {
+    setMenuVisible(false);
+  };
 
   const openCamera = async () => {
     if (!permission?.granted) {
@@ -201,18 +266,28 @@ export default function App() {
             barcode: barcode 
           });
         } else {
-          // Navigate to asset_3.js for unassigned assets or assets without matching criteria
+          // Check access level before allowing assignment
+          if (hasAccess('ASSETASSIGNMENT', 'A')) {
+            // Navigate to asset_3.js for unassigned assets or assets without matching criteria
+            navigation.navigate('AssetAssignment', { 
+              assetId: assetId,
+              barcode: barcode 
+            });
+          } else {
+            showAlert('Access Denied', 'You do not have permission to assign assets. You can only view asset details.', 'error');
+          }
+        }
+      } else {
+        // Check access level before allowing assignment
+        if (hasAccess('ASSETASSIGNMENT', 'A')) {
+          // Navigate to asset_3.js for unassigned assets
           navigation.navigate('AssetAssignment', { 
             assetId: assetId,
             barcode: barcode 
           });
+        } else {
+          showAlert('Access Denied', 'You do not have permission to assign assets. You can only view asset details.', 'error');
         }
-      } else {
-        // Navigate to asset_3.js for unassigned assets
-        navigation.navigate('AssetAssignment', { 
-          assetId: assetId,
-          barcode: barcode 
-        });
       }
     } catch (error) {
       console.error("Error getting asset assignment:", error);
@@ -281,12 +356,19 @@ export default function App() {
   ) : (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#EEEEEE" }}>
       {/* AppBar */}
-      <Appbar.Header style={styles.appbar}>
-        <Appbar.Action icon="menu" color="#FEC200" onPress={() => {}} />
-        <View style={styles.centerTitleContainer}>
-          <Text style={styles.appbarTitle}>Asset</Text>
-        </View>
-      </Appbar.Header>
+                      <Appbar.Header style={styles.appbar}>
+          <TouchableOpacity 
+            style={styles.backButton} 
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.7}
+          >
+            <MaterialCommunityIcons name="arrow-left" size={24} color="#FEC200" />
+          </TouchableOpacity>
+          <View style={styles.centerTitleContainer}>
+            <Text style={styles.appbarTitle}>Asset</Text>
+          </View>
+          {/* <Appbar.Action icon="logout" color="#FEC200" onPress={handleLogout} /> */}
+        </Appbar.Header>
 
       {/* Main Content */}
       <View style={styles.container}>
@@ -326,6 +408,27 @@ export default function App() {
           <Text style={styles.buttonText}>Scan Asset</Text>
         </TouchableOpacity>
       </View>
+      
+      {/* Custom Alert */}
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onConfirm={alertConfig.onConfirm}
+        onCancel={alertConfig.onCancel}
+        confirmText={alertConfig.confirmText}
+        cancelText={alertConfig.cancelText}
+        showCancel={alertConfig.showCancel}
+        onClose={() => setAlertConfig(prev => ({ ...prev, visible: false }))}
+      />
+
+      {/* Side Menu */}
+      <SideMenu
+        visible={menuVisible}
+        onClose={closeMenu}
+        onLogout={handleLogout}
+      />
     </SafeAreaView>
   );
 }
@@ -340,6 +443,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "flex-start",
     position: "relative",
+  },
+  backButton: {
+    padding: 12,
+    marginLeft: 8,
+    zIndex: 2,
   },
   centerTitleContainer: {
     position: "absolute",

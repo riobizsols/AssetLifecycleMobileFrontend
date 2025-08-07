@@ -24,6 +24,9 @@ import Asset_2 from "./emp_asset_2";
 import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import { API_CONFIG, getApiHeaders, API_ENDPOINTS } from "../../config/api";
+import { authUtils } from "../../utils/auth";
+import CustomAlert from "../../components/CustomAlert";
+import SideMenu from "../../components/SideMenu";
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -33,11 +36,71 @@ export default function Asset_1() {
   const [employeeId, setEmployeeId] = useState("");
   const [assetData, setAssetData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [menuVisible, setMenuVisible] = useState(false);
   const [employeeInfo, setEmployeeInfo] = useState({
     name: "",
     department: "",
     assetCount: 0
   });
+  const [alertConfig, setAlertConfig] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'info',
+    onConfirm: () => {},
+    onCancel: () => {},
+    confirmText: 'OK',
+    cancelText: 'Cancel',
+    showCancel: false,
+  });
+
+  const showAlert = (title, message, type = 'info', onConfirm = () => {}, showCancel = false) => {
+    setAlertConfig({
+      visible: true,
+      title,
+      message,
+      type,
+      onConfirm: () => {
+        setAlertConfig(prev => ({ ...prev, visible: false }));
+        onConfirm();
+      },
+      onCancel: () => {
+        setAlertConfig(prev => ({ ...prev, visible: false }));
+      },
+      confirmText: 'OK',
+      cancelText: 'Cancel',
+      showCancel,
+    });
+  };
+
+  const handleLogout = async () => {
+    showAlert(
+      "Logout",
+      "Are you sure you want to logout?",
+      'warning',
+      async () => {
+        try {
+          await authUtils.removeToken();
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'Login' }],
+          });
+        } catch (error) {
+          console.error('Logout error:', error);
+          showAlert('Error', 'Failed to logout. Please try again.', 'error');
+        }
+      },
+      true
+    );
+  };
+
+  const toggleMenu = () => {
+    setMenuVisible(!menuVisible);
+  };
+
+  const closeMenu = () => {
+    setMenuVisible(false);
+  };
 
   // Fetch asset details by serial number
   const fetchAssetBySerial = async (serialNumber) => {
@@ -305,7 +368,13 @@ export default function Asset_1() {
     <SafeAreaProvider>
       <SafeAreaView style={{ flex: 1, backgroundColor: "#EEEEEE" }}>
         <Appbar.Header style={styles.appbar}>
-          <Appbar.Action icon="menu" color="#FEC200" onPress={() => {}} />
+          <TouchableOpacity 
+            style={styles.backButton} 
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.7}
+          >
+            <MaterialCommunityIcons name="arrow-left" size={24} color="#FEC200" />
+          </TouchableOpacity>
           <View style={styles.titleRow}>
             <Text style={styles.appbarTitle}>Employee Asset</Text>
           </View>
@@ -320,6 +389,7 @@ export default function Asset_1() {
               color={assetData.length === 0 ? "#666" : "#FEC200"} 
             />
           </TouchableOpacity>
+          {/* <Appbar.Action icon="logout" color="#FEC200" onPress={handleLogout} /> */}
         </Appbar.Header>
 
         {/* Form */}
@@ -480,7 +550,28 @@ export default function Asset_1() {
             </TouchableOpacity>
           </View>
         )}
-      </SafeAreaView>
+              </SafeAreaView>
+        
+        {/* Custom Alert */}
+        <CustomAlert
+          visible={alertConfig.visible}
+          title={alertConfig.title}
+          message={alertConfig.message}
+          type={alertConfig.type}
+          onConfirm={alertConfig.onConfirm}
+          onCancel={alertConfig.onCancel}
+          confirmText={alertConfig.confirmText}
+          cancelText={alertConfig.cancelText}
+          showCancel={alertConfig.showCancel}
+                  onClose={() => setAlertConfig(prev => ({ ...prev, visible: false }))}
+      />
+
+      {/* Side Menu */}
+      <SideMenu
+        visible={menuVisible}
+        onClose={closeMenu}
+        onLogout={handleLogout}
+      />
     </SafeAreaProvider>
   );
 }
@@ -495,6 +586,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "flex-start",
     position: "relative",
+  },
+  backButton: {
+    padding: 12,
+    marginLeft: 8,
+    zIndex: 2,
   },
   centerTitleContainer: {
     position: "absolute",

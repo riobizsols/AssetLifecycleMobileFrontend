@@ -14,6 +14,7 @@ import {
 import { Appbar } from "react-native-paper";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { API_CONFIG, getApiHeaders, API_ENDPOINTS } from "../../config/api";
+import CustomAlert from "../../components/CustomAlert";
 
 export default function EmployeeAssetDetails() {
   const navigation = useNavigation();
@@ -23,6 +24,36 @@ export default function EmployeeAssetDetails() {
   const [departmentDetails, setDepartmentDetails] = useState(null);
   const [employeeDetails, setEmployeeDetails] = useState(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
+  const [alertConfig, setAlertConfig] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'info',
+    onConfirm: () => {},
+    onCancel: () => {},
+    confirmText: 'OK',
+    cancelText: 'Cancel',
+    showCancel: false,
+  });
+
+  const showAlert = (title, message, type = 'info', onConfirm = () => {}, showCancel = false) => {
+    setAlertConfig({
+      visible: true,
+      title,
+      message,
+      type,
+      onConfirm: () => {
+        setAlertConfig(prev => ({ ...prev, visible: false }));
+        onConfirm();
+      },
+      onCancel: () => {
+        setAlertConfig(prev => ({ ...prev, visible: false }));
+      },
+      confirmText: 'OK',
+      cancelText: 'Cancel',
+      showCancel,
+    });
+  };
 
   // Helper function to format date
   const formatDate = (dateString) => {
@@ -246,7 +277,7 @@ export default function EmployeeAssetDetails() {
     const assetId = assetData?.asset_id || assetData?.id || assetAssignment?.asset_id;
     
     if (!assetId) {
-      Alert.alert("Error", "Asset ID not found");
+      showAlert("Error", "Asset ID not found", "error");
       return;
     }
 
@@ -278,13 +309,13 @@ export default function EmployeeAssetDetails() {
           }
         } catch (error) {
           console.error("Error fetching current assignment:", error);
-          Alert.alert("Error", "Failed to fetch current assignment details");
+          showAlert("Error", "Failed to fetch current assignment details", "error");
           return;
         }
       }
       
       if (!currentAssignment) {
-        Alert.alert("Error", "No active assignment found for this asset");
+        showAlert("Error", "No active assignment found for this asset", "error");
         return;
       }
 
@@ -336,12 +367,9 @@ export default function EmployeeAssetDetails() {
       });
 
       if (createResponse.ok) {
-        Alert.alert("Success", "Assignment cancelled successfully", [
-          {
-            text: "OK",
-            onPress: () => navigation.goBack(),
-          },
-        ]);
+        showAlert("Success", "Assignment cancelled successfully", "success", () => {
+          navigation.goBack();
+        });
       } else {
         const errorData = await createResponse.json().catch(() => ({}));
         console.error("Server error details:", errorData);
@@ -349,9 +377,7 @@ export default function EmployeeAssetDetails() {
       }
     } catch (error) {
       console.error("Error cancelling assignment:", error);
-      Alert.alert("Error", "Failed to cancel assignment. Please try again.", [
-        { text: "OK" },
-      ]);
+      showAlert("Error", "Failed to cancel assignment. Please try again.", "error");
     } finally {
       setLoading(false);
     }
@@ -463,6 +489,20 @@ export default function EmployeeAssetDetails() {
           </TouchableOpacity>
         </View>
       </View>
+      
+      {/* Custom Alert */}
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onConfirm={alertConfig.onConfirm}
+        onCancel={alertConfig.onCancel}
+        confirmText={alertConfig.confirmText}
+        cancelText={alertConfig.cancelText}
+        showCancel={alertConfig.showCancel}
+        onClose={() => setAlertConfig(prev => ({ ...prev, visible: false }))}
+      />
     </SafeAreaView>
   );
 }

@@ -20,6 +20,9 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createStackNavigator } from "@react-navigation/stack";
 import Dept_Asset_2 from "../dept_asset/dept_asset_2";
 import { API_CONFIG, getApiHeaders, API_ENDPOINTS } from "../../config/api";
+import { authUtils } from "../../utils/auth";
+import CustomAlert from "../../components/CustomAlert";
+import SideMenu from "../../components/SideMenu";
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -28,6 +31,7 @@ export default function DepartmentScreenMain() {
   const navigation = useNavigation();
   const [departmentId, setDepartmentId] = useState("");
   const [loading, setLoading] = useState(false);
+  const [menuVisible, setMenuVisible] = useState(false);
   const [departmentInfo, setDepartmentInfo] = useState({
     name: "",
     assetCount: 0,
@@ -36,6 +40,65 @@ export default function DepartmentScreenMain() {
   const [employeeData, setEmployeeData] = useState([]);
   const [departments, setDepartments] = useState({});
   const [employees, setEmployees] = useState({});
+  const [alertConfig, setAlertConfig] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'info',
+    onConfirm: () => {},
+    onCancel: () => {},
+    confirmText: 'OK',
+    cancelText: 'Cancel',
+    showCancel: false,
+  });
+
+  const showAlert = (title, message, type = 'info', onConfirm = () => {}, showCancel = false) => {
+    setAlertConfig({
+      visible: true,
+      title,
+      message,
+      type,
+      onConfirm: () => {
+        setAlertConfig(prev => ({ ...prev, visible: false }));
+        onConfirm();
+      },
+      onCancel: () => {
+        setAlertConfig(prev => ({ ...prev, visible: false }));
+      },
+      confirmText: 'OK',
+      cancelText: 'Cancel',
+      showCancel,
+    });
+  };
+
+  const handleLogout = async () => {
+    showAlert(
+      "Logout",
+      "Are you sure you want to logout?",
+      'warning',
+      async () => {
+        try {
+          await authUtils.removeToken();
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'Login' }],
+          });
+        } catch (error) {
+          console.error('Logout error:', error);
+          showAlert('Error', 'Failed to logout. Please try again.', 'error');
+        }
+      },
+      true
+    );
+  };
+
+  const toggleMenu = () => {
+    setMenuVisible(!menuVisible);
+  };
+
+  const closeMenu = () => {
+    setMenuVisible(false);
+  };
 
   // Fetch departments data
   const fetchDepartments = async () => {
@@ -358,13 +421,18 @@ export default function DepartmentScreenMain() {
       <SafeAreaView style={{ flex: 1, backgroundColor: "#EEEEEE" }}>
         {/* AppBar */}
         <Appbar.Header style={styles.appbar}>
-          <Appbar.Action icon="menu" color="#FEC200" onPress={() => {}} />
+          <TouchableOpacity 
+            style={styles.backButton} 
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.7}
+          >
+            <MaterialCommunityIcons name="arrow-left" size={24} color="#FEC200" />
+          </TouchableOpacity>
           {/* Centered Title */}
           <View style={styles.centerTitleContainer}>
             <Text style={styles.appbarTitle}>Department</Text>
           </View>
-          {/* Right side empty to balance layout */}
-          <View style={{ width: 40 }} />
+          {/* <Appbar.Action icon="logout" color="#FEC200" onPress={handleLogout} /> */}
         </Appbar.Header>
 
         {/* Form */}
@@ -508,6 +576,27 @@ export default function DepartmentScreenMain() {
           )}
         </View>
       </SafeAreaView>
+      
+      {/* Custom Alert */}
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onConfirm={alertConfig.onConfirm}
+        onCancel={alertConfig.onCancel}
+        confirmText={alertConfig.confirmText}
+        cancelText={alertConfig.cancelText}
+        showCancel={alertConfig.showCancel}
+        onClose={() => setAlertConfig(prev => ({ ...prev, visible: false }))}
+      />
+
+      {/* Side Menu */}
+      <SideMenu
+        visible={menuVisible}
+        onClose={closeMenu}
+        onLogout={handleLogout}
+      />
     </SafeAreaProvider>
   );
 }
@@ -521,6 +610,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     position: "relative",
+  },
+  backButton: {
+    padding: 12,
+    marginLeft: 8,
+    zIndex: 2,
   },
   centerTitleContainer: {
     position: "absolute",

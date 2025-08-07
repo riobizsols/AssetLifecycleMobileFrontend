@@ -14,6 +14,7 @@ import {
 import { Appbar } from "react-native-paper";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { API_CONFIG, getApiHeaders, API_ENDPOINTS } from "../../config/api";
+import CustomAlert from "../../components/CustomAlert";
 
 export default function App() {
   const navigation = useNavigation();
@@ -23,6 +24,36 @@ export default function App() {
   const [departmentDetails, setDepartmentDetails] = useState(null);
   const [employeeDetails, setEmployeeDetails] = useState(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
+  const [alertConfig, setAlertConfig] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'info',
+    onConfirm: () => {},
+    onCancel: () => {},
+    confirmText: 'OK',
+    cancelText: 'Cancel',
+    showCancel: false,
+  });
+
+  const showAlert = (title, message, type = 'info', onConfirm = () => {}, showCancel = false) => {
+    setAlertConfig({
+      visible: true,
+      title,
+      message,
+      type,
+      onConfirm: () => {
+        setAlertConfig(prev => ({ ...prev, visible: false }));
+        onConfirm();
+      },
+      onCancel: () => {
+        setAlertConfig(prev => ({ ...prev, visible: false }));
+      },
+      confirmText: 'OK',
+      cancelText: 'Cancel',
+      showCancel,
+    });
+  };
 
   // Helper function to format date
   const formatDate = (dateString) => {
@@ -225,7 +256,7 @@ export default function App() {
   // Function to handle cancel assignment via API - creates new row and updates existing
   const handleCancelAssignment = async () => {
     if (!assetAssignment?.asset_id) {
-      Alert.alert("Error", "Asset ID not found");
+      showAlert("Error", "Asset ID not found", "error");
       return;
     }
 
@@ -279,12 +310,9 @@ export default function App() {
       });
 
       if (createResponse.ok) {
-        Alert.alert("Success", "Assignment cancelled successfully", [
-          {
-            text: "OK",
-            onPress: () => navigation.goBack(),
-          },
-        ]);
+        showAlert("Success", "Assignment cancelled successfully", "success", () => {
+          navigation.goBack();
+        });
       } else {
         const errorData = await createResponse.json().catch(() => ({}));
         console.error("Server error details:", errorData);
@@ -292,9 +320,7 @@ export default function App() {
       }
     } catch (error) {
       console.error("Error cancelling assignment:", error);
-      Alert.alert("Error", "Failed to cancel assignment. Please try again.", [
-        { text: "OK" },
-      ]);
+      showAlert("Error", "Failed to cancel assignment. Please try again.", "error");
     } finally {
       setLoading(false);
     }
@@ -303,70 +329,58 @@ export default function App() {
   // Function to cancel assignment
   const cancelAssignment = async () => {
     if (!assetAssignment?.asset_assign_id) {
-      Alert.alert("Error", "Assignment ID not found");
+      showAlert("Error", "Assignment ID not found", "error");
       return;
     }
 
-    Alert.alert(
+    showAlert(
       "Cancel Assignment",
       "Are you sure you want to cancel this assignment?",
-      [
-        { text: "No", style: "cancel" },
-        {
-          text: "Yes",
-          style: "destructive",
-          onPress: async () => {
-            setLoading(true);
-            try {
-              const url = `${
-                API_CONFIG.BASE_URL
-              }${API_ENDPOINTS.UPDATE_ASSET_ASSIGNMENT(
-                assetAssignment.asset_assign_id
-              )}`;
-              console.log("Updating assignment to unassigned:", url);
+      "warning",
+      async () => {
+        setLoading(true);
+        try {
+          const url = `${
+            API_CONFIG.BASE_URL
+          }${API_ENDPOINTS.UPDATE_ASSET_ASSIGNMENT(
+            assetAssignment.asset_assign_id
+          )}`;
+          console.log("Updating assignment to unassigned:", url);
 
-              // Update the assignment with UNASSIGN action
-              const updateData = {
-                action: getActionType("unassign"),
-                action_on: new Date().toISOString(),
-                action_by: "SYSTEM", // You can replace this with actual user ID
-                latest_assignment_flag: false,
-                status: "Unassigned",
-                changed_by: "SYSTEM", // You can replace this with actual user ID
-                changed_on: new Date().toISOString(),
-              };
+          // Update the assignment with UNASSIGN action
+          const updateData = {
+            action: getActionType("unassign"),
+            action_on: new Date().toISOString(),
+            action_by: "SYSTEM", // You can replace this with actual user ID
+            latest_assignment_flag: false,
+            status: "Unassigned",
+            changed_by: "SYSTEM", // You can replace this with actual user ID
+            changed_on: new Date().toISOString(),
+          };
 
-              const response = await fetch(url, {
-                method: "PUT",
-                headers: getApiHeaders(),
-                body: JSON.stringify(updateData),
-              });
+          const response = await fetch(url, {
+            method: "PUT",
+            headers: getApiHeaders(),
+            body: JSON.stringify(updateData),
+          });
 
-              if (response.ok) {
-                Alert.alert("Success", "Assignment cancelled successfully", [
-                  {
-                    text: "OK",
-                    onPress: () => navigation.goBack(),
-                  },
-                ]);
-              } else {
-                const errorData = await response.json().catch(() => ({}));
-                console.error("Server error details:", errorData);
-                throw new Error(`HTTP error! status: ${response.status}`);
-              }
-            } catch (error) {
-              console.error("Error cancelling assignment:", error);
-              Alert.alert(
-                "Error",
-                "Failed to cancel assignment. Please try again.",
-                [{ text: "OK" }]
-              );
-            } finally {
-              setLoading(false);
-            }
-          },
-        },
-      ]
+          if (response.ok) {
+            showAlert("Success", "Assignment cancelled successfully", "success", () => {
+              navigation.goBack();
+            });
+          } else {
+            const errorData = await response.json().catch(() => ({}));
+            console.error("Server error details:", errorData);
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+        } catch (error) {
+          console.error("Error cancelling assignment:", error);
+          showAlert("Error", "Failed to cancel assignment. Please try again.", "error");
+        } finally {
+          setLoading(false);
+        }
+      },
+      true
     );
   };
 
@@ -490,6 +504,20 @@ export default function App() {
           </TouchableOpacity>
         </View>
       </View>
+      
+      {/* Custom Alert */}
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onConfirm={alertConfig.onConfirm}
+        onCancel={alertConfig.onCancel}
+        confirmText={alertConfig.confirmText}
+        cancelText={alertConfig.cancelText}
+        showCancel={alertConfig.showCancel}
+        onClose={() => setAlertConfig(prev => ({ ...prev, visible: false }))}
+      />
     </SafeAreaView>
   );
 }

@@ -465,12 +465,18 @@ export default function App() {
   return (
     <SafeAreaView style={styles.safe}>
       {/* AppBar */}
-      <Appbar.Header style={styles.appbar}>
-        <Appbar.Action icon="arrow-left" color="#FEC200" onPress={() => navigation.goBack()} />
-        <View style={styles.centerTitleContainer}>
-          <Text style={styles.appbarTitle}>Asset Assignment</Text>
-        </View>
-      </Appbar.Header>
+              <Appbar.Header style={styles.appbar}>
+          <TouchableOpacity 
+            style={styles.backButton} 
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.7}
+          >
+            <MaterialCommunityIcons name="arrow-left" size={24} color="#FEC200" />
+          </TouchableOpacity>
+          <View style={styles.centerTitleContainer}>
+            <Text style={styles.appbarTitle}>Asset Assignment</Text>
+          </View>
+        </Appbar.Header>
               <ScrollView contentContainerStyle={styles.scroll}>
           {/* Search Bar */}
           <View style={styles.searchRow}>
@@ -764,6 +770,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "flex-start",
     position: "relative",
+  },
+  backButton: {
+    padding: 12,
+    marginLeft: 8,
+    zIndex: 2,
   },
    centerTitleContainer: {
     position: "absolute",

@@ -15,6 +15,7 @@ import {
 import { Appbar } from "react-native-paper";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { API_CONFIG, getApiHeaders, API_ENDPOINTS } from "../../config/api";
+import CustomAlert from "../../components/CustomAlert";
 
 export default function AssetHistoryScreen() {
   const navigation = useNavigation();
@@ -24,6 +25,36 @@ export default function AssetHistoryScreen() {
   const [historyData, setHistoryData] = useState([]);
   const [departments, setDepartments] = useState({});
   const [employees, setEmployees] = useState({});
+  const [alertConfig, setAlertConfig] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'info',
+    onConfirm: () => {},
+    onCancel: () => {},
+    confirmText: 'OK',
+    cancelText: 'Cancel',
+    showCancel: false,
+  });
+
+  const showAlert = (title, message, type = 'info', onConfirm = () => {}, showCancel = false) => {
+    setAlertConfig({
+      visible: true,
+      title,
+      message,
+      type,
+      onConfirm: () => {
+        setAlertConfig(prev => ({ ...prev, visible: false }));
+        onConfirm();
+      },
+      onCancel: () => {
+        setAlertConfig(prev => ({ ...prev, visible: false }));
+      },
+      confirmText: 'OK',
+      cancelText: 'Cancel',
+      showCancel,
+    });
+  };
 
   // Helper function to format date
   const formatDate = (dateString) => {
@@ -130,7 +161,7 @@ export default function AssetHistoryScreen() {
   // Fetch asset assignment history
   const fetchAssetHistory = async () => {
     if (!assetId) {
-      Alert.alert("Error", "Asset ID not found");
+      showAlert("Error", "Asset ID not found", "error");
       return;
     }
 
@@ -159,11 +190,7 @@ export default function AssetHistoryScreen() {
       setHistoryData(sortedData);
     } catch (error) {
       console.error("Error fetching asset history:", error);
-      Alert.alert(
-        "Error",
-        "Failed to load asset history. Please try again.",
-        [{ text: "OK" }]
-      );
+      showAlert("Error", "Failed to load asset history. Please try again.", "error");
     } finally {
       setLoading(false);
     }
@@ -276,6 +303,20 @@ export default function AssetHistoryScreen() {
           </View>
         )}
       </View>
+      
+      {/* Custom Alert */}
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onConfirm={alertConfig.onConfirm}
+        onCancel={alertConfig.onCancel}
+        confirmText={alertConfig.confirmText}
+        cancelText={alertConfig.cancelText}
+        showCancel={alertConfig.showCancel}
+        onClose={() => setAlertConfig(prev => ({ ...prev, visible: false }))}
+      />
     </SafeAreaView>
   );
 }
