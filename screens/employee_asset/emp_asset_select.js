@@ -14,11 +14,13 @@ import {
 } from "react-native";
 import { Appbar } from "react-native-paper";
 import { useNavigation, useRoute } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import { API_CONFIG, getApiHeaders, API_ENDPOINTS } from "../../config/api";
 
 export default function EmployeeAssetSelect() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute();
   const { employeeId, employeeName } = route.params || {};
@@ -67,7 +69,7 @@ export default function EmployeeAssetSelect() {
       setAssetTypes(transformedAssetTypes);
     } catch (error) {
       console.error("Error fetching asset types:", error);
-      Alert.alert("Error", "Failed to load asset types. Please try again.");
+      Alert.alert(t('common.error'), t('assets.failedToLoadAssetTypes'));
       // Fallback to mock data for testing
       const mockAssetTypes = [
         { id: "1", name: "Laptop", description: "Portable computers" },
@@ -164,7 +166,7 @@ export default function EmployeeAssetSelect() {
           const transformedAssets = assetsArray.map(asset => ({
             asset_id: asset.asset_id || asset.id || asset.assetId,
             serial_number: asset.serial_number || asset.serialNumber || asset.serial,
-            description: asset.description || asset.text || asset.name || 'Unknown Asset',
+            description: asset.description || asset.text || asset.name || t('assets.unknownAsset'),
             status: asset.status || 'Inactive',
             type: asset.asset_type_id || asset.assetTypeId || asset.type
           }));
@@ -173,17 +175,17 @@ export default function EmployeeAssetSelect() {
         } else {
           console.log('No assets found in array:', assetsArray);
           setAssets([]);
-          Alert.alert("No Inactive Assets Found", "No inactive assets found for the selected type.");
+          Alert.alert(t('assets.noInactiveAssetsFound'), t('assets.noInactiveAssetsFoundMessage'));
         }
       } else if (response.status === 404) {
         setAssets([]);
-        Alert.alert("No Inactive Assets Found", "No inactive assets found for the selected type.");
+        Alert.alert(t('assets.noInactiveAssetsFound'), t('assets.noInactiveAssetsFoundMessage'));
       } else {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
     } catch (error) {
       console.error("Error fetching inactive assets:", error);
-      Alert.alert("Error", "Failed to fetch inactive assets. Please try again.");
+      Alert.alert(t('common.error'), t('assets.failedToFetchInactiveAssets'));
       setAssets([]);
     } finally {
       setLoading(false);
@@ -193,7 +195,7 @@ export default function EmployeeAssetSelect() {
   // Search assets by asset type (keeping for backward compatibility)
   const searchAssets = async () => {
     if (!selectedAssetType) {
-      Alert.alert("Error", "Please select an asset type");
+      Alert.alert(t('common.error'), t('assets.pleaseSelectAssetType'));
       return;
     }
 
@@ -204,12 +206,12 @@ export default function EmployeeAssetSelect() {
   // Select an asset for assignment
   const selectAsset = (asset) => {
     Alert.alert(
-      "Select Asset",
-      `Do you want to assign ${asset.description} (${asset.serial_number}) to ${employeeName || employeeId}?`,
+      t('assets.selectAsset'),
+      `${t('assets.doYouWantToAssign')} ${asset.description} (${asset.serial_number}) ${t('assets.to')} ${employeeName || employeeId}?`,
       [
-        { text: "Cancel", style: "cancel" },
+        { text: t('common.cancel'), style: "cancel" },
         {
-          text: "Select",
+          text: t('assets.selectAsset'),
           onPress: () => {
             // Navigate to assignment page with selected asset
             navigation.navigate('EmployeeAssetAssignment', {
@@ -277,8 +279,8 @@ export default function EmployeeAssetSelect() {
     >
       <View style={styles.assetInfo}>
         <Text style={styles.assetName}>{item.description}</Text>
-        <Text style={styles.assetSerial}>Serial: {item.serial_number}</Text>
-        <Text style={styles.assetStatus}>Status: {item.status}</Text>
+        <Text style={styles.assetSerial}>{t('assets.serial')} {item.serial_number}</Text>
+        <Text style={styles.assetStatus}>{t('assets.status')} {item.status}</Text>
       </View>
       <MaterialCommunityIcons
         name="chevron-right"
@@ -298,38 +300,38 @@ export default function EmployeeAssetSelect() {
           onPress={() => navigation.goBack()}
         />
         <View style={styles.centerTitleContainer}>
-          <Text style={styles.appbarTitle}>Select Asset</Text>
+          <Text style={styles.appbarTitle}>{t('assets.selectAsset')}</Text>
         </View>
       </Appbar.Header>
 
       {/* Employee Info */}
       <View style={styles.employeeInfo}>
-        <Text style={styles.employeeInfoTitle}>Employee Information</Text>
+        <Text style={styles.employeeInfoTitle}>{t('assets.employeeInformation')}</Text>
         <View style={styles.infoRow}>
-          <Text style={styles.label}>Employee ID:</Text>
-          <Text style={styles.value}>{employeeId || "N/A"}</Text>
+          <Text style={styles.label}>{t('employees.employeeId')}:</Text>
+          <Text style={styles.value}>{employeeId || t('common.notAvailable')}</Text>
         </View>
         <View style={styles.infoRow}>
-          <Text style={styles.label}>Employee Name:</Text>
-          <Text style={styles.value}>{employeeName || "N/A"}</Text>
+          <Text style={styles.label}>{t('employees.employeeName')}:</Text>
+          <Text style={styles.value}>{employeeName || t('common.notAvailable')}</Text>
         </View>
       </View>
 
       {/* Search Section */}
                   <View style={styles.searchContainer}>
-              <Text style={styles.searchTitle}>Select Asset Type</Text>
+              <Text style={styles.searchTitle}>{t('assets.selectAssetType')}</Text>
         <View style={styles.searchRow}>
           {loadingAssetTypes ? (
             <View style={styles.dropdownWrapper}>
               <ActivityIndicator size="small" color="#003667" />
-              <Text style={{ marginLeft: 8, color: "#616161" }}>Loading...</Text>
+              <Text style={{ marginLeft: 8, color: "#616161" }}>{t('assets.loading')}</Text>
             </View>
           ) : (
             renderSearchableDropdown(
               selectedAssetType,
               setSelectedAssetType,
               getFilteredAssetTypes(),
-              "Select Asset Type...",
+              t('assets.selectAssetTypePlaceholder'),
               assetTypeSearchText,
               setAssetTypeSearchText,
               showAssetTypeDropdown,
@@ -357,19 +359,19 @@ export default function EmployeeAssetSelect() {
             {/* Asset Selection Section */}
       {selectedAssetType && (
         <View style={styles.assetSelectionContainer}>
-          <Text style={styles.assetSelectionTitle}>Select Asset</Text>
+          <Text style={styles.assetSelectionTitle}>{t('assets.selectAsset')}</Text>
           <View style={styles.assetSelectionRow}>
             {loading ? (
               <View style={styles.dropdownWrapper}>
                 <ActivityIndicator size="small" color="#003667" />
-                <Text style={{ marginLeft: 8, color: "#616161" }}>Loading assets...</Text>
+                <Text style={{ marginLeft: 8, color: "#616161" }}>{t('assets.loadingAssets')}</Text>
               </View>
             ) : (
               renderSearchableDropdown(
                 selectedAsset,
                 setSelectedAsset,
                 getFilteredAssets(),
-                "Select an asset...",
+                t('assets.selectAssetPlaceholder'),
                 assetSearchText,
                 setAssetSearchText,
                 showAssetDropdown,
@@ -390,7 +392,7 @@ export default function EmployeeAssetSelect() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Asset Type</Text>
+              <Text style={styles.modalTitle}>{t('assets.selectAssetType')}</Text>
               <TouchableOpacity
                 onPress={() => setShowAssetTypeDropdown(false)}
                 style={styles.closeButton}
@@ -403,7 +405,7 @@ export default function EmployeeAssetSelect() {
             <View style={styles.modalSearchContainer}>
               <TextInput
                 style={styles.modalSearchInput}
-                placeholder="Search asset types..."
+                placeholder={t('assets.searchAssetTypes')}
                 placeholderTextColor="#888"
                 value={assetTypeSearchText}
                 onChangeText={setAssetTypeSearchText}
@@ -427,13 +429,13 @@ export default function EmployeeAssetSelect() {
               {loadingAssetTypes ? (
                 <View style={styles.modalLoadingContainer}>
                   <ActivityIndicator size="large" color="#003667" />
-                  <Text style={styles.modalLoadingText}>Loading asset types...</Text>
+                  <Text style={styles.modalLoadingText}>{t('assets.loadingAssetTypes')}</Text>
                 </View>
               ) : getFilteredAssetTypes().length === 0 ? (
                 <View style={styles.modalEmptyContainer}>
-                  <Text style={styles.modalEmptyText}>No asset types found</Text>
+                  <Text style={styles.modalEmptyText}>{t('assets.noAssetTypesFound')}</Text>
                   <Text style={styles.modalEmptySubtext}>
-                    {assetTypeSearchText ? "Try a different search term" : "No asset types available"}
+                    {assetTypeSearchText ? t('assets.tryDifferentSearchTerm') : t('assets.noAssetTypesAvailable')}
                   </Text>
                 </View>
               ) : (
@@ -483,7 +485,7 @@ export default function EmployeeAssetSelect() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Asset</Text>
+              <Text style={styles.modalTitle}>{t('assets.selectAsset')}</Text>
               <TouchableOpacity
                 onPress={() => setShowAssetDropdown(false)}
                 style={styles.closeButton}
@@ -496,7 +498,7 @@ export default function EmployeeAssetSelect() {
             <View style={styles.modalSearchContainer}>
               <TextInput
                 style={styles.modalSearchInput}
-                placeholder="Search assets..."
+                placeholder={t('assets.searchAssets')}
                 placeholderTextColor="#888"
                 value={assetSearchText}
                 onChangeText={setAssetSearchText}
@@ -520,13 +522,13 @@ export default function EmployeeAssetSelect() {
               {loading ? (
                 <View style={styles.modalLoadingContainer}>
                   <ActivityIndicator size="large" color="#003667" />
-                  <Text style={styles.modalLoadingText}>Loading assets...</Text>
+                  <Text style={styles.modalLoadingText}>{t('assets.loadingAssets')}</Text>
                 </View>
               ) : getFilteredAssets().length === 0 ? (
                 <View style={styles.modalEmptyContainer}>
-                  <Text style={styles.modalEmptyText}>No assets found</Text>
+                  <Text style={styles.modalEmptyText}>{t('assets.noAssetsFound')}</Text>
                   <Text style={styles.modalEmptySubtext}>
-                    {assetSearchText ? "Try a different search term" : "No assets available"}
+                    {assetSearchText ? t('assets.tryDifferentSearchTerm') : t('assets.noAssetsAvailable')}
                   </Text>
                 </View>
               ) : (

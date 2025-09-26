@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const AUTH_TOKEN_KEY = 'auth_token';
 const USER_DATA_KEY = 'user_data';
+const USER_LANGUAGE_KEY = 'user_language';
 
 export const authUtils = {
   // Store authentication token
@@ -31,6 +32,7 @@ export const authUtils = {
     try {
       await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
       await AsyncStorage.removeItem(USER_DATA_KEY);
+      // Keep language preference on logout
       return true;
     } catch (error) {
       console.error('Error removing token:', error);
@@ -42,6 +44,10 @@ export const authUtils = {
   storeUserData: async (userData) => {
     try {
       await AsyncStorage.setItem(USER_DATA_KEY, JSON.stringify(userData));
+      // Store user's language preference if provided
+      if (userData.language_code) {
+        await AsyncStorage.setItem(USER_LANGUAGE_KEY, userData.language_code);
+      }
       return true;
     } catch (error) {
       console.error('Error storing user data:', error);
@@ -68,6 +74,17 @@ export const authUtils = {
     } catch (error) {
       console.error('Error checking authentication:', error);
       return false;
+    }
+  },
+
+  // Get user's language preference
+  getUserLanguage: async () => {
+    try {
+      const language = await AsyncStorage.getItem(USER_LANGUAGE_KEY);
+      return language || 'en'; // Default to English
+    } catch (error) {
+      console.error('Error getting user language:', error);
+      return 'en';
     }
   },
 

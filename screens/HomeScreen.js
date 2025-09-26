@@ -11,15 +11,18 @@ import {
 import { Appbar } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import CustomAlert from '../components/CustomAlert';
 import { authUtils } from '../utils/auth';
 import SideMenu from '../components/SideMenu';
 import { useNavigation as useNavigationContext } from '../context/NavigationContext';
 import { navigationService } from '../services/navigationService';
+import { UI_CONSTANTS, COMMON_STYLES, UI_UTILS } from '../utils/uiConstants';
 
 const { width } = Dimensions.get('window');
 
 const HomeScreen = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const { getSortedNavigation, clearNavigation } = useNavigationContext();
   const [menuVisible, setMenuVisible] = useState(false);
@@ -30,8 +33,8 @@ const HomeScreen = () => {
     type: 'info',
     onConfirm: () => {},
     onCancel: () => {},
-    confirmText: 'OK',
-    cancelText: 'Cancel',
+    confirmText: t('common.ok'),
+    cancelText: t('common.cancel'),
     showCancel: false,
   });
 
@@ -48,16 +51,16 @@ const HomeScreen = () => {
       onCancel: () => {
         setAlertConfig(prev => ({ ...prev, visible: false }));
       },
-      confirmText: 'OK',
-      cancelText: 'Cancel',
+      confirmText: t('common.ok'),
+      cancelText: t('common.cancel'),
       showCancel,
     });
   };
 
   const handleLogout = async () => {
     showAlert(
-      "Logout",
-      "Are you sure you want to logout?",
+      t('auth.logout'),
+      t('auth.logoutConfirm'),
       'warning',
       async () => {
         try {
@@ -69,7 +72,7 @@ const HomeScreen = () => {
           });
         } catch (error) {
           console.error('Logout error:', error);
-          showAlert('Error', 'Failed to logout. Please try again.', 'error');
+          showAlert(t('common.error'), t('auth.logoutFailed'), 'error');
         }
       },
       true
@@ -94,27 +97,43 @@ const HomeScreen = () => {
       return [
         {
           id: 'asset_default',
-          title: 'Asset Assignment',
-          subtitle: 'Scan and manage assets',
+          title: t('navigation.assetAssignment'),
+          subtitle: t('navigation.scanAndManageAssets'),
           icon: 'barcode-scan',
           color: '#4CAF50',
           onPress: () => navigation.navigate('Asset'),
         },
         {
           id: 'employee_default',
-          title: 'Employee Assets',
-          subtitle: 'View employee asset assignments',
+          title: t('navigation.employeeAssets'),
+          subtitle: t('navigation.viewEmployeeAssetAssignments'),
           icon: 'account-group',
           color: '#2196F3',
           onPress: () => navigation.navigate('EmployeeAsset'),
         },
         {
           id: 'department_default',
-          title: 'Department Assets',
-          subtitle: 'Manage department asset allocations',
+          title: t('navigation.departmentAssets'),
+          subtitle: t('navigation.manageDepartmentAssetAllocations'),
           icon: 'domain',
           color: '#FF9800',
           onPress: () => navigation.navigate('DepartmentAsset'),
+        },
+        {
+          id: 'maintenance_default',
+          title: t('navigation.maintenanceSupervisor'),
+          subtitle: t('navigation.updateMaintenanceSchedules'),
+          icon: 'wrench',
+          color: '#9C27B0',
+          onPress: () => navigation.navigate('MaintenanceSupervisor'),
+        },
+        {
+          id: 'report_breakdown_default',
+          title: t('navigation.reportBreakdown'),
+          subtitle: t('navigation.viewAndManageBreakdownReports'),
+          icon: 'clipboard-alert',
+          color: '#607D8B',
+          onPress: () => navigation.navigate('REPORTBREAKDOWN'),
         },
       ];
     }
@@ -126,8 +145,8 @@ const HomeScreen = () => {
     
     return uniqueItems.map((item, index) => ({
       id: `${item.app_id.toLowerCase()}_${index}`,
-      title: item.label,
-      subtitle: `Manage ${item.label.toLowerCase()}`,
+      title: t(navigationService.getNavigationLabel(item.app_id)),
+      subtitle: t(navigationService.getNavigationSubtitle(item.app_id)),
       icon: navigationService.getNavigationIcon(item.app_id),
       color: colors[index % colors.length],
       onPress: () => navigation.navigate(navigationService.getScreenName(item.app_id)),
@@ -148,18 +167,30 @@ const HomeScreen = () => {
       <View style={[styles.iconContainer, { backgroundColor: item.color + '20' }]}>
         <MaterialCommunityIcons
           name={item.icon}
-          size={32}
+          size={UI_CONSTANTS.ICON_SIZES.XL}
           color={item.color}
         />
       </View>
       <View style={styles.menuTextContainer}>
-        <Text style={styles.menuTitle}>{item.title}</Text>
-        <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
+        <Text 
+          style={styles.menuTitle}
+          numberOfLines={2}
+          ellipsizeMode="tail"
+        >
+          {item.title}
+        </Text>
+        <Text 
+          style={styles.menuSubtitle}
+          numberOfLines={2}
+          ellipsizeMode="tail"
+        >
+          {item.subtitle}
+        </Text>
       </View>
       <MaterialCommunityIcons
         name="chevron-right"
-        size={24}
-        color="#666"
+        size={UI_CONSTANTS.ICON_SIZES.LG}
+        color={UI_CONSTANTS.COLORS.GRAY_DARK}
       />
     </TouchableOpacity>
   );
@@ -176,7 +207,13 @@ const HomeScreen = () => {
           <MaterialCommunityIcons name="menu" size={24} color="#FEC200" />
         </TouchableOpacity>
         <View style={styles.centerTitleContainer}>
-          <Text style={styles.appbarTitle}>Asset Management</Text>
+          <Text 
+            style={styles.appbarTitle}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
+            {t('navigation.assetManagement')}
+          </Text>
         </View>
         {/* <Appbar.Action icon="logout" color="#FEC200" onPress={handleLogout} /> */}
       </Appbar.Header>
@@ -184,34 +221,80 @@ const HomeScreen = () => {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Welcome Section */}
         <View style={styles.welcomeSection}>
-          <Text style={styles.welcomeTitle}>Welcome Back!</Text>
-          <Text style={styles.welcomeSubtitle}>
-            Manage your assets efficiently with our comprehensive tools
+          <Text 
+            style={styles.welcomeTitle}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
+            {t('home.welcomeBack')}
+          </Text>
+          <Text 
+            style={styles.welcomeSubtitle}
+            numberOfLines={3}
+            ellipsizeMode="tail"
+          >
+            {t('home.manageAssetsEfficiently')}
           </Text>
         </View>
 
         {/* Quick Stats */}
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
-            <MaterialCommunityIcons name="barcode-scan" size={24} color="#4CAF50" />
+            <MaterialCommunityIcons 
+              name="barcode-scan" 
+              size={UI_CONSTANTS.ICON_SIZES.LG} 
+              color={UI_CONSTANTS.COLORS.SUCCESS} 
+            />
             <Text style={styles.statNumber}>24</Text>
-            <Text style={styles.statLabel}>Total Assets</Text>
+            <Text 
+              style={styles.statLabel}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {t('home.totalAssets')}
+            </Text>
           </View>
           <View style={styles.statCard}>
-            <MaterialCommunityIcons name="account-group" size={24} color="#2196F3" />
+            <MaterialCommunityIcons 
+              name="account-group" 
+              size={UI_CONSTANTS.ICON_SIZES.LG} 
+              color={UI_CONSTANTS.COLORS.INFO} 
+            />
             <Text style={styles.statNumber}>30</Text>
-            <Text style={styles.statLabel}>Employees</Text>
+            <Text 
+              style={styles.statLabel}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {t('home.employees')}
+            </Text>
           </View>
           <View style={styles.statCard}>
-            <MaterialCommunityIcons name="domain" size={24} color="#FF9800" />
+            <MaterialCommunityIcons 
+              name="domain" 
+              size={UI_CONSTANTS.ICON_SIZES.LG} 
+              color={UI_CONSTANTS.COLORS.WARNING} 
+            />
             <Text style={styles.statNumber}>6</Text>
-            <Text style={styles.statLabel}>Departments</Text>
+            <Text 
+              style={styles.statLabel}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {t('home.departments')}
+            </Text>
           </View>
         </View>
 
         {/* Menu Items */}
         <View style={styles.menuContainer}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <Text 
+            style={styles.sectionTitle}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
+            {t('home.quickActions')}
+          </Text>
           {menuItems.map(renderMenuItem)}
         </View>
 
@@ -264,22 +347,14 @@ const HomeScreen = () => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#EEEEEE',
+    ...COMMON_STYLES.container,
   },
   appbar: {
-    backgroundColor: '#003667',
-    elevation: 0,
-    shadowOpacity: 0,
-    height: 60,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    position: 'relative',
+    ...COMMON_STYLES.appBar,
   },
   menuButton: {
-    padding: 12,
-    marginLeft: 8,
+    padding: UI_CONSTANTS.SPACING.MD,
+    marginLeft: UI_CONSTANTS.SPACING.SM,
     zIndex: 2,
   },
   centerTitleContainer: {
@@ -290,102 +365,71 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   appbarTitle: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-    fontSize: 16,
-    alignSelf: 'center',
+    ...COMMON_STYLES.appBarTitle,
   },
   content: {
     flex: 1,
-    paddingHorizontal: 16,
+    paddingHorizontal: UI_CONSTANTS.SPACING.LG,
   },
   welcomeSection: {
-    paddingVertical: 24,
+    paddingVertical: UI_CONSTANTS.SPACING.XXL,
     alignItems: 'center',
   },
   welcomeTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#003667',
-    marginBottom: 8,
+    ...COMMON_STYLES.text.title,
+    marginBottom: UI_CONSTANTS.SPACING.SM,
   },
   welcomeSubtitle: {
-    fontSize: 16,
-    color: '#7A7A7A',
+    ...COMMON_STYLES.text.secondary,
     textAlign: 'center',
     lineHeight: 22,
   },
   statsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 24,
+    marginBottom: UI_CONSTANTS.SPACING.XXL,
   },
   statCard: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 10,
-    marginHorizontal: 4,
+    ...COMMON_STYLES.card,
+    padding: UI_CONSTANTS.SPACING.MD,
+    marginHorizontal: UI_CONSTANTS.SPACING.XS,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
   },
   statNumber: {
-    fontSize: 24,
+    fontSize: UI_CONSTANTS.FONT_SIZES.XXL,
     fontWeight: 'bold',
-    color: '#003667',
-    marginTop: 8,
+    color: UI_CONSTANTS.COLORS.PRIMARY,
+    marginTop: UI_CONSTANTS.SPACING.SM,
   },
   statLabel: {
-    fontSize: 12,
-    color: '#7A7A7A',
-    marginTop: 4,
+    ...COMMON_STYLES.text.small,
+    marginTop: UI_CONSTANTS.SPACING.XS,
+    textAlign: 'center',
   },
   menuContainer: {
-    marginBottom: 24,
+    marginBottom: UI_CONSTANTS.SPACING.XXL,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#003667',
-    marginBottom: 16,
+    ...COMMON_STYLES.text.subtitle,
+    marginBottom: UI_CONSTANTS.SPACING.LG,
   },
   menuItem: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    ...COMMON_STYLES.menuItem,
   },
   iconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
+    ...COMMON_STYLES.iconContainer,
   },
   menuTextContainer: {
     flex: 1,
+    marginRight: UI_CONSTANTS.SPACING.MD,
   },
   menuTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#222',
-    marginBottom: 4,
+    ...COMMON_STYLES.text.primary,
+    marginBottom: UI_CONSTANTS.SPACING.XS,
   },
   menuSubtitle: {
-    fontSize: 14,
-    color: '#7A7A7A',
+    ...COMMON_STYLES.text.secondary,
   },
   activityContainer: {
     marginBottom: 24,

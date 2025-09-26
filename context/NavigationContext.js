@@ -25,14 +25,11 @@ export const NavigationProvider = ({ children }) => {
       
       const navigationData = await navigationService.getUserNavigation();
       
-      // Verify job_role_id matches with stored user data
-      const userData = await authUtils.getUserData();
-      if (userData && userData.job_role_id && navigationData.user_id) {
-        // For now, we'll assume the navigation is valid if we get a response
-        // You can add additional validation here if needed
+      // Set navigation data if we get a valid response
+      if (navigationData && navigationData.data) {
         setUserNavigation(navigationData);
       } else {
-        throw new Error('User data mismatch');
+        throw new Error('Invalid navigation data received');
       }
     } catch (error) {
       console.error('Error loading user navigation:', error);

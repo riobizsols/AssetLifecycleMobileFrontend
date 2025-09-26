@@ -10,12 +10,14 @@ import {
 } from "react-native";
 import { Appbar } from "react-native-paper";
 import { useNavigation, useRoute } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { API_CONFIG, getApiHeaders, API_ENDPOINTS } from "../../config/api";
 import CustomAlert from "../../components/CustomAlert";
 
 export default function EmployeeAssetAssign() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute();
   const { employeeId, employeeName } = route.params || {};
@@ -30,8 +32,8 @@ export default function EmployeeAssetAssign() {
     type: 'info',
     onConfirm: () => {},
     onCancel: () => {},
-    confirmText: 'OK',
-    cancelText: 'Cancel',
+    confirmText: t('common.ok'),
+    cancelText: t('common.cancel'),
     showCancel: false,
   });
 
@@ -48,8 +50,8 @@ export default function EmployeeAssetAssign() {
       onCancel: () => {
         setAlertConfig(prev => ({ ...prev, visible: false }));
       },
-      confirmText: 'OK',
-      cancelText: 'Cancel',
+      confirmText: t('common.ok'),
+      cancelText: t('common.cancel'),
       showCancel,
     });
   };
@@ -91,17 +93,17 @@ export default function EmployeeAssetAssign() {
 
       if (!response.ok) {
         if (response.status === 404) {
-          showAlert("Asset Not Found", "No asset found with this serial number.", "error");
+          showAlert(t('assets.assetNotFound'), t('assets.noAssetFoundWithSerial'), "error");
           return;
         }
         if (response.status === 401) {
-          showAlert("Authentication Error", "Please check your authorization token.", "error");
+          showAlert(t('assets.authenticationError'), t('assets.checkAuthorizationToken'), "error");
           return;
         }
         if (response.status === 500) {
           const errorData = await response.json().catch(() => ({}));
           console.error('Server error details:', errorData);
-          showAlert("Server Error", "The server encountered an error. Please try again later.", "error");
+          showAlert(t('assets.serverError'), t('assets.serverEncounteredError'), "error");
           return;
         }
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -126,23 +128,23 @@ export default function EmployeeAssetAssign() {
         // Check if asset is already assigned
         await checkAssetAssignment(assetId, data);
       } else {
-        showAlert("Asset Not Found", "No asset found with this serial number.", "error");
+        showAlert(t('assets.assetNotFound'), t('assets.noAssetFoundWithSerial'), "error");
       }
     } catch (error) {
       console.error("Error checking serial number:", error);
       
       // Provide more specific error messages
-      let errorMessage = "Failed to check serial number. Please try again.";
+      let errorMessage = t('assets.failedToCheckSerialNumber');
       
       if (error.message.includes("Network request failed")) {
-        errorMessage = "Network connection failed. Please check:\n\n1. Your backend server is running on port 4000\n2. Your device is connected to the same network\n3. The IP address in config/api.js is correct";
+        errorMessage = t('assets.networkConnectionFailed');
       } else if (error.message.includes("timeout")) {
-        errorMessage = "Request timed out. Please check your network connection.";
+        errorMessage = t('assets.requestTimedOutNetwork');
       } else if (error.message.includes("fetch")) {
-        errorMessage = "Unable to connect to server. Please check if the backend is running.";
+        errorMessage = t('assets.unableToConnectToServer');
       }
       
-      showAlert("Network Error", errorMessage, "error");
+      showAlert(t('assets.networkError'), errorMessage, "error");
     } finally {
       setLoading(false);
     }
@@ -179,9 +181,9 @@ export default function EmployeeAssetAssign() {
         }
         if (response.status === 401) {
           Alert.alert(
-            "Authentication Error",
-            "Please check your authorization token.",
-            [{ text: "OK" }]
+            t('assets.authenticationError'),
+            t('assets.checkAuthorizationToken'),
+            [{ text: t('common.ok') }]
           );
           return;
         }
@@ -189,9 +191,9 @@ export default function EmployeeAssetAssign() {
           const errorData = await response.json().catch(() => ({}));
           console.error('Server error details:', errorData);
           Alert.alert(
-            "Server Error",
-            "The server encountered an error. Please try again later.",
-            [{ text: "OK" }]
+            t('assets.serverError'),
+            t('assets.serverEncounteredError'),
+            [{ text: t('common.ok') }]
           );
           return;
         }
@@ -242,20 +244,20 @@ export default function EmployeeAssetAssign() {
       console.error("Error getting asset assignment:", error);
       
       // Provide more specific error messages
-      let errorMessage = "Failed to get asset assignment data. Please try again.";
+      let errorMessage = t('assets.failedToGetAssetAssignmentData');
       
       if (error.message.includes("Network request failed")) {
-        errorMessage = "Network connection failed. Please check:\n\n1. Your backend server is running on port 4000\n2. Your device is connected to the same network\n3. The IP address in config/api.js is correct";
+        errorMessage = t('assets.networkConnectionFailed');
       } else if (error.message.includes("timeout")) {
-        errorMessage = "Request timed out. Please check your network connection.";
+        errorMessage = t('assets.requestTimedOutNetwork');
       } else if (error.message.includes("fetch")) {
-        errorMessage = "Unable to connect to server. Please check if the backend is running.";
+        errorMessage = t('assets.unableToConnectToServer');
       }
       
       Alert.alert(
-        "Network Error",
+        t('assets.networkError'),
         errorMessage,
-        [{ text: "OK" }]
+        [{ text: t('common.ok') }]
       );
     }
   };
@@ -299,7 +301,7 @@ export default function EmployeeAssetAssign() {
           borderRadius: 40,
         }}
       >
-        <Text style={{ color: "#fff" }}>Point camera at barcode</Text>
+        <Text style={{ color: "#fff" }}>{t('scanning.pointCameraAtBarcode')}</Text>
       </View>
     </View>
   ) : (
@@ -312,7 +314,7 @@ export default function EmployeeAssetAssign() {
           onPress={() => navigation.goBack()}
         />
         <View style={styles.centerTitleContainer}>
-          <Text style={styles.appbarTitle}>Employee Asset Assign</Text>
+          <Text style={styles.appbarTitle}>{t('assets.employeeAssetAssign')}</Text>
         </View>
       </Appbar.Header>
 
@@ -320,9 +322,9 @@ export default function EmployeeAssetAssign() {
       <View style={styles.container}>
         {/* Card */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Assign Asset</Text>
+          <Text style={styles.cardTitle}>{t('assets.assignAsset')}</Text>
           <Text style={styles.cardSubtitle}>
-            Select an asset to assign to{"\n"}this employee
+            {t('assets.selectAssetToAssignToEmployee')}
           </Text>
           <View style={styles.iconContainer}>
             <MaterialCommunityIcons
@@ -334,13 +336,13 @@ export default function EmployeeAssetAssign() {
           </View>
           {barcode && (
             <Text style={{ marginTop: 20, color: "#003667", fontWeight: "bold" }}>
-              Barcode Value: {barcode}
+              {t('scanning.barcodeValue')}: {barcode}
             </Text>
           )}
           {loading && (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color="#003667" />
-              <Text style={styles.loadingText}>Processing...</Text>
+              <Text style={styles.loadingText}>{t('assets.processing')}</Text>
             </View>
           )}
         </View>
@@ -351,7 +353,7 @@ export default function EmployeeAssetAssign() {
           onPress={openCamera}
           disabled={loading}
         >
-          <Text style={styles.buttonText}>Scan Asset</Text>
+          <Text style={styles.buttonText}>{t('scanning.scanAsset')}</Text>
         </TouchableOpacity>
 
         {/* Assign Button */}
@@ -366,7 +368,7 @@ export default function EmployeeAssetAssign() {
             });
           }}
         >
-          <Text style={styles.buttonText}>Assign Asset</Text>
+          <Text style={styles.buttonText}>{t('assets.assignAsset')}</Text>
         </TouchableOpacity>
       </View>
       

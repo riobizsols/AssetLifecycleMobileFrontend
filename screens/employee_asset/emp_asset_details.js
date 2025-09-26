@@ -13,10 +13,12 @@ import {
 } from "react-native";
 import { Appbar } from "react-native-paper";
 import { useNavigation, useRoute } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { API_CONFIG, getApiHeaders, API_ENDPOINTS } from "../../config/api";
 import CustomAlert from "../../components/CustomAlert";
 
 export default function EmployeeAssetDetails() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute();
   const { assetData, assetAssignment, barcode, serialNumber, employeeId, employeeName } = route.params || {};
@@ -31,8 +33,8 @@ export default function EmployeeAssetDetails() {
     type: 'info',
     onConfirm: () => {},
     onCancel: () => {},
-    confirmText: 'OK',
-    cancelText: 'Cancel',
+    confirmText: t('common.ok'),
+    cancelText: t('common.cancel'),
     showCancel: false,
   });
 
@@ -49,15 +51,15 @@ export default function EmployeeAssetDetails() {
       onCancel: () => {
         setAlertConfig(prev => ({ ...prev, visible: false }));
       },
-      confirmText: 'OK',
-      cancelText: 'Cancel',
+      confirmText: t('common.ok'),
+      cancelText: t('common.cancel'),
       showCancel,
     });
   };
 
   // Helper function to format date
   const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
+    if (!dateString) return t('common.notAvailable');
     try {
       const date = new Date(dateString);
       return date.toLocaleDateString("en-GB"); // DD/MM/YYYY format
@@ -277,7 +279,7 @@ export default function EmployeeAssetDetails() {
     const assetId = assetData?.asset_id || assetData?.id || assetAssignment?.asset_id;
     
     if (!assetId) {
-      showAlert("Error", "Asset ID not found", "error");
+      showAlert(t('common.error'), t('assets.assetIdNotFound'), "error");
       return;
     }
 
@@ -309,13 +311,13 @@ export default function EmployeeAssetDetails() {
           }
         } catch (error) {
           console.error("Error fetching current assignment:", error);
-          showAlert("Error", "Failed to fetch current assignment details", "error");
+          showAlert(t('common.error'), t('assets.failedToFetchCurrentAssignmentDetails'), "error");
           return;
         }
       }
       
       if (!currentAssignment) {
-        showAlert("Error", "No active assignment found for this asset", "error");
+        showAlert(t('common.error'), t('assets.noActiveAssignmentFound'), "error");
         return;
       }
 
@@ -367,7 +369,7 @@ export default function EmployeeAssetDetails() {
       });
 
       if (createResponse.ok) {
-        showAlert("Success", "Assignment cancelled successfully", "success", () => {
+        showAlert(t('assets.success'), t('assets.assignmentCancelledSuccessfully'), "success", () => {
           navigation.goBack();
         });
       } else {
@@ -377,7 +379,7 @@ export default function EmployeeAssetDetails() {
       }
     } catch (error) {
       console.error("Error cancelling assignment:", error);
-      showAlert("Error", "Failed to cancel assignment. Please try again.", "error");
+      showAlert(t('common.error'), t('assets.failedToCancelAssignment'), "error");
     } finally {
       setLoading(false);
     }
@@ -393,7 +395,7 @@ export default function EmployeeAssetDetails() {
           onPress={() => navigation.goBack()}
         />
         <View style={styles.centerTitleContainer}>
-          <Text style={styles.appbarTitle}>Asset Assignment Details</Text>
+          <Text style={styles.appbarTitle}>{t('assets.assetAssignmentDetails')}</Text>
         </View>
       </Appbar.Header>
 
@@ -402,7 +404,7 @@ export default function EmployeeAssetDetails() {
         <View style={styles.searchRow}>
           <TextInput
             style={styles.searchInput}
-            placeholder="Serial Number"
+            placeholder={t('assets.serialNumber')}
             placeholderTextColor="#7A7A7A"
             value={serialNumber || barcode || ""}
             editable={false}
@@ -419,41 +421,41 @@ export default function EmployeeAssetDetails() {
         {/* Asset Details Card */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <Text style={styles.cardHeaderText}>Asset Details</Text>
+            <Text style={styles.cardHeaderText}>{t('assets.assetDetails')}</Text>
           </View>
           <View style={styles.yellowLine} />
           <View style={styles.detailsTable}>
             <DetailRow
-              label="Asset ID"
-              value={assetData?.asset_id || assetData?.id || assetAssignment?.asset_id || "N/A"}
+              label={t('assets.assetId')}
+              value={assetData?.asset_id || assetData?.id || assetAssignment?.asset_id || t('common.notAvailable')}
             />
             <DetailRow
-              label="Serial Number"
-              value={serialNumber || assetData?.serial_number || assetAssignment?.asset_id || "N/A"}
+              label={t('assets.serialNumber')}
+              value={serialNumber || assetData?.serial_number || assetAssignment?.asset_id || t('common.notAvailable')}
             />
             <DetailRow
-              label="Description"
-              value={assetData?.description || assetData?.text || assetData?.name || "N/A"}
+              label={t('assets.description')}
+              value={assetData?.description || assetData?.text || assetData?.name || t('common.notAvailable')}
             />
             <DetailRow
-              label="Department"
+              label={t('employees.department')}
               value={
                 loadingDetails
-                  ? "Loading..."
-                  : departmentDetails?.text || departmentDetails?.name || "N/A"
+                  ? t('assets.loading')
+                  : departmentDetails?.text || departmentDetails?.name || t('common.notAvailable')
               }
             />
             <DetailRow
-              label="Assigned To"
+              label={t('assets.assignedTo')}
               value={
                 loadingDetails
-                  ? "Loading..."
+                  ? t('assets.loading')
                   : employeeDetails
                   ? employeeDetails.name ||
                     employeeDetails.full_name ||
                     employeeDetails.employee_name ||
-                    "Unknown Name"
-                  : "N/A"
+                    t('assets.unknownName')
+                  : t('common.notAvailable')
               }
             />
             {/* <DetailRow
@@ -484,7 +486,7 @@ export default function EmployeeAssetDetails() {
             {loading ? (
               <ActivityIndicator size="small" color="#fff" />
             ) : (
-              <Text style={styles.cancelBtnText}>Cancel Assignment</Text>
+              <Text style={styles.cancelBtnText}>{t('assets.cancelAssignment')}</Text>
             )}
           </TouchableOpacity>
         </View>

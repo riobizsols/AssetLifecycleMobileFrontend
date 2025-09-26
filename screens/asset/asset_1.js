@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { Appbar } from "react-native-paper";
 import { useNavigation } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { API_CONFIG, getApiHeaders, API_ENDPOINTS } from "../../config/api";
 import { authUtils } from "../../utils/auth";
@@ -19,6 +20,7 @@ import SideMenu from "../../components/SideMenu";
 import { useNavigation as useNavigationContext } from "../../context/NavigationContext";
 
 export default function App() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const { hasAccess } = useNavigationContext();
   const [showCamera, setShowCamera] = useState(false);
@@ -33,8 +35,8 @@ export default function App() {
     type: 'info',
     onConfirm: () => {},
     onCancel: () => {},
-    confirmText: 'OK',
-    cancelText: 'Cancel',
+    confirmText: t('common.ok'),
+    cancelText: t('common.cancel'),
     showCancel: false,
   });
 
@@ -51,16 +53,16 @@ export default function App() {
       onCancel: () => {
         setAlertConfig(prev => ({ ...prev, visible: false }));
       },
-      confirmText: 'OK',
-      cancelText: 'Cancel',
+      confirmText: t('common.ok'),
+      cancelText: t('common.cancel'),
       showCancel,
     });
   };
 
   const handleLogout = async () => {
     showAlert(
-      "Logout",
-      "Are you sure you want to logout?",
+      t('auth.logout'),
+      t('auth.logoutConfirm'),
       'warning',
       async () => {
         try {
@@ -71,7 +73,7 @@ export default function App() {
           });
         } catch (error) {
           console.error('Logout error:', error);
-          showAlert('Error', 'Failed to logout. Please try again.', 'error');
+          showAlert(t('common.error'), t('auth.logoutFailed'), 'error');
         }
       },
       true
@@ -124,17 +126,17 @@ export default function App() {
       if (!response.ok) {
         if (response.status === 404) {
           Alert.alert(
-            "Asset Not Found",
-            "No asset found with this serial number.",
-            [{ text: "OK" }]
+            t('assets.assetNotFound'),
+            t('assets.noAssetFoundWithSerial'),
+            [{ text: t('common.ok') }]
           );
           return;
         }
         if (response.status === 401) {
           Alert.alert(
-            "Authentication Error",
-            "Please check your authorization token.",
-            [{ text: "OK" }]
+            t('assets.authenticationError'),
+            t('assets.checkAuthorizationToken'),
+            [{ text: t('common.ok') }]
           );
           return;
         }
@@ -142,9 +144,9 @@ export default function App() {
           const errorData = await response.json().catch(() => ({}));
           console.error('Server error details:', errorData);
           Alert.alert(
-            "Server Error",
-            "The server encountered an error. Please try again later.",
-            [{ text: "OK" }]
+            t('assets.serverError'),
+            t('assets.serverEncounteredError'),
+            [{ text: t('common.ok') }]
           );
           return;
         }
@@ -171,29 +173,29 @@ export default function App() {
         await getAssetAssignment(assetId);
       } else {
         Alert.alert(
-          "Asset Not Found",
-          "No asset found with this serial number.",
-          [{ text: "OK" }]
+          t('assets.assetNotFound'),
+          t('assets.noAssetFoundWithSerial'),
+          [{ text: t('common.ok') }]
         );
       }
     } catch (error) {
       console.error("Error checking serial number:", error);
       
       // Provide more specific error messages
-      let errorMessage = "Failed to check serial number. Please try again.";
+      let errorMessage = t('assets.failedToCheckSerialNumber');
       
       if (error.message.includes("Network request failed")) {
-        errorMessage = "Network connection failed. Please check:\n\n1. Your backend server is running on port 4000\n2. Your device is connected to the same network\n3. The IP address in config/api.js is correct";
+        errorMessage = t('assets.networkConnectionFailed');
       } else if (error.message.includes("timeout")) {
-        errorMessage = "Request timed out. Please check your network connection.";
+        errorMessage = t('assets.requestTimedOut');
       } else if (error.message.includes("fetch")) {
-        errorMessage = "Unable to connect to server. Please check if the backend is running.";
+        errorMessage = t('assets.unableToConnectToServer');
       }
       
       Alert.alert(
-        "Network Error",
+        t('assets.networkError'),
         errorMessage,
-        [{ text: "OK" }]
+        [{ text: t('common.ok') }]
       );
     } finally {
       setLoading(false);
@@ -220,17 +222,17 @@ export default function App() {
       if (!response.ok) {
         if (response.status === 404) {
           Alert.alert(
-            "No Assignment Found",
-            "This asset is not assigned to any employee.",
-            [{ text: "OK" }]
+            t('assets.noAssignmentFound'),
+            t('assets.assetNotAssignedToEmployee'),
+            [{ text: t('common.ok') }]
           );
           return;
         }
         if (response.status === 401) {
           Alert.alert(
-            "Authentication Error",
-            "Please check your authorization token.",
-            [{ text: "OK" }]
+            t('assets.authenticationError'),
+            t('assets.checkAuthorizationToken'),
+            [{ text: t('common.ok') }]
           );
           return;
         }
@@ -238,9 +240,9 @@ export default function App() {
           const errorData = await response.json().catch(() => ({}));
           console.error('Server error details:', errorData);
           Alert.alert(
-            "Server Error",
-            "The server encountered an error. Please try again later.",
-            [{ text: "OK" }]
+            t('assets.serverError'),
+            t('assets.serverEncounteredError'),
+            [{ text: t('common.ok') }]
           );
           return;
         }
@@ -274,7 +276,7 @@ export default function App() {
               barcode: barcode 
             });
           } else {
-            showAlert('Access Denied', 'You do not have permission to assign assets. You can only view asset details.', 'error');
+            showAlert(t('assets.accessDenied'), t('assets.noPermissionToAssignAssets'), 'error');
           }
         }
       } else {
@@ -286,27 +288,27 @@ export default function App() {
             barcode: barcode 
           });
         } else {
-          showAlert('Access Denied', 'You do not have permission to assign assets. You can only view asset details.', 'error');
+          showAlert(t('assets.accessDenied'), t('assets.noPermissionToAssignAssets'), 'error');
         }
       }
     } catch (error) {
       console.error("Error getting asset assignment:", error);
       
       // Provide more specific error messages
-      let errorMessage = "Failed to get asset assignment data. Please try again.";
+      let errorMessage = t('assets.failedToGetAssetAssignment');
       
       if (error.message.includes("Network request failed")) {
-        errorMessage = "Network connection failed. Please check:\n\n1. Your backend server is running on port 4000\n2. Your device is connected to the same network\n3. The IP address in config/api.js is correct";
+        errorMessage = t('assets.networkConnectionFailed');
       } else if (error.message.includes("timeout")) {
-        errorMessage = "Request timed out. Please check your network connection.";
+        errorMessage = t('assets.requestTimedOut');
       } else if (error.message.includes("fetch")) {
-        errorMessage = "Unable to connect to server. Please check if the backend is running.";
+        errorMessage = t('assets.unableToConnectToServer');
       }
       
       Alert.alert(
-        "Network Error",
+        t('assets.networkError'),
         errorMessage,
-        [{ text: "OK" }]
+        [{ text: t('common.ok') }]
       );
     }
   };
@@ -350,7 +352,7 @@ export default function App() {
           borderRadius: 40,
         }}
       >
-        <Text style={{ color: "#fff" }}>Point camera at barcode</Text>
+        <Text style={{ color: "#fff" }}>{t('scanning.pointCameraAtBarcode')}</Text>
       </View>
     </View>
   ) : (
@@ -365,7 +367,7 @@ export default function App() {
             <MaterialCommunityIcons name="arrow-left" size={24} color="#FEC200" />
           </TouchableOpacity>
           <View style={styles.centerTitleContainer}>
-            <Text style={styles.appbarTitle}>Asset</Text>
+            <Text style={styles.appbarTitle}>{t('navigation.assetAssignment')}</Text>
           </View>
           {/* <Appbar.Action icon="logout" color="#FEC200" onPress={handleLogout} /> */}
         </Appbar.Header>
@@ -374,9 +376,9 @@ export default function App() {
       <View style={styles.container}>
         {/* Card */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Scan Barcode</Text>
+          <Text style={styles.cardTitle}>{t('scanning.scanBarcode')}</Text>
           <Text style={styles.cardSubtitle}>
-            Hold your device over a barcode to{"\n"}scan
+            {t('scanning.scanning')}
           </Text>
           <View style={styles.barcodeContainer}>
             <MaterialCommunityIcons
@@ -388,13 +390,13 @@ export default function App() {
           </View>
           {barcode && (
             <Text style={{ marginTop: 20, color: "#003667", fontWeight: "bold" }}>
-              Barcode Value: {barcode}
+              {t('scanning.barcodeValue')}: {barcode}
             </Text>
           )}
           {loading && (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color="#003667" />
-              <Text style={styles.loadingText}>Processing...</Text>
+              <Text style={styles.loadingText}>{t('assets.processing')}</Text>
             </View>
           )}
         </View>
@@ -405,7 +407,7 @@ export default function App() {
           onPress={openCamera}
           disabled={loading}
         >
-          <Text style={styles.buttonText}>Scan Asset</Text>
+          <Text style={styles.buttonText}>{t('scanning.scanAsset')}</Text>
         </TouchableOpacity>
       </View>
       

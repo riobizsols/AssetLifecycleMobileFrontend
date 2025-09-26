@@ -13,9 +13,11 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { Appbar } from "react-native-paper";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { API_CONFIG, getApiHeaders, API_ENDPOINTS } from "../../config/api";
 
 export default function EmployeeListScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute();
   const { departmentId, employeeData } = route.params || {};
@@ -39,7 +41,7 @@ export default function EmployeeListScreen() {
           <Appbar.Action icon="menu" color="#FEC200" onPress={() => {}} />
           {/* Centered Title */}
           <View style={styles.centerTitleContainer}>
-            <Text style={styles.appbarTitle}>Employee List</Text>
+            <Text style={styles.appbarTitle}>{t('assets.employeeList')}</Text>
           </View>
           {/* Right side empty to balance layout */}
           <View style={{ width: 40 }} />
@@ -56,13 +58,13 @@ export default function EmployeeListScreen() {
         <View style={styles.tableContainer}>
           <View style={styles.tableHeader}>
             <Text style={[styles.tableHeaderText, { flex: 1.2 }]}>
-              Employee Id
+              {t('assets.employeeId')}
             </Text>
             <Text style={[styles.tableHeaderText, { flex: 2 }]}>
-              Employee name
+              {t('assets.employeeName')}
             </Text>
             <Text style={[styles.tableHeaderText, { flex: 1.5 }]}>
-              No. Of. Assets Assigned
+              {t('assets.noOfAssetsAssigned')}
             </Text>
           </View>
           <View style={styles.yellowLine} />
@@ -125,8 +127,8 @@ export default function EmployeeListScreen() {
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>
                 {departmentId
-                  ? "No employees found for this department"
-                  : "No employee data available"}
+                  ? t('assets.noEmployeesFoundForDepartment')
+                  : t('assets.noEmployeeDataAvailable')}
               </Text>
             </View>
           )}

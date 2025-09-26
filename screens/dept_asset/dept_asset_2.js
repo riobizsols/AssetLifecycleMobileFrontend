@@ -13,9 +13,11 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Appbar } from "react-native-paper";
 import { useNavigation, useRoute } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { API_CONFIG, getApiHeaders, API_ENDPOINTS } from "../../config/api";
 
 export default function DepartmentAssetsScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute();
   const { departmentId } = route.params || {};
@@ -52,7 +54,7 @@ export default function DepartmentAssetsScreen() {
             if (empResponse.ok) {
               const empData = await empResponse.json();
               empData.forEach(emp => {
-                employeeMap[emp.employee_int_id] = emp.employee_name || emp.name || emp.full_name || "Unknown";
+                employeeMap[emp.employee_int_id] = emp.employee_name || emp.name || emp.full_name || t('assets.unknownEmployee');
               });
             }
           } catch (error) {
@@ -70,7 +72,7 @@ export default function DepartmentAssetsScreen() {
   // Fetch department assets
   const fetchDepartmentAssets = async (deptId) => {
     if (!deptId) {
-      Alert.alert("Error", "Department ID is required");
+      Alert.alert(t('common.error'), t('assets.departmentIdRequired'));
       return;
     }
 
@@ -94,9 +96,9 @@ export default function DepartmentAssetsScreen() {
       if (!response.ok) {
         if (response.status === 404) {
           Alert.alert(
-            "No Assets Found",
-            "No assets found for this department.",
-            [{ text: "OK" }]
+            t('assets.noAssetsFound'),
+            t('assets.noAssetsFoundForDepartmentMessage'),
+            [{ text: t('common.ok') }]
           );
           setAssetData([]);
           setDepartmentInfo({ name: "", assetCount: 0 });
@@ -104,9 +106,9 @@ export default function DepartmentAssetsScreen() {
         }
         if (response.status === 401) {
           Alert.alert(
-            "Authentication Error",
-            "Please check your authorization token.",
-            [{ text: "OK" }]
+            t('assets.authenticationError'),
+            t('assets.checkAuthorizationToken'),
+            [{ text: t('common.ok') }]
           );
           return;
         }
@@ -127,7 +129,7 @@ export default function DepartmentAssetsScreen() {
           console.log(`Processing asset: ${assignment.asset_name} (${assignment.serial_number})`);
           
           // Get employee name from the employees array if available
-          let employeeName = "Unknown";
+          let employeeName = t('assets.unknownEmployee');
           if (data.employees && Array.isArray(data.employees)) {
             const employee = data.employees.find(emp => emp.emp_int_id === assignment.employee_int_id);
             if (employee) {
@@ -136,7 +138,7 @@ export default function DepartmentAssetsScreen() {
           }
           
           processedAssets.push({
-            type: assignment.asset_name || assignment.asset_type_name || `Asset ${assignment.asset_id}`,
+            type: assignment.asset_name || assignment.asset_type_name || `${t('assets.asset')} ${assignment.asset_id}`,
             serial: assignment.serial_number || `SN-${assignment.asset_id}`,
             assigned: employeeName,
             assetId: assignment.asset_id,
@@ -162,14 +164,14 @@ export default function DepartmentAssetsScreen() {
               console.log(`Asset details for ${assignment.asset_id}:`, assetDetails);
               
               // Handle the asset details response structure
-              let assetDescription = "Unknown Asset";
+              let assetDescription = t('assets.unknownAsset');
               let serialNumber = `SN-${assignment.asset_id}`;
               
               if (Array.isArray(assetDetails) && assetDetails.length > 0) {
-                assetDescription = assetDetails[0].description || assetDetails[0].text || assetDetails[0].name || `Asset ${assignment.asset_id}`;
+                assetDescription = assetDetails[0].description || assetDetails[0].text || assetDetails[0].name || `${t('assets.asset')} ${assignment.asset_id}`;
                 serialNumber = assetDetails[0].serial_number || `SN-${assignment.asset_id}`;
               } else if (assetDetails && typeof assetDetails === 'object') {
-                assetDescription = assetDetails.description || assetDetails.text || assetDetails.name || `Asset ${assignment.asset_id}`;
+                assetDescription = assetDetails.description || assetDetails.text || assetDetails.name || `${t('assets.asset')} ${assignment.asset_id}`;
                 serialNumber = assetDetails.serial_number || `SN-${assignment.asset_id}`;
               }
               
@@ -178,7 +180,7 @@ export default function DepartmentAssetsScreen() {
               processedAssets.push({
                 type: assetDescription,
                 serial: serialNumber,
-                assigned: employees[assignment.employee_int_id] || assignment.employee_int_id || "Unknown",
+                assigned: employees[assignment.employee_int_id] || assignment.employee_int_id || t('assets.unknownEmployee'),
                 assetId: assignment.asset_id,
                 assignmentId: assignment.asset_assign_id
               });
@@ -186,9 +188,9 @@ export default function DepartmentAssetsScreen() {
               console.log(`Asset details not available for ${assignment.asset_id}, using fallback`);
               // Fallback if asset details not available
               processedAssets.push({
-                type: `Asset ${assignment.asset_id}`,
+                type: `${t('assets.asset')} ${assignment.asset_id}`,
                 serial: `SN-${assignment.asset_id}`,
-                assigned: employees[assignment.employee_int_id] || assignment.employee_int_id || "Unknown",
+                assigned: employees[assignment.employee_int_id] || assignment.employee_int_id || t('assets.unknownEmployee'),
                 assetId: assignment.asset_id,
                 assignmentId: assignment.asset_assign_id
               });
@@ -197,7 +199,7 @@ export default function DepartmentAssetsScreen() {
             console.error(`Error fetching asset details for ${assignment.asset_id}:`, error);
             // Fallback if asset details fetch fails
             processedAssets.push({
-              type: `Asset ${assignment.asset_id}`,
+              type: `${t('assets.asset')} ${assignment.asset_id}`,
               serial: `SN-${assignment.asset_id}`,
               assigned: employees[assignment.employee_int_id] || assignment.employee_int_id || "Unknown",
               assetId: assignment.asset_id,
@@ -217,29 +219,29 @@ export default function DepartmentAssetsScreen() {
             
             if (assetResponse.ok) {
               const assetDetails = await assetResponse.json();
-              let assetDescription = "Unknown Asset";
+              let assetDescription = t('assets.unknownAsset');
               let serialNumber = `SN-${assignment.asset_id}`;
               
               if (Array.isArray(assetDetails) && assetDetails.length > 0) {
-                assetDescription = assetDetails[0].description || assetDetails[0].text || assetDetails[0].name || `Asset ${assignment.asset_id}`;
+                assetDescription = assetDetails[0].description || assetDetails[0].text || assetDetails[0].name || `${t('assets.asset')} ${assignment.asset_id}`;
                 serialNumber = assetDetails[0].serial_number || `SN-${assignment.asset_id}`;
               } else if (assetDetails && typeof assetDetails === 'object') {
-                assetDescription = assetDetails.description || assetDetails.text || assetDetails.name || `Asset ${assignment.asset_id}`;
+                assetDescription = assetDetails.description || assetDetails.text || assetDetails.name || `${t('assets.asset')} ${assignment.asset_id}`;
                 serialNumber = assetDetails.serial_number || `SN-${assignment.asset_id}`;
               }
               
               processedAssets.push({
                 type: assetDescription,
                 serial: serialNumber,
-                assigned: employees[assignment.employee_int_id] || assignment.employee_int_id || "Unknown",
+                assigned: employees[assignment.employee_int_id] || assignment.employee_int_id || t('assets.unknownEmployee'),
                 assetId: assignment.asset_id,
                 assignmentId: assignment.asset_assign_id
               });
             } else {
               processedAssets.push({
-                type: `Asset ${assignment.asset_id}`,
+                type: `${t('assets.asset')} ${assignment.asset_id}`,
                 serial: `SN-${assignment.asset_id}`,
-                assigned: employees[assignment.employee_int_id] || assignment.employee_int_id || "Unknown",
+                assigned: employees[assignment.employee_int_id] || assignment.employee_int_id || t('assets.unknownEmployee'),
                 assetId: assignment.asset_id,
                 assignmentId: assignment.asset_assign_id
               });
@@ -247,7 +249,7 @@ export default function DepartmentAssetsScreen() {
           } catch (error) {
             console.error(`Error fetching asset details for ${assignment.asset_id}:`, error);
             processedAssets.push({
-              type: `Asset ${assignment.asset_id}`,
+              type: `${t('assets.asset')} ${assignment.asset_id}`,
               serial: `SN-${assignment.asset_id}`,
               assigned: employees[assignment.employee_int_id] || assignment.employee_int_id || "Unknown",
               assetId: assignment.asset_id,
@@ -267,9 +269,9 @@ export default function DepartmentAssetsScreen() {
     } catch (error) {
       console.error("Error fetching department assets:", error);
       if (error.name === 'AbortError') {
-        Alert.alert("Timeout", "Request timed out. Please try again.");
+        Alert.alert(t('common.timeout'), t('assets.requestTimedOut'));
       } else {
-        Alert.alert("Error", "Failed to fetch department assets. Please try again.");
+        Alert.alert(t('common.error'), t('assets.failedToFetchDepartmentAssets'));
       }
     } finally {
       setLoading(false);
@@ -296,7 +298,7 @@ export default function DepartmentAssetsScreen() {
           <Appbar.Action icon="menu" color="#FEC200" onPress={() => {}} />
           {/* Centered Title */}
           <View style={styles.centerTitleContainer}>
-            <Text style={styles.appbarTitle}>Department Assets</Text>
+            <Text style={styles.appbarTitle}>{t('assets.departmentAssets')}</Text>
           </View>
           {/* Right side empty to balance layout */}
           <View style={{ width: 40 }} />
@@ -313,10 +315,10 @@ export default function DepartmentAssetsScreen() {
         <View style={styles.tableContainer}>
           <View style={styles.tableHeader}>
             <Text style={[styles.tableHeaderText, { flex: 1 }]}>
-              Asset
+              {t('assets.asset')}
             </Text>
             <Text style={[styles.tableHeaderText, { flex: 1 }]}>
-              Serial No.
+              {t('assets.serialNo')}
             </Text>
             {/* <Text style={[styles.tableHeaderText, { flex: 2 }]}>
               Assigned to
@@ -327,7 +329,7 @@ export default function DepartmentAssetsScreen() {
           {loading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color="#003667" />
-              <Text style={styles.loadingText}>Loading department assets...</Text>
+              <Text style={styles.loadingText}>{t('assets.loadingDepartmentAssets')}</Text>
             </View>
           ) : assetData.length > 0 ? (
             <FlatList
@@ -378,7 +380,7 @@ export default function DepartmentAssetsScreen() {
           ) : (
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>
-                {departmentId ? "No assets found for this department" : "No department data available"}
+                {departmentId ? t('assets.noAssetsFoundForDepartment') : t('assets.noDepartmentDataAvailable')}
               </Text>
             </View>
           )}

@@ -1,10 +1,17 @@
 import { API_CONFIG, getApiHeaders } from '../config/api';
 import { authUtils } from '../utils/auth';
+import { getMockNavigationData, shouldUseMockData } from '../utils/mockNavigationData';
 
 export const navigationService = {
   // Get user navigation from API
   async getUserNavigation() {
     try {
+      // Check if we should use mock data
+      if (shouldUseMockData()) {
+        console.log('Using mock navigation data');
+        return getMockNavigationData();
+      }
+
       const token = await authUtils.getToken();
       const response = await fetch(`${API_CONFIG.BASE_URL}/api/navigation/user/navigation?platform=M`, {
         method: 'GET',
@@ -23,7 +30,10 @@ export const navigationService = {
       return data;
     } catch (error) {
       console.error('Error fetching user navigation:', error);
-      throw error;
+      
+      // Fallback to mock data if API fails
+      console.log('Falling back to mock navigation data');
+      return getMockNavigationData();
     }
   },
 
@@ -57,18 +67,34 @@ export const navigationService = {
       'ASSETASSIGNMENT': 'Asset',
       'EMPASSIGNMENT': 'EmployeeAsset',
       'DEPTASSIGNMENT': 'DepartmentAsset',
+      'MAINTENANCE SUPERVISER': 'MaintenanceSupervisor',
+      'REPORTBREAKDOWN': 'REPORTBREAKDOWN',
     };
     return screenMap[appId] || 'Home';
   },
 
-  // Get navigation label
+  // Get navigation label (returns translation key)
   getNavigationLabel(appId) {
     const labelMap = {
-      'ASSETASSIGNMENT': 'Asset Assignment',
-      'EMPASSIGNMENT': 'Employee Assignment',
-      'DEPTASSIGNMENT': 'Department Assignment',
+      'ASSETASSIGNMENT': 'navigation.assetAssignment',
+      'EMPASSIGNMENT': 'navigation.employeeAssets',
+      'DEPTASSIGNMENT': 'navigation.departmentAssets',
+      'MAINTENANCE SUPERVISER': 'navigation.maintenanceSupervisor',
+      'REPORTBREAKDOWN': 'navigation.reportBreakdown',
     };
-    return labelMap[appId] || 'Unknown';
+    return labelMap[appId] || 'navigation.dashboard';
+  },
+
+  // Get navigation subtitle (returns translation key)
+  getNavigationSubtitle(appId) {
+    const subtitleMap = {
+      'ASSETASSIGNMENT': 'navigation.scanAndManageAssets',
+      'EMPASSIGNMENT': 'navigation.viewEmployeeAssetAssignments',
+      'DEPTASSIGNMENT': 'navigation.manageDepartmentAssetAllocations',
+      'MAINTENANCE SUPERVISER': 'navigation.updateMaintenanceSchedules',
+      'REPORTBREAKDOWN': 'navigation.viewAndManageBreakdownReports',
+    };
+    return subtitleMap[appId] || 'navigation.scanAndManageAssets';
   },
 
   // Get icon for navigation item
@@ -77,6 +103,8 @@ export const navigationService = {
       'ASSETASSIGNMENT': 'barcode-scan',
       'EMPASSIGNMENT': 'account-group',
       'DEPTASSIGNMENT': 'domain',
+      'MAINTENANCE SUPERVISER': 'wrench',
+      'REPORTBREAKDOWN': 'clipboard-alert',
     };
     return iconMap[appId] || 'view-dashboard';
   },

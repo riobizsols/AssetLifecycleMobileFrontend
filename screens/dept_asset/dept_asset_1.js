@@ -16,6 +16,7 @@ import { Appbar } from "react-native-paper";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Platform } from "react-native";
 import { useNavigation } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createStackNavigator } from "@react-navigation/stack";
 import Dept_Asset_2 from "../dept_asset/dept_asset_2";
@@ -28,6 +29,7 @@ const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
 export default function DepartmentScreenMain() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const [departmentId, setDepartmentId] = useState("");
   const [loading, setLoading] = useState(false);
@@ -47,8 +49,8 @@ export default function DepartmentScreenMain() {
     type: 'info',
     onConfirm: () => {},
     onCancel: () => {},
-    confirmText: 'OK',
-    cancelText: 'Cancel',
+    confirmText: t('common.ok'),
+    cancelText: t('common.cancel'),
     showCancel: false,
   });
 
@@ -65,16 +67,16 @@ export default function DepartmentScreenMain() {
       onCancel: () => {
         setAlertConfig(prev => ({ ...prev, visible: false }));
       },
-      confirmText: 'OK',
-      cancelText: 'Cancel',
+      confirmText: t('common.ok'),
+      cancelText: t('common.cancel'),
       showCancel,
     });
   };
 
   const handleLogout = async () => {
     showAlert(
-      "Logout",
-      "Are you sure you want to logout?",
+      t('common.logout'),
+      t('common.confirmLogout'),
       'warning',
       async () => {
         try {
@@ -85,7 +87,7 @@ export default function DepartmentScreenMain() {
           });
         } catch (error) {
           console.error('Logout error:', error);
-          showAlert('Error', 'Failed to logout. Please try again.', 'error');
+          showAlert(t('common.error'), t('common.failedToLogout'), 'error');
         }
       },
       true
@@ -184,7 +186,7 @@ export default function DepartmentScreenMain() {
   // Fetch department assignments
   const fetchDepartmentAssignments = async (deptId) => {
     if (!deptId.trim()) {
-      Alert.alert("Error", "Please enter a department ID");
+      Alert.alert(t('common.error'), t('assets.pleaseEnterDepartmentId'));
       return;
     }
 
@@ -211,9 +213,9 @@ export default function DepartmentScreenMain() {
       if (!response.ok) {
         if (response.status === 404) {
           Alert.alert(
-            "No Assignments Found",
-            "No assignments found for this department.",
-            [{ text: "OK" }]
+            t('assets.noAssignmentsFound'),
+            t('assets.noAssignmentsFoundForDepartment'),
+            [{ text: t('common.ok') }]
           );
           setEmployeeData([]);
           setDepartmentInfo({ name: "", assetCount: 0, employeeCount: 0 });
@@ -221,9 +223,9 @@ export default function DepartmentScreenMain() {
         }
         if (response.status === 401) {
           Alert.alert(
-            "Authentication Error",
-            "Please check your authorization token.",
-            [{ text: "OK" }]
+            t('assets.authenticationError'),
+            t('assets.checkAuthorizationToken'),
+            [{ text: t('common.ok') }]
           );
           return;
         }
@@ -311,7 +313,7 @@ export default function DepartmentScreenMain() {
                   emp.employee_name ||
                   emp.name ||
                   emp.full_name ||
-                  "Unknown Employee",
+                  t('assets.unknownEmployee'),
                 assets: assetCount,
               });
 
@@ -329,7 +331,7 @@ export default function DepartmentScreenMain() {
                   emp.employee_name ||
                   emp.name ||
                   emp.full_name ||
-                  "Unknown Employee",
+                  t('assets.unknownEmployee'),
                 assets: 0,
               });
             }
@@ -366,7 +368,7 @@ export default function DepartmentScreenMain() {
             if (!employeeAssetMap[employeeId]) {
               employeeAssetMap[employeeId] = {
                 id: employeeId,
-                name: employees[employeeId] || "Unknown Employee",
+                name: employees[employeeId] || t('assets.unknownEmployee'),
                 assets: 0,
               };
             }
@@ -398,11 +400,11 @@ export default function DepartmentScreenMain() {
     } catch (error) {
       console.error("Error fetching department assignments:", error);
       if (error.name === "AbortError") {
-        Alert.alert("Timeout", "Request timed out. Please try again.");
+        Alert.alert(t('common.timeout'), t('assets.requestTimedOut'));
       } else {
         Alert.alert(
-          "Error",
-          "Failed to fetch department assignments. Please try again."
+          t('common.error'),
+          t('assets.failedToFetchDepartmentAssignments')
         );
       }
     } finally {
@@ -430,7 +432,7 @@ export default function DepartmentScreenMain() {
           </TouchableOpacity>
           {/* Centered Title */}
           <View style={styles.centerTitleContainer}>
-            <Text style={styles.appbarTitle}>Department</Text>
+            <Text style={styles.appbarTitle}>{t('assets.departmentMain')}</Text>
           </View>
           {/* <Appbar.Action icon="logout" color="#FEC200" onPress={handleLogout} /> */}
         </Appbar.Header>
@@ -440,7 +442,7 @@ export default function DepartmentScreenMain() {
           <View style={styles.inputRow}>
             <TextInput
               style={styles.assetInput}
-              placeholder="Enter Department ID"
+              placeholder={t('assets.enterDepartmentId')}
               placeholderTextColor="#aaa"
               value={departmentId}
               onChangeText={setDepartmentId}
@@ -458,7 +460,7 @@ export default function DepartmentScreenMain() {
             </TouchableOpacity>
           </View>
           <View style={styles.infoRow}>
-            <Text style={styles.label}>Department</Text>
+            <Text style={styles.label}>{t('employees.department')}</Text>
             <Text style={styles.colon}>:</Text>
             <TextInput
               style={styles.valueInput}
@@ -467,7 +469,7 @@ export default function DepartmentScreenMain() {
             />
           </View>
           <View style={styles.infoRow}>
-            <Text style={styles.label}>No. Of. Asset</Text>
+            <Text style={styles.label}>{t('assets.noOfAsset')}</Text>
             <Text style={styles.colon}>:</Text>
             <TextInput
               style={styles.valueInput}
@@ -483,12 +485,12 @@ export default function DepartmentScreenMain() {
                   })
                 }
               >
-                View
+                {t('assets.view')}
               </Text>
             </TouchableOpacity>
           </View>
           <View style={styles.infoRow}>
-            <Text style={styles.label}>No. Of. Employee</Text>
+            <Text style={styles.label}>{t('assets.noOfEmployee')}</Text>
             <Text style={styles.colon}>:</Text>
             <TextInput
               style={styles.valueInput}
@@ -505,7 +507,7 @@ export default function DepartmentScreenMain() {
                   })
                 }
               >
-                View
+                {t('assets.view')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -515,13 +517,13 @@ export default function DepartmentScreenMain() {
         <View style={styles.tableContainer}>
           <View style={styles.tableHeader}>
             <Text style={[styles.tableHeaderText, { flex: 1.2 }]}>
-              Employee Id
+              {t('assets.employeeId')}
             </Text>
             <Text style={[styles.tableHeaderText, { flex: 2 }]}>
-              Employee name
+              {t('assets.employeeName')}
             </Text>
             <Text style={[styles.tableHeaderText, { flex: 1.5 }]}>
-              No. Of. Assets Assigned
+              {t('assets.noOfAssetsAssigned')}
             </Text>
           </View>
           <View style={styles.yellowLine} />
@@ -529,7 +531,7 @@ export default function DepartmentScreenMain() {
           {loading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color="#003667" />
-              <Text style={styles.loadingText}>Loading department data...</Text>
+              <Text style={styles.loadingText}>{t('assets.loadingDepartmentData')}</Text>
             </View>
           ) : employeeData.length > 0 ? (
             <FlatList
@@ -569,8 +571,8 @@ export default function DepartmentScreenMain() {
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>
                 {departmentId
-                  ? "No employees found for this department"
-                  : "Enter a department ID to view employees"}
+                  ? t('assets.noEmployeesFoundForDepartment')
+                  : t('assets.enterDepartmentIdToViewEmployees')}
               </Text>
             </View>
           )}
@@ -758,5 +760,6 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     color: "#666",
+    textAlign: "center",
   },
 });

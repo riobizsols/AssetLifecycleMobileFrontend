@@ -3,6 +3,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import React, { useState, useEffect } from "react";
 import { Appbar } from "react-native-paper";
 import { useNavigation, useRoute } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import Toast from "react-native-toast-message";
 
 import {
@@ -16,24 +17,163 @@ import {
     View,
     Alert,
     ActivityIndicator,
+    Dimensions,
 } from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import RNPickerSelect from "react-native-picker-select";
 import { API_CONFIG, getApiHeaders, API_ENDPOINTS } from "../../config/api";
+import { UI_CONSTANTS, COMMON_STYLES, UI_UTILS } from "../../utils/uiConstants";
 
-const departments = [
-  { label: "Loading...", value: "" },
-];
-const employees = [
-  { label: "Select Department First", value: "" },
-];
-const statuses = [
-  { label: "Assigned", value: "assigned" },
-  { label: "Unassigned", value: "unassigned" },
-  { label: "Available", value: "available" },
-];
+const { width, height } = Dimensions.get('window');
+
+// Responsive design breakpoints
+const BREAKPOINTS = {
+  SMALL: 320,   // iPhone SE, small phones
+  MEDIUM: 375,  // iPhone X, standard phones
+  LARGE: 414,   // iPhone Plus, large phones
+  TABLET: 768,  // iPad, tablets
+  DESKTOP: 1024, // Desktop/large tablets
+};
+
+// Device type detection
+const getDeviceType = () => {
+  if (width >= BREAKPOINTS.DESKTOP) return 'desktop';
+  if (width >= BREAKPOINTS.TABLET) return 'tablet';
+  if (width >= BREAKPOINTS.LARGE) return 'large';
+  if (width >= BREAKPOINTS.MEDIUM) return 'medium';
+  return 'small';
+};
+
+const DEVICE_TYPE = getDeviceType();
+
+// Responsive scaling functions
+const scale = (size) => {
+  const scaleFactor = width / BREAKPOINTS.MEDIUM; // Base on iPhone X (375px)
+  return Math.max(size * scaleFactor, size * 0.8); // Minimum 80% of original size
+};
+
+const verticalScale = (size) => {
+  const scaleFactor = height / 812; // Base on iPhone X height
+  return Math.max(size * scaleFactor, size * 0.8);
+};
+
+const moderateScale = (size, factor = 0.5) => {
+  return size + (scale(size) - size) * factor;
+};
+
+// Responsive UI constants for this screen
+const RESPONSIVE_CONSTANTS = {
+  // Responsive spacing
+  SPACING: {
+    XS: scale(4),
+    SM: scale(8),
+    MD: scale(12),
+    LG: scale(16),
+    XL: scale(20),
+    XXL: scale(24),
+    XXXL: scale(32),
+  },
+  
+  // Responsive font sizes
+  FONT_SIZES: {
+    XS: moderateScale(10),
+    SM: moderateScale(12),
+    MD: moderateScale(14),
+    LG: moderateScale(16),
+    XL: moderateScale(18),
+    XXL: moderateScale(20),
+    XXXL: moderateScale(24),
+    TITLE: moderateScale(28),
+  },
+  
+  // Responsive dimensions
+  CARD_PADDING: scale(16),
+  CARD_BORDER_RADIUS: scale(12),
+  INPUT_HEIGHT: verticalScale(45),
+  BUTTON_HEIGHT: verticalScale(40),
+  
+  // Responsive layout
+  getCardWidth: () => {
+    if (DEVICE_TYPE === 'desktop') return Math.min(width * 0.6, 600);
+    if (DEVICE_TYPE === 'tablet') return Math.min(width * 0.8, 500);
+    return width - scale(20); // Mobile: full width minus padding
+  },
+  
+  getFormRowLayout: () => {
+    if (DEVICE_TYPE === 'desktop' || DEVICE_TYPE === 'tablet') {
+      return {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: scale(16),
+      };
+    }
+    return {
+      flexDirection: 'column',
+      alignItems: 'stretch',
+      marginBottom: scale(16),
+    };
+  },
+  
+  getLabelWidth: () => {
+    if (DEVICE_TYPE === 'desktop' || DEVICE_TYPE === 'tablet') {
+      return { flex: 1.2 };
+    }
+    return { width: '100%', marginBottom: scale(4) };
+  },
+  
+  getInputWidth: () => {
+    if (DEVICE_TYPE === 'desktop' || DEVICE_TYPE === 'tablet') {
+      return { flex: 2 };
+    }
+    return { width: '100%' };
+  },
+  
+  getFooterLayout: () => {
+    if (DEVICE_TYPE === 'desktop' || DEVICE_TYPE === 'tablet') {
+      return {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+      };
+    }
+    return {
+      flexDirection: 'column',
+      alignItems: 'center',
+      gap: scale(12),
+    };
+  },
+  
+  getButtonSize: () => {
+    if (DEVICE_TYPE === 'desktop' || DEVICE_TYPE === 'tablet') {
+      return {
+        paddingHorizontal: scale(28),
+        paddingVertical: scale(12),
+        minWidth: scale(120),
+      };
+    }
+    return {
+      paddingHorizontal: scale(20),
+      paddingVertical: scale(12),
+      minWidth: scale(100),
+      flex: 1,
+    };
+  },
+};
 
 export default function App() {
+  const { t } = useTranslation();
+  
+  const departments = [
+    { label: t('assets.loading'), value: "" },
+  ];
+  const employees = [
+    { label: t('assets.selectDepartmentFirst'), value: "" },
+  ];
+  const statuses = [
+    { label: t('assets.assigned'), value: "assigned" },
+    { label: t('assets.unassigned'), value: "unassigned" },
+    { label: t('assets.available'), value: "available" },
+  ];
   const navigation = useNavigation();
   const route = useRoute();
   const { assetId, barcode } = route.params || {};
@@ -110,7 +250,7 @@ export default function App() {
       setDepartmentsList(transformedDepartments);
     } catch (error) {
       console.error('Error fetching departments:', error);
-      showToast('error', 'Error', 'Failed to load departments. Please try again.');
+      showToast('error', t('common.error'), t('assets.failedToLoadDepartments'));
     } finally {
       setLoadingDepartments(false);
     }
@@ -119,7 +259,7 @@ export default function App() {
   // Fetch employees by department
   const fetchEmployeesByDepartment = async (deptId) => {
     if (!deptId) {
-      setEmployeesList([{ label: "Select Department First", value: "" }]);
+      setEmployeesList([{ label: t('assets.selectDepartmentFirst'), value: "" }]);
       return;
     }
 
@@ -164,8 +304,8 @@ export default function App() {
       setEmployeesList(transformedEmployees);
     } catch (error) {
       console.error('Error fetching employees:', error);
-      showToast('error', 'Error', 'Failed to load employees. Please try again.');
-      setEmployeesList([{ label: "No employees found", value: "" }]);
+      showToast('error', t('common.error'), t('assets.failedToLoadEmployees'));
+      setEmployeesList([{ label: t('assets.noEmployeesFound'), value: "" }]);
     } finally {
       setLoadingEmployees(false);
     }
@@ -176,23 +316,23 @@ export default function App() {
     const errors = [];
     
     if (!department) {
-      errors.push("Please select a department");
+      errors.push(t('assets.pleaseSelectDepartment'));
     }
     
     if (!employee) {
-      errors.push("Please select an employee");
+      errors.push(t('assets.pleaseSelectEmployee'));
     }
     
     if (!effectiveDate) {
-      errors.push("Please select effective date");
+      errors.push(t('assets.pleaseSelectEffectiveDate'));
     }
     
     if (!returnDate) {
-      errors.push("Please select return date");
+      errors.push(t('assets.pleaseSelectReturnDate'));
     }
     
     if (effectiveDate && returnDate && effectiveDate > returnDate) {
-      errors.push("Effective date cannot be after return date");
+      errors.push(t('assets.effectiveDateAfterReturnDate'));
     }
     
     return errors;
@@ -283,7 +423,7 @@ export default function App() {
     const validationErrors = validateForm();
     
     if (validationErrors.length > 0) {
-      showToast('error', 'Validation Error', validationErrors.join("\n"));
+      showToast('error', t('assets.validationError'), validationErrors.join("\n"));
       return;
     }
 
@@ -295,7 +435,7 @@ export default function App() {
       
       // Check if employee's department matches selected department
       if (selectedEmployee.dept_id && selectedEmployee.dept_id !== department) {
-        showToast('error', 'Validation Error', `Employee ${selectedEmployee.label} belongs to department ${selectedEmployee.dept_id}, but you selected ${department}. Please select the correct department.`);
+        showToast('error', t('assets.validationError'), `Employee ${selectedEmployee.label} belongs to department ${selectedEmployee.dept_id}, but you selected ${department}. Please select the correct department.`);
         setLoadingAssignment(false);
         return;
       }
@@ -354,18 +494,18 @@ export default function App() {
         // Handle specific foreign key constraint errors
         if (errorData.err && errorData.err.code === "23503") {
           if (errorData.err.constraint === "tbl_Employees_FK") {
-            showToast('error', 'Employee Not Found', `The employee ID "${employee}" (emp_int_id) does not exist in the database. Please select a different employee or contact your administrator.`);
+            showToast('error', t('assets.employeeNotFound'), t('assets.employeeNotExistMessage'));
           } else if (errorData.err.constraint === "tbl_Departments_FK") {
-            showToast('error', 'Department Not Found', `The department ID "${department}" does not exist in the database. Please select a different department or contact your administrator.`);
+            showToast('error', t('assets.departmentNotFound'), t('assets.departmentNotExistMessage'));
           } else if (errorData.err.constraint === "tbl_Assets_FK") {
-            showToast('error', 'Asset Not Found', `The asset ID "${assetId}" does not exist in the database. Please verify the asset details or contact your administrator.`);
+            showToast('error', t('assets.assetNotFound'), t('assets.assetNotExistMessage'));
           } else {
-            showToast('error', 'Database Constraint Error', `A database constraint was violated: ${errorData.err.detail || errorData.err.message || 'Unknown constraint error'}`);
+            showToast('error', t('assets.databaseConstraintError'), `${t('assets.databaseConstraintViolated')}: ${errorData.err.detail || errorData.err.message || 'Unknown constraint error'}`);
           }
         } else {
           // Handle other server errors
           const errorMessage = errorData.error || errorData.message || `Server error (${response.status})`;
-          showToast('error', 'Server Error', `Failed to create asset assignment: ${errorMessage}`);
+          showToast('error', t('assets.serverError'), `${t('assets.serverErrorMessage')}: ${errorMessage}`);
         }
         return;
       }
@@ -373,13 +513,13 @@ export default function App() {
       const data = await response.json();
       console.log('Assignment created successfully:', data);
       
-      showToast('success', 'Success', 'Asset assigned successfully!');
+      showToast('success', t('common.success'), t('assets.assetAssignedSuccessfully'));
       setTimeout(() => {
         navigation.goBack();
       }, 1500);
     } catch (error) {
       console.error('Error creating asset assignment:', error);
-      showToast('error', 'Error', 'Failed to create asset assignment. Please check your connection and try again.');
+      showToast('error', t('common.error'), t('assets.failedToCreateAssetAssignment'));
     } finally {
       setLoadingAssignment(false);
     }
@@ -431,7 +571,7 @@ export default function App() {
     if (selectedDeptId) {
       fetchEmployeesByDepartment(selectedDeptId);
     } else {
-      setEmployeesList([{ label: "Select Department First", value: "" }]);
+      setEmployeesList([{ label: t('assets.selectDepartmentFirst'), value: "" }]);
     }
   };
 
@@ -465,120 +605,220 @@ export default function App() {
   return (
     <SafeAreaView style={styles.safe}>
       {/* AppBar */}
-              <Appbar.Header style={styles.appbar}>
-          <TouchableOpacity 
-            style={styles.backButton} 
-            onPress={() => navigation.goBack()}
-            activeOpacity={0.7}
+      <Appbar.Header style={styles.appbar}>
+        <TouchableOpacity 
+          style={styles.backButton} 
+          onPress={() => navigation.goBack()}
+          activeOpacity={0.7}
+        >
+          <MaterialCommunityIcons 
+            name="arrow-left" 
+            size={UI_CONSTANTS.ICON_SIZES.LG} 
+            color={UI_CONSTANTS.COLORS.SECONDARY} 
+          />
+        </TouchableOpacity>
+        <View style={styles.centerTitleContainer}>
+          <Text 
+            style={styles.appbarTitle}
+            numberOfLines={1}
+            ellipsizeMode="tail"
           >
-            <MaterialCommunityIcons name="arrow-left" size={24} color="#FEC200" />
-          </TouchableOpacity>
-          <View style={styles.centerTitleContainer}>
-            <Text style={styles.appbarTitle}>Asset Assignment</Text>
-          </View>
-        </Appbar.Header>
-              <ScrollView contentContainerStyle={styles.scroll}>
-          {/* Search Bar */}
-          <View style={styles.searchRow}>
-            <TextInput
-              style={styles.searchInput}
-              placeholder={serial || "627384567868"}
-              placeholderTextColor="#888"
-              value={serial || ''}
-              editable={false}
+            {t('navigation.assetAssignment')}
+          </Text>
+        </View>
+      </Appbar.Header>
+      
+      <ScrollView 
+        contentContainerStyle={[
+          styles.scroll,
+          DEVICE_TYPE === 'desktop' && styles.scrollDesktop,
+          DEVICE_TYPE === 'tablet' && styles.scrollTablet
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Search Bar */}
+        <View style={styles.searchRow}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder={serial || "627384567868"}
+            placeholderTextColor={UI_CONSTANTS.COLORS.GRAY_DARK}
+            value={serial || ''}
+            editable={false}
+          />
+          <TouchableOpacity style={styles.qrButton}>
+            <MaterialCommunityIcons 
+              name="line-scan" 
+              size={UI_CONSTANTS.ICON_SIZES.MD} 
+              color={UI_CONSTANTS.COLORS.SECONDARY} 
             />
-            <TouchableOpacity style={styles.qrButton}>
-              <MaterialCommunityIcons name="line-scan" size={22} color="#FEC200" />
-            </TouchableOpacity>
+          </TouchableOpacity>
+        </View>
+        
+        {/* Asset Details Card */}
+        <View style={[
+          styles.card,
+          { width: RESPONSIVE_CONSTANTS.getCardWidth() },
+          DEVICE_TYPE === 'desktop' && styles.cardDesktop,
+          DEVICE_TYPE === 'tablet' && styles.cardTablet
+        ]}>
+          <View style={styles.cardHeader}>
+            <Text 
+              style={styles.cardHeaderText}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {t('assets.assetDetails')}
+            </Text>
           </View>
-          {/* Asset Details Card */}
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Text style={styles.cardHeaderText}>Asset Details</Text>
+          <View style={styles.yellowLine} />
+          <View style={styles.cardBody}>
+            {/* Serial Number */}
+            <View style={[
+              styles.formRow,
+              RESPONSIVE_CONSTANTS.getFormRowLayout()
+            ]}>
+              <Text style={[
+                styles.label,
+                RESPONSIVE_CONSTANTS.getLabelWidth()
+              ]}>
+                {t('assets.serialNumber')}
+              </Text>
+              {DEVICE_TYPE === 'desktop' || DEVICE_TYPE === 'tablet' ? (
+                <Text style={styles.colon}>:</Text>
+              ) : null}
+              <TextInput 
+                style={[
+                  styles.input,
+                  RESPONSIVE_CONSTANTS.getInputWidth()
+                ]} 
+                value={serial} 
+                editable={false} 
+              />
             </View>
-            <View style={styles.yellowLine} />
-            <View style={styles.cardBody}>
-              {/* Serial Number */}
-              <View style={styles.formRow}>
-                <Text style={styles.label}>Serial Number</Text>
+            
+            {/* Department */}
+            <View style={[
+              styles.formRow,
+              RESPONSIVE_CONSTANTS.getFormRowLayout()
+            ]}>
+              <Text style={[
+                styles.label,
+                RESPONSIVE_CONSTANTS.getLabelWidth()
+              ]}>
+                {t('employees.department')}
+              </Text>
+              {DEVICE_TYPE === 'desktop' || DEVICE_TYPE === 'tablet' ? (
                 <Text style={styles.colon}>:</Text>
-                <TextInput style={styles.input} value={serial} editable={false} />
-              </View>
-              {/* Department */}
-              <View style={styles.formRow}>
-                <Text style={styles.label}>Department</Text>
+              ) : null}
+              {loadingDepartments ? (
+                <View style={[
+                  styles.dropdownWrapper,
+                  RESPONSIVE_CONSTANTS.getInputWidth()
+                ]}>
+                  <ActivityIndicator size="small" color={UI_CONSTANTS.COLORS.PRIMARY} />
+                  <Text style={{ marginLeft: 8, color: UI_CONSTANTS.COLORS.TEXT_SECONDARY }}>
+                    {t('assets.loading')}
+                  </Text>
+                </View>
+              ) : (
+                renderSearchableDropdown(
+                  department,
+                  handleDepartmentChange,
+                  getFilteredDepartments(),
+                  t('assets.selectDepartmentPlaceholder'),
+                  departmentSearchText,
+                  setDepartmentSearchText,
+                  showDepartmentDropdown,
+                  setShowDepartmentDropdown
+                )
+              )}
+            </View>
+            
+            {/* Employee */}
+            <View style={[
+              styles.formRow,
+              RESPONSIVE_CONSTANTS.getFormRowLayout()
+            ]}>
+              <Text style={[
+                styles.label,
+                RESPONSIVE_CONSTANTS.getLabelWidth()
+              ]}>
+                {t('employees.employeeName')}
+              </Text>
+              {DEVICE_TYPE === 'desktop' || DEVICE_TYPE === 'tablet' ? (
                 <Text style={styles.colon}>:</Text>
-                {loadingDepartments ? (
-                  <View style={styles.dropdownWrapper}>
-                    <ActivityIndicator size="small" color="#003667" />
-                    <Text style={{ marginLeft: 8, color: "#616161" }}>Loading...</Text>
-                  </View>
-                ) : (
-                  renderSearchableDropdown(
-                    department,
-                    handleDepartmentChange,
-                    getFilteredDepartments(),
-                    "Select Department...",
-                    departmentSearchText,
-                    setDepartmentSearchText,
-                    showDepartmentDropdown,
-                    setShowDepartmentDropdown
-                  )
-                )}
-              </View>
-              {/* Employee */}
-              <View style={styles.formRow}>
-                <Text style={styles.label}>Employee</Text>
-                <Text style={styles.colon}>:</Text>
-                {loadingEmployees ? (
-                  <View style={styles.dropdownWrapper}>
-                    <ActivityIndicator size="small" color="#003667" />
-                    <Text style={{ marginLeft: 8, color: "#616161" }}>Loading...</Text>
-                  </View>
-                ) : (
-                  renderSearchableDropdown(
-                    employee,
-                    setEmployee,
-                    getFilteredEmployees(),
-                    "Select Employee...",
-                    employeeSearchText,
-                    setEmployeeSearchText,
-                    showEmployeeDropdown,
-                    setShowEmployeeDropdown
-                  )
-                )}
-              </View>
+              ) : null}
+              {loadingEmployees ? (
+                <View style={[
+                  styles.dropdownWrapper,
+                  RESPONSIVE_CONSTANTS.getInputWidth()
+                ]}>
+                  <ActivityIndicator size="small" color={UI_CONSTANTS.COLORS.PRIMARY} />
+                  <Text style={{ marginLeft: 8, color: UI_CONSTANTS.COLORS.TEXT_SECONDARY }}>
+                    {t('assets.loading')}
+                  </Text>
+                </View>
+              ) : (
+                renderSearchableDropdown(
+                  employee,
+                  setEmployee,
+                  getFilteredEmployees(),
+                  t('assets.selectEmployeePlaceholder'),
+                  employeeSearchText,
+                  setEmployeeSearchText,
+                  showEmployeeDropdown,
+                  setShowEmployeeDropdown
+                )
+              )}
+            </View>
               {/* Status */}
               {/* <View style={styles.formRow}>
                 <Text style={styles.label}>Status</Text>
                 <Text style={styles.colon}>:</Text>
                 {renderDropdown(status, setStatus, statuses)}
               </View> */}
-              {/* Effective Date */}
-              <View style={styles.formRow}>
-                <Text style={styles.label}>Effective Date</Text>
+            {/* Effective Date */}
+            <View style={[
+              styles.formRow,
+              RESPONSIVE_CONSTANTS.getFormRowLayout()
+            ]}>
+              <Text style={[
+                styles.label,
+                RESPONSIVE_CONSTANTS.getLabelWidth()
+              ]}>
+                {t('assets.effectiveDate')}
+              </Text>
+              {DEVICE_TYPE === 'desktop' || DEVICE_TYPE === 'tablet' ? (
                 <Text style={styles.colon}>:</Text>
-                <TouchableOpacity
-                  style={styles.inputWithIcon}
-                  onPress={() => setShowEffective(true)}
-                >
-                  <Text style={{ flex: 1, color: "#616161" }}>
-                    {effectiveDate.toLocaleDateString()}
-                  </Text>
-                  <Icon name="calendar-today" size={20} color="#003366" />
-                </TouchableOpacity>
-                {showEffective && (
-                  <DateTimePicker
-                    value={effectiveDate}
-                    mode="date"
-                    display={Platform.OS === "ios" ? "spinner" : "default"}
-                    onChange={(e, date) => {
-                      setShowEffective(false);
-                      if (date) setEffectiveDate(date);
-                    }}
-                  />
-                )}
-              </View>
+              ) : null}
+              <TouchableOpacity
+                style={[
+                  styles.inputWithIcon,
+                  RESPONSIVE_CONSTANTS.getInputWidth()
+                ]}
+                onPress={() => setShowEffective(true)}
+              >
+                <Text style={{ flex: 1, color: UI_CONSTANTS.COLORS.TEXT_SECONDARY }}>
+                  {effectiveDate.toLocaleDateString()}
+                </Text>
+                <Icon 
+                  name="calendar-today" 
+                  size={UI_CONSTANTS.ICON_SIZES.MD} 
+                  color={UI_CONSTANTS.COLORS.PRIMARY} 
+                />
+              </TouchableOpacity>
+              {showEffective && (
+                <DateTimePicker
+                  value={effectiveDate}
+                  mode="date"
+                  display={Platform.OS === "ios" ? "spinner" : "default"}
+                  onChange={(e, date) => {
+                    setShowEffective(false);
+                    if (date) setEffectiveDate(date);
+                  }}
+                />
+              )}
+            </View>
               {/* Return Date */}
               {/* <View style={styles.formRow}>
                 <Text style={styles.label}>Return Date</Text>
@@ -620,7 +860,7 @@ export default function App() {
               <View style={styles.searchContainer}>
                 <TextInput
                   style={styles.dropdownSearchInput}
-                  placeholder="Search..."
+                  placeholder={t('assets.searchPlaceholder')}
                   placeholderTextColor="#888"
                   value={departmentSearchText}
                   onChangeText={setDepartmentSearchText}
@@ -675,7 +915,7 @@ export default function App() {
               <View style={styles.searchContainer}>
                 <TextInput
                   style={styles.dropdownSearchInput}
-                  placeholder="Search..."
+                  placeholder={t('assets.searchPlaceholder')}
                   placeholderTextColor="#888"
                   value={employeeSearchText}
                   onChangeText={setEmployeeSearchText}
@@ -719,36 +959,73 @@ export default function App() {
           </TouchableOpacity>
         )}
       {/* Footer */}
-      <View style={styles.footer}>
-        <TouchableOpacity 
-          style={styles.historyLink}
-          onPress={() => navigation.navigate('AssetHistory', { 
-            assetId: assetId,
-            assetAssignment: null 
-          })}
-        >
-          <Text style={styles.historyLinkText}>View History</Text>
-        </TouchableOpacity>
-        
-        <View style={styles.buttonContainer}>
+      <View style={[
+        styles.footer,
+        DEVICE_TYPE === 'desktop' && styles.footerDesktop,
+        DEVICE_TYPE === 'tablet' && styles.footerTablet
+      ]}>
+        <View style={[
+          styles.footerContent,
+          RESPONSIVE_CONSTANTS.getFooterLayout()
+        ]}>
           <TouchableOpacity 
-            style={styles.cancelBtn} 
-            onPress={() => navigation.goBack()}
-            disabled={loadingAssignment}
+            style={styles.historyLink}
+            onPress={() => navigation.navigate('AssetHistory', { 
+              assetId: assetId,
+              assetAssignment: null 
+            })}
           >
-            <Text style={styles.cancelBtnText}>Cancel</Text>
+            <Text 
+              style={styles.historyLinkText}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {t('assets.viewHistory')}
+            </Text>
           </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.assignBtn, loadingAssignment && styles.buttonDisabled]} 
-            onPress={createAssetAssignment}
-            disabled={loadingAssignment}
-          >
-            {loadingAssignment ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Text style={styles.assignBtnText}>Assign</Text>
-            )}
-          </TouchableOpacity>
+          
+          <View style={[
+            styles.buttonContainer,
+            DEVICE_TYPE === 'mobile' && styles.buttonContainerMobile
+          ]}>
+            <TouchableOpacity 
+              style={[
+                styles.cancelBtn,
+                RESPONSIVE_CONSTANTS.getButtonSize()
+              ]} 
+              onPress={() => navigation.goBack()}
+              disabled={loadingAssignment}
+            >
+              <Text 
+                style={styles.cancelBtnText}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {t('assets.cancel')}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[
+                styles.assignBtn, 
+                RESPONSIVE_CONSTANTS.getButtonSize(),
+                loadingAssignment && styles.buttonDisabled
+              ]} 
+              onPress={createAssetAssignment}
+              disabled={loadingAssignment}
+            >
+              {loadingAssignment ? (
+                <ActivityIndicator size="small" color={UI_CONSTANTS.COLORS.WHITE} />
+              ) : (
+                <Text 
+                  style={styles.assignBtnText}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {t('assets.assign')}
+                </Text>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
       <Toast />
@@ -757,12 +1034,15 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#EEEEEE" },
+  safe: {
+    flex: 1,
+    backgroundColor: UI_CONSTANTS.COLORS.BACKGROUND,
+  },
   overlay: {
     flex: 1,
   },
   appbar: {
-    backgroundColor: "#003667",
+    backgroundColor: UI_CONSTANTS.COLORS.PRIMARY,
     elevation: 0,
     shadowOpacity: 0,
     height: 60,
@@ -772,27 +1052,27 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   backButton: {
-    padding: 12,
-    marginLeft: 8,
+    padding: RESPONSIVE_CONSTANTS.SPACING.MD,
+    marginLeft: RESPONSIVE_CONSTANTS.SPACING.SM,
     zIndex: 2,
   },
-   centerTitleContainer: {
+  centerTitleContainer: {
     position: "absolute",
     left: 0,
     right: 0,
     alignItems: "center",
     zIndex: 1,
   },
-   titleRow: {
+  titleRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     flex: 1,
   },
   appbarTitle: {
-    color: "#fff",
+    color: UI_CONSTANTS.COLORS.WHITE,
     fontWeight: "600",
-    fontSize: 16,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.LG,
     alignSelf: "center",
   },
   header: {
@@ -810,193 +1090,211 @@ const styles = StyleSheet.create({
     textAlign: "center",
     flex: 1,
   },
-  scroll: { flexGrow: 1, paddingBottom: 16 },
+  scroll: {
+    flexGrow: 1,
+    paddingBottom: RESPONSIVE_CONSTANTS.SPACING.LG,
+    alignItems: 'center',
+  },
+  scrollDesktop: {
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.XXL,
+  },
+  scrollTablet: {
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.XL,
+  },
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
-    margin: 12,
-    backgroundColor: "#fff",
-    borderRadius: 8,
-    paddingHorizontal: 8,
+    margin: RESPONSIVE_CONSTANTS.SPACING.MD,
+    backgroundColor: UI_CONSTANTS.COLORS.WHITE,
+    borderRadius: RESPONSIVE_CONSTANTS.SPACING.SM,
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.SM,
     borderWidth: 1,
-    borderColor: "#e0e0e0",
+    borderColor: UI_CONSTANTS.COLORS.GRAY_MEDIUM,
   },
   searchInput: {
     flex: 1,
-    borderColor: '#e0e0e0',
+    borderColor: UI_CONSTANTS.COLORS.GRAY_MEDIUM,
     borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    height: 45,
-    backgroundColor: '#f3f3f3',
-    fontSize: 14,
-    fontWeight : "400",
+    borderRadius: RESPONSIVE_CONSTANTS.SPACING.SM,
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.MD,
+    height: RESPONSIVE_CONSTANTS.INPUT_HEIGHT,
+    backgroundColor: UI_CONSTANTS.COLORS.GRAY_LIGHT,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
+    fontWeight: "400",
     textAlignVertical: 'center',
     paddingVertical: 0,
   },
   qrButton: {
-    padding: 8,
+    padding: RESPONSIVE_CONSTANTS.SPACING.SM,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#003667",
+    backgroundColor: UI_CONSTANTS.COLORS.PRIMARY,
+    borderRadius: RESPONSIVE_CONSTANTS.SPACING.SM,
+    marginLeft: RESPONSIVE_CONSTANTS.SPACING.SM,
+    height: RESPONSIVE_CONSTANTS.INPUT_HEIGHT,
+    width: RESPONSIVE_CONSTANTS.INPUT_HEIGHT,
   },
   card: {
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    marginHorizontal: 10,
-    marginTop: 8,
-    // iOS shadow
-    shadowColor: "#000",
+    backgroundColor: UI_CONSTANTS.COLORS.WHITE,
+    borderRadius: RESPONSIVE_CONSTANTS.CARD_BORDER_RADIUS,
+    marginHorizontal: RESPONSIVE_CONSTANTS.SPACING.MD,
+    marginTop: RESPONSIVE_CONSTANTS.SPACING.SM,
+    shadowColor: UI_CONSTANTS.COLORS.BLACK,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
-    // Android shadow
     elevation: 2,
     overflow: "hidden",
   },
+  cardDesktop: {
+    maxWidth: 600,
+    alignSelf: 'center',
+  },
+  cardTablet: {
+    maxWidth: 500,
+    alignSelf: 'center',
+  },
   cardHeader: {
-    backgroundColor: "#003366",
-    paddingVertical: 10,
+    backgroundColor: UI_CONSTANTS.COLORS.PRIMARY,
+    paddingVertical: RESPONSIVE_CONSTANTS.SPACING.MD,
     alignItems: "center",
-    borderTopLeftRadius: 10,
-    borderTopRightRadius: 10,
+    borderTopLeftRadius: RESPONSIVE_CONSTANTS.CARD_BORDER_RADIUS,
+    borderTopRightRadius: RESPONSIVE_CONSTANTS.CARD_BORDER_RADIUS,
   },
   cardHeaderText: {
-    color: "#fff",
+    color: UI_CONSTANTS.COLORS.WHITE,
     fontWeight: "600",
-    fontSize: 14,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
   },
   cardBody: {
-    padding: 16,
+    padding: RESPONSIVE_CONSTANTS.CARD_PADDING,
   },
   formRow: {
     flexDirection: "row",
     alignItems: "stretch",
-    // alignContent : 'flex-start',
-    // justifyContent :"flex-start",
-
-    marginBottom: 14,
+    marginBottom: RESPONSIVE_CONSTANTS.SPACING.MD,
   },
   label: {
     flex: 1.2,
-    fontSize: 14,
-    fontWeight:"500",
-    color: "#616161",
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
+    fontWeight: "500",
+    color: UI_CONSTANTS.COLORS.TEXT_SECONDARY,
     textAlign: "left",
-    marginRight: 6,
+    marginRight: RESPONSIVE_CONSTANTS.SPACING.XS,
   },
   colon: {
-    width: 10,
+    width: RESPONSIVE_CONSTANTS.SPACING.MD,
     textAlign: "center",
-    color: "#333",
-    fontSize: 14,
-    margin : 10
+    color: UI_CONSTANTS.COLORS.TEXT_PRIMARY,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
+    margin: RESPONSIVE_CONSTANTS.SPACING.MD,
   },
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    margin: 10,
-    marginBottom: 12,
-  },
-  searchInput: {
-    flex: 1,
-    borderColor: '#e0e0e0',
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    height: 45,
-    backgroundColor: '#f3f3f3',
-    fontSize: 14,
-    fontWeight : "400",
-    textAlignVertical: 'center',
-    paddingVertical: 0,
-  },
-  qrButton: {
-    backgroundColor: '#003667',
-    borderRadius: 8,
-    padding: 8,
-    marginLeft: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    height: 45,
-    width: 40,
+    margin: RESPONSIVE_CONSTANTS.SPACING.MD,
+    marginBottom: RESPONSIVE_CONSTANTS.SPACING.MD,
+    width: '100%',
   },
   input: {
     flex: 2,
     borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    backgroundColor: "#f9f9f9",
-    color: "#616161",
+    borderColor: UI_CONSTANTS.COLORS.GRAY_MEDIUM,
+    borderRadius: RESPONSIVE_CONSTANTS.SPACING.XS,
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.SM,
+    paddingVertical: RESPONSIVE_CONSTANTS.SPACING.XS,
+    backgroundColor: UI_CONSTANTS.COLORS.GRAY_LIGHT,
+    color: UI_CONSTANTS.COLORS.TEXT_SECONDARY,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent : "flex-end",
-    fontSize: 14,
-    fontWeight : "400",
+    justifyContent: "flex-end",
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
+    fontWeight: "400",
+    height: RESPONSIVE_CONSTANTS.INPUT_HEIGHT,
   },
   inputWithIcon: {
     flex: 2,
     borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    backgroundColor: "#f9f9f9",
+    borderColor: UI_CONSTANTS.COLORS.GRAY_MEDIUM,
+    borderRadius: RESPONSIVE_CONSTANTS.SPACING.XS,
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.SM,
+    paddingVertical: RESPONSIVE_CONSTANTS.SPACING.XS,
+    backgroundColor: UI_CONSTANTS.COLORS.GRAY_LIGHT,
     flexDirection: "row",
     alignItems: "center",
-    // fontSize: 18,
-    // fontWeight : "400",
+    height: RESPONSIVE_CONSTANTS.INPUT_HEIGHT,
   },
   footer: {
+    paddingHorizontal: RESPONSIVE_CONSTANTS.CARD_PADDING,
+    paddingVertical: RESPONSIVE_CONSTANTS.CARD_PADDING,
+    backgroundColor: UI_CONSTANTS.COLORS.WHITE,
+    borderTopWidth: 1,
+    borderTopColor: UI_CONSTANTS.COLORS.GRAY_LIGHT,
+  },
+  footerDesktop: {
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.XXL,
+  },
+  footerTablet: {
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.XL,
+  },
+  footerContent: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 16,
-    backgroundColor: "#fff",
-    borderTopWidth: 1,
-    borderColor: "#eee",
+    minHeight: 60,
   },
   buttonContainer: {
     flexDirection: "row",
     justifyContent: "flex-end",
+    gap: RESPONSIVE_CONSTANTS.SPACING.MD,
+  },
+  buttonContainerMobile: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: RESPONSIVE_CONSTANTS.SPACING.MD,
+    width: "100%",
   },
   cancelBtn: {
-    backgroundColor: "#FEC200",
-    borderRadius: 4,
-    paddingHorizontal: 28,
-    paddingVertical: 10,
-    marginRight: 10,
+    backgroundColor: UI_CONSTANTS.COLORS.SECONDARY,
+    borderRadius: RESPONSIVE_CONSTANTS.SPACING.XS,
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.XXL,
+    paddingVertical: RESPONSIVE_CONSTANTS.SPACING.MD,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: RESPONSIVE_CONSTANTS.BUTTON_HEIGHT,
   },
   assignBtn: {
-    backgroundColor: "#003667",
-    borderRadius: 4,
-    paddingHorizontal: 28,
-    paddingVertical: 10,
+    backgroundColor: UI_CONSTANTS.COLORS.PRIMARY,
+    borderRadius: RESPONSIVE_CONSTANTS.SPACING.XS,
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.XXL,
+    paddingVertical: RESPONSIVE_CONSTANTS.SPACING.MD,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: RESPONSIVE_CONSTANTS.BUTTON_HEIGHT,
   },
   cancelBtnText: {
-    color: "#fff",
+    color: UI_CONSTANTS.COLORS.WHITE,
     fontWeight: "500",
-    fontSize: 12,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.SM,
   },
   assignBtnText: {
-    color: "#fff",
+    color: UI_CONSTANTS.COLORS.WHITE,
     fontWeight: "500",
-    fontSize: 12,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.SM,
   },
   historyLink: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingVertical: RESPONSIVE_CONSTANTS.SPACING.SM,
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.MD,
+    alignSelf: 'center',
   },
   historyLinkText: {
-    color: "#003667",
+    color: UI_CONSTANTS.COLORS.PRIMARY,
     fontWeight: "500",
-    fontSize: 14,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
     textDecorationLine: "underline",
   },
   buttonDisabled: {
-    backgroundColor: "#cccccc",
+    backgroundColor: UI_CONSTANTS.COLORS.GRAY_DARK,
   },
   dropdownWrapper: {
     flex: 2,
@@ -1007,15 +1305,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 4,
-    backgroundColor: "#f9f9f9",
-    height: 36,
-    paddingHorizontal: 8,
+    borderColor: UI_CONSTANTS.COLORS.GRAY_MEDIUM,
+    borderRadius: RESPONSIVE_CONSTANTS.SPACING.XS,
+    backgroundColor: UI_CONSTANTS.COLORS.GRAY_LIGHT,
+    height: RESPONSIVE_CONSTANTS.INPUT_HEIGHT,
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.SM,
   },
   dropdownButtonText: {
-    color: "#616161",
-    fontSize: 14,
+    color: UI_CONSTANTS.COLORS.TEXT_SECONDARY,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
     fontWeight: "400",
     flex: 1,
   },
@@ -1030,17 +1328,17 @@ const styles = StyleSheet.create({
   },
   dropdownList: {
     position: "absolute",
-    top: 200,
-    left: 20,
-    right: 20,
-    backgroundColor: "#fff",
+    top: DEVICE_TYPE === 'desktop' ? 150 : 200,
+    left: RESPONSIVE_CONSTANTS.SPACING.LG,
+    right: RESPONSIVE_CONSTANTS.SPACING.LG,
+    backgroundColor: UI_CONSTANTS.COLORS.WHITE,
     borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
-    height: 250,
+    borderColor: UI_CONSTANTS.COLORS.GRAY_MEDIUM,
+    borderRadius: RESPONSIVE_CONSTANTS.SPACING.SM,
+    height: DEVICE_TYPE === 'desktop' ? 300 : 250,
     zIndex: 1000,
     elevation: 5,
-    shadowColor: "#000",
+    shadowColor: UI_CONSTANTS.COLORS.BLACK,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
@@ -1049,46 +1347,46 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     borderBottomWidth: 1,
-    borderBottomColor: "#e0e0e0",
-    paddingHorizontal: 8,
-    paddingVertical: 8,
+    borderBottomColor: UI_CONSTANTS.COLORS.GRAY_LIGHT,
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.SM,
+    paddingVertical: RESPONSIVE_CONSTANTS.SPACING.SM,
   },
   dropdownSearchInput: {
     flex: 1,
-    height: 32,
-    fontSize: 14,
-    color: "#333",
-    paddingHorizontal: 8,
+    height: RESPONSIVE_CONSTANTS.INPUT_HEIGHT * 0.7,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
+    color: UI_CONSTANTS.COLORS.TEXT_PRIMARY,
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.SM,
     backgroundColor: "transparent",
   },
   clearButton: {
-    padding: 4,
-    marginLeft: 4,
+    padding: RESPONSIVE_CONSTANTS.SPACING.XS,
+    marginLeft: RESPONSIVE_CONSTANTS.SPACING.XS,
   },
   optionsList: {
-    height: 150,
+    height: DEVICE_TYPE === 'desktop' ? 200 : 150,
   },
   optionItem: {
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    paddingVertical: RESPONSIVE_CONSTANTS.SPACING.MD,
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.MD,
     borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
+    borderBottomColor: UI_CONSTANTS.COLORS.GRAY_LIGHT,
   },
   selectedOption: {
-    backgroundColor: "#e3f2fd",
+    backgroundColor: UI_CONSTANTS.COLORS.INFO + '20',
   },
   optionText: {
-    fontSize: 14,
-    color: "#333",
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
+    color: UI_CONSTANTS.COLORS.TEXT_PRIMARY,
   },
   selectedOptionText: {
-    color: "#003667",
+    color: UI_CONSTANTS.COLORS.PRIMARY,
     fontWeight: "500",
   },
-  yellowLine:{
+  yellowLine: {
     height: 3,
-    backgroundColor: "#FEC200",
+    backgroundColor: UI_CONSTANTS.COLORS.SECONDARY,
     width: "100%",
-    marginBottom: 8,
+    marginBottom: RESPONSIVE_CONSTANTS.SPACING.SM,
   },
 });

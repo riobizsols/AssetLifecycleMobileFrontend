@@ -4,9 +4,11 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { Appbar } from "react-native-paper";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { API_CONFIG, getApiHeaders, API_ENDPOINTS } from "../../config/api";
 
 export default function AssetDetailsScreen() {
+    const { t } = useTranslation();
     const navigation = useNavigation();
     const route = useRoute();
     const { assetData, serialNumber, assetId, assignmentId, assignmentData } = route.params || {};
@@ -105,22 +107,22 @@ export default function AssetDetailsScreen() {
     // Handle cancel assignment
     const handleCancelAssignment = async () => {
       if (!assignmentData?.asset_assign_id) {
-        Alert.alert("Error", "Assignment ID not found");
+        Alert.alert(t('common.error'), t('assets.assignmentIdNotFound'));
         return;
       }
 
       console.log('Original assignment data:', assignmentData);
 
       Alert.alert(
-        "Cancel Assignment",
-        "Are you sure you want to cancel this asset assignment?",
+        t('assets.cancelAssignment'),
+        t('assets.confirmCancelAssignment'),
         [
           {
-            text: "Cancel",
+            text: t('common.cancel'),
             style: "cancel"
           },
           {
-            text: "Yes",
+            text: t('assets.yes'),
             onPress: async () => {
               setLoading(true);
               try {
@@ -157,7 +159,7 @@ export default function AssetDetailsScreen() {
                   action: "C", // Cancel
                   action_by: assignmentData.action_by || "USR001",
                   latest_assignment_flag: true,
-                  assignment_type: assignmentData.assignment_type || "Department",
+                  assignment_type: assignmentData.assignment_type || t('assets.department'),
                   org_id: assignmentData.org_id || "ORG001",
                   action_on: new Date().toISOString(),
                   remarks: "Assignment cancelled"
@@ -183,11 +185,11 @@ export default function AssetDetailsScreen() {
                 console.log('Cancellation record created successfully');
 
                 Alert.alert(
-                  "Success",
-                  "Asset assignment has been cancelled successfully.",
+                  t('assets.success'),
+                  t('assets.assetAssignmentCancelledSuccessfully'),
                   [
                     {
-                      text: "OK",
+                      text: t('common.ok'),
                       onPress: () => navigation.goBack()
                     }
                   ]
@@ -196,9 +198,9 @@ export default function AssetDetailsScreen() {
               } catch (error) {
                 console.error("Error cancelling assignment:", error);
                 Alert.alert(
-                  "Error",
-                  "Failed to cancel assignment. Please try again.",
-                  [{ text: "OK" }]
+                  t('common.error'),
+                  t('assets.failedToCancelAssignment'),
+                  [{ text: t('common.ok') }]
                 );
               } finally {
                 setLoading(false);
@@ -217,7 +219,7 @@ export default function AssetDetailsScreen() {
           <Appbar.Action icon="menu" color="#FEC200" onPress={() => {}} />
           {/* Centered Title */}
           <View style={styles.centerTitleContainer}>
-            <Text style={styles.appbarTitle}>Asset Details</Text>
+            <Text style={styles.appbarTitle}>{t('assets.assetDetails')}</Text>
           </View>
           {/* Right side empty to balance layout */}
           <View style={{ width: 40 }} />
@@ -234,41 +236,41 @@ export default function AssetDetailsScreen() {
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#003667" />
-          <Text style={styles.loadingText}>Loading asset details...</Text>
+          <Text style={styles.loadingText}>{t('assets.loadingAssetDetails')}</Text>
         </View>
       ) : (
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <Text style={styles.cardHeaderText}>
-              Serial No. {serialNumber || assetData?.serial || "N/A"}
+              {t('assets.serialNoWithColon')} {serialNumber || assetData?.serial || t('common.notAvailable')}
             </Text>
           </View>
           <View style={styles.yellowLine} />
           <View style={styles.cardBody}>
             <View style={styles.inputRow}>
-              <Text style={styles.label}>Asset Type</Text>
+              <Text style={styles.label}>{t('assets.assetType')}</Text>
               <Text style={styles.colon}>:</Text>
               <TextInput 
                 style={styles.input} 
-                value={assignmentData?.asset_name || assetDetails?.asset_name || assetDetails?.description || assetDetails?.text || assetData?.type || "N/A"} 
+                value={assignmentData?.asset_name || assetDetails?.asset_name || assetDetails?.description || assetDetails?.text || assetData?.type || t('common.notAvailable')} 
                 editable={false} 
               />
             </View>
             <View style={styles.inputRow}>
-              <Text style={styles.label}>Department</Text>
+              <Text style={styles.label}>{t('assets.department')}</Text>
               <Text style={styles.colon}>:</Text>
               <TextInput 
                 style={styles.input} 
-                value={assignmentData?.dept_id || assignmentDetails?.dept_id || "N/A"} 
+                value={assignmentData?.dept_id || assignmentDetails?.dept_id || t('common.notAvailable')} 
                 editable={false} 
               />
             </View>
             <View style={styles.inputRow}>
-              <Text style={styles.label}>Effective Date</Text>
+              <Text style={styles.label}>{t('assets.effectiveDate')}</Text>
               <Text style={styles.colon}>:</Text>
               <TextInput 
                 style={styles.input} 
-                value={assignmentData?.action_on ? new Date(assignmentData.action_on).toLocaleDateString() : assignmentDetails?.action_on ? new Date(assignmentDetails.action_on).toLocaleDateString() : "N/A"} 
+                value={assignmentData?.action_on ? new Date(assignmentData.action_on).toLocaleDateString() : assignmentDetails?.action_on ? new Date(assignmentDetails.action_on).toLocaleDateString() : t('common.notAvailable')} 
                 editable={false} 
               />
             </View>
@@ -277,7 +279,7 @@ export default function AssetDetailsScreen() {
               <Text style={styles.colon}>:</Text>
               <TextInput 
                 style={styles.input} 
-                value={assignmentData?.employee_int_id || assignmentDetails?.employee_int_id || assetData?.assigned || "N/A"} 
+                value={assignmentData?.employee_int_id || assignmentDetails?.employee_int_id || assetData?.assigned || t('common.notAvailable')} 
                 editable={false} 
               />
                         </View> */}
@@ -292,7 +294,7 @@ export default function AssetDetailsScreen() {
             style={styles.cancelButton}
             onPress={handleCancelAssignment}
           >
-            <Text style={styles.cancelButtonText}>Cancel Assignment</Text>
+            <Text style={styles.cancelButtonText}>{t('assets.cancelAssignment')}</Text>
           </TouchableOpacity>
         </View>
       )}

@@ -13,12 +13,17 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { API_CONFIG, getApiHeaders } from '../../config/api';
+import { useTranslation } from 'react-i18next';
+import { API_CONFIG, getApiHeaders, findWorkingServer, API_ENDPOINTS } from '../../config/api';
 import { authUtils } from '../../utils/auth';
 import CustomAlert from '../../components/CustomAlert';
 import { useNavigation } from '../../context/NavigationContext';
+import { useLanguage } from '../../context/LanguageContext';
+import { UI_CONSTANTS, COMMON_STYLES, UI_UTILS } from '../../utils/uiConstants';
 
 const LoginScreen = ({ navigation }) => {
+  const { t } = useTranslation();
+  const { changeLanguage } = useLanguage();
   const { loadUserNavigation } = useNavigation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -31,8 +36,8 @@ const LoginScreen = ({ navigation }) => {
     type: 'info',
     onConfirm: () => {},
     onCancel: () => {},
-    confirmText: 'OK',
-    cancelText: 'Cancel',
+    confirmText: t('common.ok'),
+    cancelText: t('common.cancel'),
     showCancel: false,
   });
 
@@ -49,29 +54,32 @@ const LoginScreen = ({ navigation }) => {
       onCancel: () => {
         setAlertConfig(prev => ({ ...prev, visible: false }));
       },
-      confirmText: 'OK',
-      cancelText: 'Cancel',
+      confirmText: t('common.ok'),
+      cancelText: t('common.cancel'),
       showCancel,
     });
   };
 
   const handleLogin = async () => {
     if (!email || !password) {
-      showAlert('Error', 'Please fill in all fields', 'error');
+      showAlert(t('common.error'), t('auth.fillAllFields'), 'error');
       return;
     }
 
     // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      showAlert('Error', 'Please enter a valid email address', 'error');
+      showAlert(t('common.error'), t('auth.validEmail'), 'error');
       return;
     }
 
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${API_CONFIG.BASE_URL}/api/auth/login`, {
+      // Use the configured server URL directly for faster login
+      const serverUrl = API_CONFIG.BASE_URL;
+
+      const response = await fetch(`${serverUrl}${API_ENDPOINTS.LOGIN()}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -81,6 +89,7 @@ const LoginScreen = ({ navigation }) => {
           email: email,
           password: password,
         }),
+        timeout: 8000, // 8 second timeout
       });
 
       const data = await response.json();
@@ -95,39 +104,43 @@ const LoginScreen = ({ navigation }) => {
         // Store user data if provided
         if (data.user) {
           await authUtils.storeUserData(data.user);
+          
+          // Change language if user has a language preference
+          if (data.user.language_code) {
+            console.log('Login successful, setting user language to:', data.user.language_code);
+            await changeLanguage(data.user.language_code);
+          }
         }
         
-        // Load user navigation after successful login
-        try {
-          await loadUserNavigation();
-        } catch (error) {
+        // Load user navigation after successful login (async, don't wait)
+        loadUserNavigation().catch(error => {
           console.error('Error loading user navigation:', error);
-          // Continue with login even if navigation fails
-        }
+          // Navigation loading failed, but login was successful
+        });
         
-        showAlert('Success', 'Login successful!', 'success', () => {
+        showAlert(t('common.success'), t('auth.loginSuccessful'), 'success', () => {
           navigation.replace('Home');
         });
       } else {
         // Handle different error cases
-        const errorMessage = data.message || data.error || 'Login failed. Please try again.';
-        showAlert('Login Failed', errorMessage, 'error');
+        const errorMessage = data.message || data.error || t('auth.loginFailed');
+        showAlert(t('auth.loginFailed'), errorMessage, 'error');
       }
     } catch (error) {
       console.error('Login error:', error);
       
       // Provide more specific error messages based on error type
-      let errorMessage = 'Unable to connect to the server. Please check your internet connection and try again.';
+      let errorMessage = t('auth.networkError');
       
       if (error.message.includes('Network request failed')) {
-        errorMessage = 'Server is not reachable. Please ensure the backend server is running on http://192.168.29.30:4000';
+        errorMessage = t('auth.serverNotReachable');
       } else if (error.message.includes('timeout')) {
-        errorMessage = 'Request timed out. Please check your connection and try again.';
+        errorMessage = t('auth.timeoutError');
       } else if (error.message.includes('fetch')) {
-        errorMessage = 'Network error. Please check your internet connection.';
+        errorMessage = t('auth.networkError');
       }
       
-      showAlert('Connection Error', errorMessage, 'error');
+      showAlert(t('auth.connectionError'), errorMessage, 'error');
     } finally {
       setIsLoading(false);
     }
@@ -155,18 +168,36 @@ const LoginScreen = ({ navigation }) => {
                 tintColor="#003667"
               />
             </View>
-            <Text style={styles.welcomeText}>Welcome Back!</Text>
-            <Text style={styles.subtitleText}>Sign in to continue</Text>
+            <Text 
+              style={styles.welcomeText}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {t('auth.welcomeBack')}
+            </Text>
+            <Text 
+              style={styles.subtitleText}
+              numberOfLines={2}
+              ellipsizeMode="tail"
+            >
+              {t('auth.signInToContinue')}
+            </Text>
           </View>
 
           {/* Login Form Section */}
           <View style={styles.formSection}>
             <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Email</Text>
+              <Text 
+                style={styles.inputLabel}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {t('auth.email')}
+              </Text>
               <TextInput
                 style={styles.textInput}
-                placeholder="Enter your email"
-                placeholderTextColor="#999"
+                placeholder={t('auth.enterEmail')}
+                placeholderTextColor={UI_CONSTANTS.COLORS.GRAY_DARK}
                 value={email}
                 onChangeText={setEmail}
                 keyboardType="email-address"
@@ -176,12 +207,18 @@ const LoginScreen = ({ navigation }) => {
             </View>
 
             <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Password</Text>
+              <Text 
+                style={styles.inputLabel}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {t('auth.password')}
+              </Text>
               <View style={styles.passwordContainer}>
                 <TextInput
                   style={styles.passwordInput}
-                  placeholder="Enter your password"
-                  placeholderTextColor="#999"
+                  placeholder={t('auth.enterPassword')}
+                  placeholderTextColor={UI_CONSTANTS.COLORS.GRAY_DARK}
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry={!isPasswordVisible}
@@ -199,7 +236,13 @@ const LoginScreen = ({ navigation }) => {
             </View>
 
             <TouchableOpacity style={styles.forgotPassword}>
-              <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+              <Text 
+                style={styles.forgotPasswordText}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {t('auth.forgotPassword')}
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity 
@@ -208,9 +251,15 @@ const LoginScreen = ({ navigation }) => {
               disabled={isLoading}
             >
               {isLoading ? (
-                <ActivityIndicator color="#1a1a2e" size="small" />
+                <ActivityIndicator color={UI_CONSTANTS.COLORS.PRIMARY} size="small" />
               ) : (
-                <Text style={styles.loginButtonText}>Sign In</Text>
+                <Text 
+                  style={styles.loginButtonText}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {t('auth.login')}
+                </Text>
               )}
             </TouchableOpacity>
 
@@ -254,15 +303,14 @@ const LoginScreen = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#EEEEEE',
+    ...COMMON_STYLES.container,
   },
   keyboardAvoidingView: {
     flex: 1,
   },
   content: {
     flex: 1,
-    paddingHorizontal: 24,
+    paddingHorizontal: UI_CONSTANTS.SPACING.XXL,
     justifyContent: 'space-between',
   },
   headerSection: {
@@ -278,68 +326,51 @@ const styles = StyleSheet.create({
   logoImage: {
     width: 200,
     height: 80,
-    marginBottom: 10,
+    marginBottom: UI_CONSTANTS.SPACING.MD,
   },
   logoText: {
     fontSize: 48,
     fontWeight: 'bold',
-    color: '#003667',
+    color: UI_CONSTANTS.COLORS.PRIMARY,
     letterSpacing: 2,
   },
   logoSubText: {
-    fontSize: 18,
-    color: '#003667',
+    fontSize: UI_CONSTANTS.FONT_SIZES.XL,
+    color: UI_CONSTANTS.COLORS.PRIMARY,
     fontWeight: '600',
     marginTop: -5,
   },
   welcomeText: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#003667',
-    marginBottom: 8,
+    ...COMMON_STYLES.text.title,
+    marginBottom: UI_CONSTANTS.SPACING.SM,
   },
   subtitleText: {
-    fontSize: 16,
-    color: '#7A7A7A',
+    ...COMMON_STYLES.text.secondary,
     textAlign: 'center',
   },
   formSection: {
     flex: 1,
     justifyContent: 'center',
-    paddingVertical: 20,
+    paddingVertical: UI_CONSTANTS.SPACING.LG,
   },
   inputContainer: {
-    marginBottom: 20,
+    marginBottom: UI_CONSTANTS.SPACING.LG,
   },
   inputLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#616161',
-    marginBottom: 8,
+    ...COMMON_STYLES.text.primary,
+    marginBottom: UI_CONSTANTS.SPACING.SM,
   },
   textInput: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    fontSize: 16,
-    color: '#222',
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    ...COMMON_STYLES.input,
   },
   passwordContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: UI_CONSTANTS.COLORS.WHITE,
+    borderRadius: UI_CONSTANTS.CARD_BORDER_RADIUS,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
-    shadowColor: '#000',
+    borderColor: UI_CONSTANTS.COLORS.GRAY_MEDIUM,
+    shadowColor: UI_CONSTANTS.COLORS.BLACK,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -347,44 +378,36 @@ const styles = StyleSheet.create({
   },
   passwordInput: {
     flex: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    fontSize: 16,
-    color: '#222',
+    paddingHorizontal: UI_CONSTANTS.SPACING.LG,
+    paddingVertical: UI_CONSTANTS.SPACING.LG,
+    fontSize: UI_CONSTANTS.FONT_SIZES.LG,
+    color: UI_CONSTANTS.COLORS.TEXT_PRIMARY,
   },
   eyeButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingHorizontal: UI_CONSTANTS.SPACING.LG,
+    paddingVertical: UI_CONSTANTS.SPACING.LG,
   },
   eyeText: {
-    fontSize: 20,
-    color: '#003667',
+    fontSize: UI_CONSTANTS.FONT_SIZES.LG,
+    color: UI_CONSTANTS.COLORS.PRIMARY,
   },
   forgotPassword: {
     alignSelf: 'flex-end',
-    marginBottom: 30,
+    marginBottom: UI_CONSTANTS.SPACING.XXXL,
   },
   forgotPasswordText: {
-    color: '#003667',
-    fontSize: 14,
+    color: UI_CONSTANTS.COLORS.PRIMARY,
+    fontSize: UI_CONSTANTS.FONT_SIZES.MD,
     fontWeight: '600',
   },
   loginButton: {
-    backgroundColor: '#FEC200',
-    borderRadius: 8,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    ...COMMON_STYLES.button,
+    ...COMMON_STYLES.buttonPrimary,
+    marginBottom: UI_CONSTANTS.SPACING.LG,
   },
   loginButtonText: {
-    color: '#003667',
-    fontSize: 18,
-    fontWeight: 'bold',
+    ...COMMON_STYLES.text.button,
+    color: UI_CONSTANTS.COLORS.PRIMARY,
   },
   loginButtonDisabled: {
     opacity: 0.7,

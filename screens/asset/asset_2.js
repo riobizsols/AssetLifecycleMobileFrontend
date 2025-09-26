@@ -10,13 +10,151 @@ import {
   View,
   Alert,
   ActivityIndicator,
+  Dimensions,
 } from "react-native";
 import { Appbar } from "react-native-paper";
 import { useNavigation, useRoute } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { API_CONFIG, getApiHeaders, API_ENDPOINTS } from "../../config/api";
 import CustomAlert from "../../components/CustomAlert";
+import { UI_CONSTANTS, COMMON_STYLES, UI_UTILS } from "../../utils/uiConstants";
+
+const { width, height } = Dimensions.get('window');
+
+// Responsive design breakpoints
+const BREAKPOINTS = {
+  SMALL: 320,   // iPhone SE, small phones
+  MEDIUM: 375,  // iPhone X, standard phones
+  LARGE: 414,   // iPhone Plus, large phones
+  TABLET: 768,  // iPad, tablets
+  DESKTOP: 1024, // Desktop/large tablets
+};
+
+// Device type detection
+const getDeviceType = () => {
+  if (width >= BREAKPOINTS.DESKTOP) return 'desktop';
+  if (width >= BREAKPOINTS.TABLET) return 'tablet';
+  if (width >= BREAKPOINTS.LARGE) return 'large';
+  if (width >= BREAKPOINTS.MEDIUM) return 'medium';
+  return 'small';
+};
+
+const DEVICE_TYPE = getDeviceType();
+
+// Responsive scaling functions
+const scale = (size) => {
+  const scaleFactor = width / BREAKPOINTS.MEDIUM; // Base on iPhone X (375px)
+  return Math.max(size * scaleFactor, size * 0.8); // Minimum 80% of original size
+};
+
+const verticalScale = (size) => {
+  const scaleFactor = height / 812; // Base on iPhone X height
+  return Math.max(size * scaleFactor, size * 0.8);
+};
+
+const moderateScale = (size, factor = 0.5) => {
+  return size + (scale(size) - size) * factor;
+};
+
+// Responsive UI constants for this screen
+const RESPONSIVE_CONSTANTS = {
+  // Responsive spacing
+  SPACING: {
+    XS: scale(4),
+    SM: scale(8),
+    MD: scale(12),
+    LG: scale(16),
+    XL: scale(20),
+    XXL: scale(24),
+    XXXL: scale(32),
+  },
+  
+  // Responsive font sizes
+  FONT_SIZES: {
+    XS: moderateScale(10),
+    SM: moderateScale(12),
+    MD: moderateScale(14),
+    LG: moderateScale(16),
+    XL: moderateScale(18),
+    XXL: moderateScale(20),
+    XXXL: moderateScale(24),
+    TITLE: moderateScale(28),
+  },
+  
+  // Responsive dimensions
+  CARD_PADDING: scale(16),
+  CARD_BORDER_RADIUS: scale(12),
+  INPUT_HEIGHT: verticalScale(45),
+  BUTTON_HEIGHT: verticalScale(40),
+  
+  // Responsive layout
+  getCardWidth: () => {
+    if (DEVICE_TYPE === 'desktop') return Math.min(width * 0.6, 600);
+    if (DEVICE_TYPE === 'tablet') return Math.min(width * 0.8, 500);
+    return width - scale(20); // Mobile: full width minus padding
+  },
+  
+  getDetailRowLayout: () => {
+    if (DEVICE_TYPE === 'desktop' || DEVICE_TYPE === 'tablet') {
+      return {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: scale(16),
+      };
+    }
+    return {
+      flexDirection: 'column',
+      alignItems: 'stretch',
+      marginBottom: scale(16),
+    };
+  },
+  
+  getLabelWidth: () => {
+    if (DEVICE_TYPE === 'desktop' || DEVICE_TYPE === 'tablet') {
+      return { width: scale(100) };
+    }
+    return { width: '100%', marginBottom: scale(4) };
+  },
+  
+  getValueWidth: () => {
+    if (DEVICE_TYPE === 'desktop' || DEVICE_TYPE === 'tablet') {
+      return { flex: 1 };
+    }
+    return { width: '100%' };
+  },
+  
+  getFooterLayout: () => {
+    if (DEVICE_TYPE === 'desktop' || DEVICE_TYPE === 'tablet') {
+      return {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+      };
+    }
+    return {
+      flexDirection: 'column',
+      gap: scale(12),
+    };
+  },
+  
+  getButtonSize: () => {
+    if (DEVICE_TYPE === 'desktop' || DEVICE_TYPE === 'tablet') {
+      return {
+        paddingHorizontal: scale(20),
+        paddingVertical: scale(12),
+        minWidth: scale(120),
+      };
+    }
+    return {
+      paddingHorizontal: scale(16),
+      paddingVertical: scale(12),
+      width: '100%',
+    };
+  },
+};
 
 export default function App() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute();
   const { assetAssignment, barcode } = route.params || {};
@@ -31,8 +169,8 @@ export default function App() {
     type: 'info',
     onConfirm: () => {},
     onCancel: () => {},
-    confirmText: 'OK',
-    cancelText: 'Cancel',
+    confirmText: t('common.ok'),
+    cancelText: t('common.cancel'),
     showCancel: false,
   });
 
@@ -49,15 +187,15 @@ export default function App() {
       onCancel: () => {
         setAlertConfig(prev => ({ ...prev, visible: false }));
       },
-      confirmText: 'OK',
-      cancelText: 'Cancel',
+      confirmText: t('common.ok'),
+      cancelText: t('common.cancel'),
       showCancel,
     });
   };
 
   // Helper function to format date
   const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
+    if (!dateString) return t('common.na');
     try {
       const date = new Date(dateString);
       return date.toLocaleDateString("en-GB"); // DD/MM/YYYY format
@@ -256,7 +394,7 @@ export default function App() {
   // Function to handle cancel assignment via API - creates new row and updates existing
   const handleCancelAssignment = async () => {
     if (!assetAssignment?.asset_id) {
-      showAlert("Error", "Asset ID not found", "error");
+      showAlert(t('common.error'), t('assets.assetIdNotFound'), "error");
       return;
     }
 
@@ -310,7 +448,7 @@ export default function App() {
       });
 
       if (createResponse.ok) {
-        showAlert("Success", "Assignment cancelled successfully", "success", () => {
+        showAlert(t('common.success'), t('assets.assignmentCancelledSuccessfully'), "success", () => {
           navigation.goBack();
         });
       } else {
@@ -320,7 +458,7 @@ export default function App() {
       }
     } catch (error) {
       console.error("Error cancelling assignment:", error);
-      showAlert("Error", "Failed to cancel assignment. Please try again.", "error");
+      showAlert(t('common.error'), t('assets.failedToCancelAssignment'), "error");
     } finally {
       setLoading(false);
     }
@@ -329,13 +467,13 @@ export default function App() {
   // Function to cancel assignment
   const cancelAssignment = async () => {
     if (!assetAssignment?.asset_assign_id) {
-      showAlert("Error", "Assignment ID not found", "error");
+      showAlert(t('common.error'), t('assets.assignmentIdNotFound'), "error");
       return;
     }
 
     showAlert(
-      "Cancel Assignment",
-      "Are you sure you want to cancel this assignment?",
+      t('assets.cancelAssignment'),
+      t('assets.confirmCancelAssignment'),
       "warning",
       async () => {
         setLoading(true);
@@ -365,7 +503,7 @@ export default function App() {
           });
 
           if (response.ok) {
-            showAlert("Success", "Assignment cancelled successfully", "success", () => {
+            showAlert(t('common.success'), t('assets.assignmentCancelledSuccessfully'), "success", () => {
               navigation.goBack();
             });
           } else {
@@ -375,7 +513,7 @@ export default function App() {
           }
         } catch (error) {
           console.error("Error cancelling assignment:", error);
-          showAlert("Error", "Failed to cancel assignment. Please try again.", "error");
+          showAlert(t('common.error'), t('assets.failedToCancelAssignment'), "error");
         } finally {
           setLoading(false);
         }
@@ -385,70 +523,94 @@ export default function App() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#EEEEEE" }}>
+    <SafeAreaView style={styles.safe}>
       {/* AppBar */}
       <Appbar.Header style={styles.appbar}>
         <Appbar.Action
           icon="arrow-left"
-          color="#FEC200"
+          color={UI_CONSTANTS.COLORS.SECONDARY}
           onPress={() => navigation.goBack()}
         />
         <View style={styles.centerTitleContainer}>
-          <Text style={styles.appbarTitle}>Asset Details</Text>
+          <Text 
+            style={styles.appbarTitle}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
+            {t('assets.assetDetails')}
+          </Text>
         </View>
       </Appbar.Header>
 
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+      <ScrollView 
+        contentContainerStyle={[
+          styles.scrollContainer,
+          DEVICE_TYPE === 'desktop' && styles.scrollDesktop,
+          DEVICE_TYPE === 'tablet' && styles.scrollTablet
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Search Bar */}
         <View style={styles.searchRow}>
           <TextInput
             style={styles.searchInput}
-            placeholder={assetAssignment?.asset_id || "N/A"}
-            placeholderTextColor="#7A7A7A"
+            placeholder={assetAssignment?.asset_id || t('common.na')}
+            placeholderTextColor={UI_CONSTANTS.COLORS.GRAY_DARK}
             value={barcode || ""}
             editable={false}
           />
           <TouchableOpacity style={styles.qrButton}>
             <MaterialCommunityIcons
               name="line-scan"
-              size={22}
-              color="#FEC200"
+              size={UI_CONSTANTS.ICON_SIZES.MD}
+              color={UI_CONSTANTS.COLORS.SECONDARY}
             />
           </TouchableOpacity>
         </View>
 
         {/* Asset Details Card */}
-        <View style={styles.card}>
+        <View style={[
+          styles.card,
+          { width: RESPONSIVE_CONSTANTS.getCardWidth() },
+          DEVICE_TYPE === 'desktop' && styles.cardDesktop,
+          DEVICE_TYPE === 'tablet' && styles.cardTablet
+        ]}>
           <View style={styles.cardHeader}>
-            <Text style={styles.cardHeaderText}>Asset Details</Text>
+            <Text 
+              style={styles.cardHeaderText}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {t('assets.assetDetails')}
+            </Text>
           </View>
           <View style={styles.yellowLine} />
           <View style={styles.detailsTable}>
             <DetailRow
-              label="Serial Number"
-              value={assetAssignment?.asset_id || "N/A"}
+              label={t('assets.serialNumber')}
+              value={assetAssignment?.asset_id || t('common.na')}
             />
             <DetailRow
-              label="Department"
+              label={t('employees.department')}
               value={
                 loadingDetails
-                  ? "Loading..."
-                  : departmentDetails?.text || assetAssignment?.dept_id || "N/A"
+                  ? t('assets.loading')
+                  : departmentDetails?.text || assetAssignment?.dept_id || t('common.na')
               }
             />
             <DetailRow
-              label="Employee"
+              label={t('employees.employeeName')}
               value={
                 loadingDetails
-                  ? "Loading..."
+                  ? t('assets.loading')
                   : employeeDetails
                   ? employeeDetails.name ||
                     employeeDetails.full_name ||
                     employeeDetails.employee_name ||
-                    "Unknown Name"
+                    t('assets.unknownName')
                   : assetAssignment?.employee_int_id ||
                     assetAssignment?.employee_id ||
-                    "N/A"
+                    t('common.na')
               }
             />
             {/* <DetailRow 
@@ -456,7 +618,7 @@ export default function App() {
               value={assetAssignment?.status || 'N/A'} 
             /> */}
             <DetailRow
-              label="Effective Date"
+              label={t('assets.effectiveDate')}
               value={formatDate(assetAssignment?.action_on)}
             />
             {/* <DetailRow
@@ -480,8 +642,15 @@ export default function App() {
       </ScrollView>
 
       {/* Cancel Assignment Button and Link */}
-      <View style={styles.footer}>
-        <View style={styles.footerRow}>
+      <View style={[
+        styles.footer,
+        DEVICE_TYPE === 'desktop' && styles.footerDesktop,
+        DEVICE_TYPE === 'tablet' && styles.footerTablet
+      ]}>
+        <View style={[
+          styles.footerRow,
+          RESPONSIVE_CONSTANTS.getFooterLayout()
+        ]}>
           <TouchableOpacity 
             style={styles.linkButton}
             onPress={() => navigation.navigate('AssetHistory', { 
@@ -489,17 +658,33 @@ export default function App() {
               assetAssignment: assetAssignment 
             })}
           >
-            <Text style={styles.linkText}>View History</Text>
+            <Text 
+              style={styles.linkText}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {t('assets.viewHistory')}
+            </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.cancelBtn, loading && styles.buttonDisabled]}
+            style={[
+              styles.cancelBtn,
+              RESPONSIVE_CONSTANTS.getButtonSize(),
+              loading && styles.buttonDisabled
+            ]}
             onPress={handleCancelAssignment}
             disabled={loading}
           >
             {loading ? (
-              <ActivityIndicator size="small" color="#fff" />
+              <ActivityIndicator size="small" color={UI_CONSTANTS.COLORS.WHITE} />
             ) : (
-              <Text style={styles.cancelBtnText}>Cancel Assignment</Text>
+              <Text 
+                style={styles.cancelBtnText}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {t('assets.cancelAssignmentButton')}
+              </Text>
             )}
           </TouchableOpacity>
         </View>
@@ -524,17 +709,38 @@ export default function App() {
 
 function DetailRow({ label, value }) {
   return (
-    <View style={styles.detailRow}>
-      <Text style={styles.detailLabel}>{label}</Text>
-      <Text style={styles.detailColon}>:</Text>
-      <TextInput style={styles.detailValue} value={value} editable={false} />
+    <View style={[
+      styles.detailRow,
+      RESPONSIVE_CONSTANTS.getDetailRowLayout()
+    ]}>
+      <Text style={[
+        styles.detailLabel,
+        RESPONSIVE_CONSTANTS.getLabelWidth()
+      ]}>
+        {label}
+      </Text>
+      {DEVICE_TYPE === 'desktop' || DEVICE_TYPE === 'tablet' ? (
+        <Text style={styles.detailColon}>:</Text>
+      ) : null}
+      <TextInput 
+        style={[
+          styles.detailValue,
+          RESPONSIVE_CONSTANTS.getValueWidth()
+        ]} 
+        value={value} 
+        editable={false} 
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: UI_CONSTANTS.COLORS.BACKGROUND,
+  },
   appbar: {
-    backgroundColor: "#003667",
+    backgroundColor: UI_CONSTANTS.COLORS.PRIMARY,
     elevation: 0,
     shadowOpacity: 0,
     height: 60,
@@ -557,124 +763,139 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   appbarTitle: {
-    color: "#fff",
+    color: UI_CONSTANTS.COLORS.WHITE,
     fontWeight: "600",
-    fontSize: 16,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.LG,
     alignSelf: "center",
+  },
+  scrollContainer: {
+    flexGrow: 1,
+    alignItems: 'center',
+    paddingBottom: RESPONSIVE_CONSTANTS.SPACING.LG,
+  },
+  scrollDesktop: {
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.XXL,
+  },
+  scrollTablet: {
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.XL,
   },
   searchRow: {
     flexDirection: "row",
     alignItems: "center",
-    margin: 10,
-    marginBottom: 12,
+    margin: RESPONSIVE_CONSTANTS.SPACING.MD,
+    marginBottom: RESPONSIVE_CONSTANTS.SPACING.MD,
+    width: '100%',
   },
   searchInput: {
     flex: 1,
-    borderColor: "#e0e0e0",
+    borderColor: UI_CONSTANTS.COLORS.GRAY_MEDIUM,
     borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    height: 45,
-    backgroundColor: "#f3f3f3",
-    fontSize: 14,
+    borderRadius: RESPONSIVE_CONSTANTS.SPACING.SM,
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.MD,
+    height: RESPONSIVE_CONSTANTS.INPUT_HEIGHT,
+    backgroundColor: UI_CONSTANTS.COLORS.GRAY_LIGHT,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
     fontWeight: "400",
     textAlignVertical: "center",
     paddingVertical: 0,
   },
   qrButton: {
-    backgroundColor: "#003667",
-    borderRadius: 8,
-    padding: 8,
-    marginLeft: 8,
+    backgroundColor: UI_CONSTANTS.COLORS.PRIMARY,
+    borderRadius: RESPONSIVE_CONSTANTS.SPACING.SM,
+    padding: RESPONSIVE_CONSTANTS.SPACING.SM,
+    marginLeft: RESPONSIVE_CONSTANTS.SPACING.SM,
     justifyContent: "center",
     alignItems: "center",
-    height: 45,
-    width: 40,
+    height: RESPONSIVE_CONSTANTS.INPUT_HEIGHT,
+    width: RESPONSIVE_CONSTANTS.INPUT_HEIGHT,
   },
   card: {
-    // height : "50%",
-    marginHorizontal: 8,
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    marginTop: 4,
-    shadowColor: "#000",
+    marginHorizontal: RESPONSIVE_CONSTANTS.SPACING.SM,
+    backgroundColor: UI_CONSTANTS.COLORS.WHITE,
+    borderRadius: RESPONSIVE_CONSTANTS.CARD_BORDER_RADIUS,
+    marginTop: RESPONSIVE_CONSTANTS.SPACING.XS,
+    shadowColor: UI_CONSTANTS.COLORS.BLACK,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
     elevation: 2,
-    // paddingBottom: 16,
-    // justifyContent : 'space-around'
+  },
+  cardDesktop: {
+    maxWidth: 600,
+    alignSelf: 'center',
+  },
+  cardTablet: {
+    maxWidth: 500,
+    alignSelf: 'center',
   },
   cardHeader: {
-    backgroundColor: "#003667",
-    borderTopLeftRadius: 10,
-    borderTopRightRadius: 10,
-    paddingVertical: 10,
+    backgroundColor: UI_CONSTANTS.COLORS.PRIMARY,
+    borderTopLeftRadius: RESPONSIVE_CONSTANTS.CARD_BORDER_RADIUS,
+    borderTopRightRadius: RESPONSIVE_CONSTANTS.CARD_BORDER_RADIUS,
+    paddingVertical: RESPONSIVE_CONSTANTS.SPACING.MD,
     alignItems: "center",
-    // justifyContent : 'space-around',
-    // marginBottom: 8,
   },
   cardHeaderText: {
-    color: "#FFFFFF",
+    color: UI_CONSTANTS.COLORS.WHITE,
     fontWeight: "600",
-    fontSize: 14,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
   },
   detailsTable: {
-    paddingHorizontal: 16,
-    // paddingVertical : 10,
-    // margin : 10,
-    paddingTop: 8,
-    // marginVertical : 30
-    // justifyContent : 'space-evenly'
+    paddingHorizontal: RESPONSIVE_CONSTANTS.CARD_PADDING,
+    paddingTop: RESPONSIVE_CONSTANTS.SPACING.SM,
   },
   detailRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 20,
-    // justifyContent :
+    marginBottom: RESPONSIVE_CONSTANTS.SPACING.LG,
   },
   detailLabel: {
-    width: 100,
-    color: "#616161",
-    fontSize: 14,
+    width: scale(100),
+    color: UI_CONSTANTS.COLORS.TEXT_SECONDARY,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
     fontWeight: "500",
   },
   detailColon: {
-    width: 10,
-    color: "#333",
-    fontSize: 12,
+    width: RESPONSIVE_CONSTANTS.SPACING.MD,
+    color: UI_CONSTANTS.COLORS.TEXT_PRIMARY,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.SM,
     fontWeight: "400",
     textAlign: "center",
-    marginRight: 10,
+    marginRight: RESPONSIVE_CONSTANTS.SPACING.MD,
   },
   detailValue: {
     flex: 1,
-    borderColor: "#e0e0e0",
+    borderColor: UI_CONSTANTS.COLORS.GRAY_MEDIUM,
     borderWidth: 1,
-    borderRadius: 2,
-    paddingHorizontal: 8,
-    height: "140%",
-    // backgroundColor: '#f3f3f3',
-    color: "#616161",
-    fontSize: 12,
+    borderRadius: RESPONSIVE_CONSTANTS.SPACING.XS,
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.SM,
+    height: RESPONSIVE_CONSTANTS.INPUT_HEIGHT,
+    color: UI_CONSTANTS.COLORS.TEXT_SECONDARY,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.SM,
     fontWeight: "400",
     textAlignVertical: "center",
     textAlign: "left",
     paddingVertical: 0,
-    marginRight: 15,
+    marginRight: RESPONSIVE_CONSTANTS.SPACING.MD,
   },
   yellowLine: {
     height: 3,
-    backgroundColor: "#FEC200",
+    backgroundColor: UI_CONSTANTS.COLORS.SECONDARY,
     width: "100%",
-    marginBottom: 8,
+    marginBottom: RESPONSIVE_CONSTANTS.SPACING.SM,
   },
   footer: {
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    backgroundColor: "#fff",
+    paddingHorizontal: RESPONSIVE_CONSTANTS.CARD_PADDING,
+    paddingVertical: RESPONSIVE_CONSTANTS.CARD_PADDING,
+    backgroundColor: UI_CONSTANTS.COLORS.WHITE,
     borderTopWidth: 1,
-    borderTopColor: "#e0e0e0",
+    borderTopColor: UI_CONSTANTS.COLORS.GRAY_LIGHT,
+  },
+  footerDesktop: {
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.XXL,
+  },
+  footerTablet: {
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.XL,
   },
   footerRow: {
     flexDirection: "row",
@@ -682,32 +903,31 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   cancelBtn: {
-    backgroundColor: "#dc3545",
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
+    backgroundColor: UI_CONSTANTS.COLORS.ERROR,
+    borderRadius: RESPONSIVE_CONSTANTS.SPACING.SM,
+    paddingVertical: RESPONSIVE_CONSTANTS.SPACING.MD,
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.LG,
     alignItems: "center",
     justifyContent: "center",
     elevation: 2,
-    flex: 1,
-    marginLeft: 60,
+    minHeight: RESPONSIVE_CONSTANTS.BUTTON_HEIGHT,
   },
   cancelBtnText: {
-    color: "#fff",
+    color: UI_CONSTANTS.COLORS.WHITE,
     fontWeight: "600",
-    fontSize: 14,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
   },
   linkButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingVertical: RESPONSIVE_CONSTANTS.SPACING.SM,
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.MD,
   },
   linkText: {
-    color: "#003667",
+    color: UI_CONSTANTS.COLORS.PRIMARY,
     fontWeight: "500",
-    fontSize: 14,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
     textDecorationLine: "underline",
   },
   buttonDisabled: {
-    backgroundColor: "#cccccc",
+    backgroundColor: UI_CONSTANTS.COLORS.GRAY_DARK,
   },
 });

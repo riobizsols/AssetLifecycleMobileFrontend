@@ -14,10 +14,12 @@ import {
 } from "react-native";
 import { Appbar } from "react-native-paper";
 import { useNavigation, useRoute } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { API_CONFIG, getApiHeaders, API_ENDPOINTS } from "../../config/api";
 import CustomAlert from "../../components/CustomAlert";
 
 export default function AssetHistoryScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute();
   const { assetId, assetAssignment } = route.params || {};
@@ -32,8 +34,8 @@ export default function AssetHistoryScreen() {
     type: 'info',
     onConfirm: () => {},
     onCancel: () => {},
-    confirmText: 'OK',
-    cancelText: 'Cancel',
+    confirmText: t('common.ok'),
+    cancelText: t('common.cancel'),
     showCancel: false,
   });
 
@@ -50,15 +52,15 @@ export default function AssetHistoryScreen() {
       onCancel: () => {
         setAlertConfig(prev => ({ ...prev, visible: false }));
       },
-      confirmText: 'OK',
-      cancelText: 'Cancel',
+      confirmText: t('common.ok'),
+      cancelText: t('common.cancel'),
       showCancel,
     });
   };
 
   // Helper function to format date
   const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
+    if (!dateString) return t('common.na');
     try {
       const date = new Date(dateString);
       return date.toLocaleDateString("en-GB"); // DD/MM/YYYY format
@@ -71,15 +73,15 @@ export default function AssetHistoryScreen() {
   const getActionDisplayText = (action) => {
     switch (action) {
       case "A":
-        return "Assigned";
+        return t('assets.assigned');
       case "U":
-        return "Unassigned";
+        return t('assets.unassigned');
       case "C":
-        return "Cancelled";
+        return t('assets.cancelled');
       case "T":
-        return "Transferred";
+        return t('assets.transferred');
       default:
-        return action || "N/A";
+        return action || t('common.na');
     }
   };
 
@@ -161,7 +163,7 @@ export default function AssetHistoryScreen() {
   // Fetch asset assignment history
   const fetchAssetHistory = async () => {
     if (!assetId) {
-      showAlert("Error", "Asset ID not found", "error");
+      showAlert(t('common.error'), t('assets.assetIdNotFound'), "error");
       return;
     }
 
@@ -190,7 +192,7 @@ export default function AssetHistoryScreen() {
       setHistoryData(sortedData);
     } catch (error) {
       console.error("Error fetching asset history:", error);
-      showAlert("Error", "Failed to load asset history. Please try again.", "error");
+      showAlert(t('common.error'), t('assets.failedToLoadAssetHistory'), "error");
     } finally {
       setLoading(false);
     }
@@ -212,23 +214,23 @@ export default function AssetHistoryScreen() {
       ]}
     >
       <View style={styles.historyCell}>
-        <Text style={styles.historyLabel}>Action:</Text>
+        <Text style={styles.historyLabel}>{t('assets.action')}:</Text>
         <Text style={styles.historyValue}>
           {getActionDisplayText(item.action)}
         </Text>
       </View>
       
       <View style={styles.historyCell}>
-        <Text style={styles.historyLabel}>Date:</Text>
+        <Text style={styles.historyLabel}>{t('assets.date')}:</Text>
         <Text style={styles.historyValue}>
           {formatDate(item.action_on)}
         </Text>
       </View>
       
       <View style={styles.historyCell}>
-        <Text style={styles.historyLabel}>By:</Text>
+        <Text style={styles.historyLabel}>{t('assets.by')}:</Text>
         <Text style={styles.historyValue}>
-          {item.action_by || "N/A"}
+          {item.action_by || t('common.na')}
         </Text>
       </View>
       
@@ -240,16 +242,16 @@ export default function AssetHistoryScreen() {
       </View> */}
       
       <View style={styles.historyCell}>
-        <Text style={styles.historyLabel}>Employee:</Text>
+        <Text style={styles.historyLabel}>{t('employees.employeeName')}:</Text>
         <Text style={styles.historyValue}>
-          {employees[item.employee_int_id] || item.employee_int_id || "N/A"}
+          {employees[item.employee_int_id] || item.employee_int_id || t('common.na')}
         </Text>
       </View>
       
       <View style={styles.historyCell}>
-        <Text style={styles.historyLabel}>Department:</Text>
+        <Text style={styles.historyLabel}>{t('employees.department')}:</Text>
         <Text style={styles.historyValue}>
-          {departments[item.dept_id] || item.dept_id || "N/A"}
+          {departments[item.dept_id] || item.dept_id || t('common.na')}
         </Text>
       </View>
     </View>
@@ -265,28 +267,28 @@ export default function AssetHistoryScreen() {
           onPress={() => navigation.goBack()}
         />
         <View style={styles.centerTitleContainer}>
-          <Text style={styles.appbarTitle}>Asset History</Text>
+          <Text style={styles.appbarTitle}>{t('assets.assetHistory')}</Text>
         </View>
       </Appbar.Header>
 
       {/* Asset Info */}
       <View style={styles.assetInfo}>
         <Text style={styles.assetInfoText}>
-          Asset ID: {assetId || "N/A"}
+          {t('assets.assetId')}: {assetId || t('common.na')}
         </Text>
       </View>
 
       {/* History Table */}
       <View style={styles.tableContainer}>
         <View style={styles.tableHeader}>
-          <Text style={styles.tableHeaderText}>Assignment History</Text>
+          <Text style={styles.tableHeaderText}>{t('assets.assignmentHistory')}</Text>
         </View>
         <View style={styles.yellowLine} />
         
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#003667" />
-            <Text style={styles.loadingText}>Loading history...</Text>
+            <Text style={styles.loadingText}>{t('assets.loadingHistory')}</Text>
           </View>
         ) : historyData.length > 0 ? (
           <FlatList
@@ -299,7 +301,7 @@ export default function AssetHistoryScreen() {
           />
         ) : (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No history found</Text>
+            <Text style={styles.emptyText}>{t('assets.noHistoryFound')}</Text>
           </View>
         )}
       </View>

@@ -18,6 +18,7 @@ import { Appbar } from "react-native-paper";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createStackNavigator } from "@react-navigation/stack";
 import Asset_2 from "./emp_asset_2";
@@ -32,6 +33,7 @@ const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
 export default function Asset_1() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const [employeeId, setEmployeeId] = useState("");
   const [assetData, setAssetData] = useState([]);
@@ -49,8 +51,8 @@ export default function Asset_1() {
     type: 'info',
     onConfirm: () => {},
     onCancel: () => {},
-    confirmText: 'OK',
-    cancelText: 'Cancel',
+    confirmText: t('common.ok'),
+    cancelText: t('common.cancel'),
     showCancel: false,
   });
 
@@ -67,16 +69,16 @@ export default function Asset_1() {
       onCancel: () => {
         setAlertConfig(prev => ({ ...prev, visible: false }));
       },
-      confirmText: 'OK',
-      cancelText: 'Cancel',
+      confirmText: t('common.ok'),
+      cancelText: t('common.cancel'),
       showCancel,
     });
   };
 
   const handleLogout = async () => {
     showAlert(
-      "Logout",
-      "Are you sure you want to logout?",
+      t('auth.logout'),
+      t('auth.logoutConfirm'),
       'warning',
       async () => {
         try {
@@ -87,7 +89,7 @@ export default function Asset_1() {
           });
         } catch (error) {
           console.error('Logout error:', error);
-          showAlert('Error', 'Failed to logout. Please try again.', 'error');
+          showAlert(t('common.error'), t('auth.logoutFailed'), 'error');
         }
       },
       true
@@ -105,7 +107,7 @@ export default function Asset_1() {
   // Fetch asset details by serial number
   const fetchAssetBySerial = async (serialNumber) => {
     if (!serialNumber) {
-      Alert.alert("Error", "Serial number is required");
+      Alert.alert(t('common.error'), t('assets.serialNumberRequired'));
       return;
     }
 
@@ -129,17 +131,17 @@ export default function Asset_1() {
       if (!response.ok) {
         if (response.status === 404) {
           Alert.alert(
-            "Asset Not Found",
-            "No asset found with this serial number.",
-            [{ text: "OK" }]
+            t('assets.assetNotFound'),
+            t('assets.noAssetFoundWithSerial'),
+            [{ text: t('common.ok') }]
           );
           return;
         }
         if (response.status === 401) {
           Alert.alert(
-            "Authentication Error",
-            "Please check your authorization token.",
-            [{ text: "OK" }]
+            t('assets.authenticationError'),
+            t('assets.checkAuthorizationToken'),
+            [{ text: t('common.ok') }]
           );
           return;
         }
@@ -166,9 +168,9 @@ export default function Asset_1() {
     } catch (error) {
       console.error("Error fetching asset details:", error);
       if (error.name === 'AbortError') {
-        Alert.alert("Timeout", "Request timed out. Please try again.");
+        Alert.alert(t('assets.timeout'), t('assets.requestTimedOut'));
       } else {
-        Alert.alert("Error", "Failed to fetch asset details. Please try again.");
+        Alert.alert(t('common.error'), t('assets.failedToFetchAssetDetails'));
       }
     } finally {
       setLoading(false);
@@ -178,7 +180,7 @@ export default function Asset_1() {
   // Fetch employee active assets
   const fetchEmployeeAssets = async (empId) => {
     if (!empId.trim()) {
-      Alert.alert("Error", "Please enter an employee ID");
+      Alert.alert(t('common.error'), t('assets.pleaseEnterEmployeeId'));
       return;
     }
 
@@ -202,9 +204,9 @@ export default function Asset_1() {
       if (!response.ok) {
         if (response.status === 404) {
           Alert.alert(
-            "No Assets Found",
-            "No active assets found for this employee.",
-            [{ text: "OK" }]
+            t('assets.noAssetsFound'),
+            t('assets.noActiveAssetsFound'),
+            [{ text: t('common.ok') }]
           );
           setAssetData([]);
           setEmployeeInfo({ name: "", department: "", assetCount: 0 });
@@ -212,9 +214,9 @@ export default function Asset_1() {
         }
         if (response.status === 401) {
           Alert.alert(
-            "Authentication Error",
-            "Please check your authorization token.",
-            [{ text: "OK" }]
+            t('assets.authenticationError'),
+            t('assets.checkAuthorizationToken'),
+            [{ text: t('common.ok') }]
           );
           return;
         }
@@ -293,29 +295,29 @@ export default function Asset_1() {
       // Show success message if assets found
       if (transformedAssets.length > 0) {
         Alert.alert(
-          "Success",
-          `Found ${transformedAssets.length} active asset(s) for ${employeeName}`,
-          [{ text: "OK" }]
+          t('common.success'),
+          `${t('assets.foundActiveAssets')} ${employeeName}`,
+          [{ text: t('common.ok') }]
         );
       }
       
     } catch (error) {
       console.error("Error fetching employee assets:", error);
       
-      let errorMessage = "Failed to fetch employee assets. Please try again.";
+      let errorMessage = t('assets.failedToFetchAssetDetails');
       
       if (error.message.includes("Network request failed")) {
-        errorMessage = "Network connection failed. Please check:\n\n1. Your backend server is running on port 4000\n2. Your device is connected to the same network\n3. The IP address in config/api.js is correct";
+        errorMessage = t('assets.networkConnectionFailed');
       } else if (error.message.includes("timeout")) {
-        errorMessage = "Request timed out. Please check your network connection.";
+        errorMessage = t('assets.requestTimedOutNetwork');
       } else if (error.message.includes("fetch")) {
-        errorMessage = "Unable to connect to server. Please check if the backend is running.";
+        errorMessage = t('assets.unableToConnectToServer');
       }
       
       Alert.alert(
-        "Network Error",
+        t('assets.networkError'),
         errorMessage,
-        [{ text: "OK" }]
+        [{ text: t('common.ok') }]
       );
     } finally {
       setLoading(false);
@@ -324,7 +326,7 @@ export default function Asset_1() {
 
   // Convert assetData to CSV string
   const assetDataToCSV = () => {
-    const header = ["Asset Name", "Serial No", "Remarks"];
+    const header = [t('assets.assetName'), t('assets.serialNo'), t('assets.remarks')];
     const rows = assetData.map((item) => [
       item.type,
       item.serial,
@@ -341,7 +343,7 @@ export default function Asset_1() {
   // Download handler
   const handleDownload = async () => {
     if (assetData.length === 0) {
-      Alert.alert("No Data", "No assets to download. Please search for an employee first.");
+      Alert.alert(t('assets.noData'), t('assets.noAssetsToDownload'));
       return;
     }
     
@@ -355,12 +357,12 @@ export default function Asset_1() {
       });
       await Sharing.shareAsync(fileUri, {
         mimeType: "text/csv",
-        dialogTitle: "Share Employee Asset CSV",
+        dialogTitle: t('assets.shareEmployeeAssetCSV'),
         UTI: "public.comma-separated-values-text",
       });
     } catch (error) {
       console.error("Error exporting CSV:", error);
-      Alert.alert("Error", "Error exporting CSV: " + error.message);
+      Alert.alert(t('common.error'), t('assets.errorExportingCSV') + ": " + error.message);
     }
   };
 
@@ -376,7 +378,7 @@ export default function Asset_1() {
             <MaterialCommunityIcons name="arrow-left" size={24} color="#FEC200" />
           </TouchableOpacity>
           <View style={styles.titleRow}>
-            <Text style={styles.appbarTitle}>Employee Asset</Text>
+            <Text style={styles.appbarTitle}>{t('assets.employeeAsset')}</Text>
           </View>
           <TouchableOpacity
             onPress={handleDownload}
@@ -397,7 +399,7 @@ export default function Asset_1() {
           <View style={styles.inputRow}>
             <TextInput
               style={styles.assetInput}
-              placeholder="Enter Employee ID (e.g., EMP_INT_0004)"
+              placeholder={t('assets.enterEmployeeId')}
               placeholderTextColor="#B6B7B8"
               value={employeeId}
               onChangeText={setEmployeeId}
@@ -420,17 +422,17 @@ export default function Asset_1() {
             </TouchableOpacity>
           </View>
           <View style={styles.infoRow}>
-            <Text style={styles.label}>Employee Name</Text>
+            <Text style={styles.label}>{t('employees.employeeName')}</Text>
             <Text style={styles.colon}>:</Text>
-            <Text style={styles.value}>{employeeInfo.name || "Employee Name"}</Text>
+            <Text style={styles.value}>{employeeInfo.name || t('employees.employeeName')}</Text>
           </View>
           <View style={styles.infoRow}>
-            <Text style={styles.label}>Department</Text>
+            <Text style={styles.label}>{t('employees.department')}</Text>
             <Text style={styles.colon}>:</Text>
-            <Text style={styles.value}>{employeeInfo.department || "Department"}</Text>
+            <Text style={styles.value}>{employeeInfo.department || t('employees.department')}</Text>
           </View>
           <View style={styles.infoRow}>
-            <Text style={styles.label}>No. of. assets</Text>
+            <Text style={styles.label}>{t('assets.numberOfAssets')}</Text>
             <Text style={styles.colon}>:</Text>
             <Text style={styles.value}>{employeeInfo.assetCount || "0"}</Text>
           </View>
@@ -440,17 +442,17 @@ export default function Asset_1() {
         <View style={styles.tableContainer}>
           <View style={styles.tableHeader}>
             <Text style={[styles.tableHeaderText, { flex: 1.5 }]}>
-              Asset
+              {t('assets.asset')}
             </Text>
-            <Text style={[styles.tableHeaderText, { flex: 1.5 }]}>Serial No</Text>
-            <Text style={[styles.tableHeaderText, { flex: 1 }]}>Remarks</Text>
+            <Text style={[styles.tableHeaderText, { flex: 1.5 }]}>{t('assets.serialNo')}</Text>
+            <Text style={[styles.tableHeaderText, { flex: 1 }]}>{t('assets.remarks')}</Text>
           </View>
           <View style={styles.yellowLine} />
           
           {loading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color="#003667" />
-              <Text style={styles.loadingText}>Loading employee assets...</Text>
+              <Text style={styles.loadingText}>{t('assets.loadingEmployeeAssets')}</Text>
             </View>
           ) : assetData.length > 0 ? (
             <FlatList
@@ -491,7 +493,7 @@ export default function Asset_1() {
           ) : (
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>
-                {employeeId ? "No assets found for this employee" : "Enter an employee ID to view assets"}
+                {employeeId ? t('assets.noAssetsFoundForEmployee') : t('assets.enterEmployeeIdToViewAssets')}
               </Text>
             </View>
           )}
@@ -508,7 +510,7 @@ export default function Asset_1() {
                 console.log('Asset Data length:', assetData.length);
                 
                 if (!employeeId) {
-                  Alert.alert("No Employee", "Please enter an employee ID first.");
+                  Alert.alert(t('assets.noEmployee'), t('assets.pleaseEnterEmployeeIdFirst'));
                   return;
                 }
                 
@@ -521,7 +523,7 @@ export default function Asset_1() {
               disabled={loading}
             >
               <Text style={styles.historyLinkText}>
-                {loading ? "Loading..." : "Show History"}
+                {loading ? t('assets.loading') : t('assets.viewHistory')}
               </Text>
             </TouchableOpacity>
             
@@ -532,7 +534,7 @@ export default function Asset_1() {
                 console.log('Employee ID:', employeeId);
                 
                 if (!employeeId) {
-                  Alert.alert("No Employee", "Please enter an employee ID first.");
+                  Alert.alert(t('assets.noEmployee'), t('assets.pleaseEnterEmployeeIdFirst'));
                   return;
                 }
                 
@@ -545,7 +547,7 @@ export default function Asset_1() {
               disabled={loading}
             >
               <Text style={styles.assignAssetButtonText}>
-                Assign Asset
+                {t('assets.assignAsset')}
               </Text>
             </TouchableOpacity>
           </View>

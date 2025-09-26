@@ -4,12 +4,14 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { Appbar } from "react-native-paper";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 
 
 
 
 
 export default function Asset_2() {
+    const { t } = useTranslation();
     const navigation = useNavigation();
   return (
     <SafeAreaProvider>
@@ -19,7 +21,7 @@ export default function Asset_2() {
           <Appbar.Action icon="menu" color="#FEC200" onPress={() => {}} />
           {/* Centered Title */}
           <View style={styles.centerTitleContainer}>
-            <Text style={styles.appbarTitle}>Employee Asset</Text>
+            <Text style={styles.appbarTitle}>{t('assets.employeeAsset')}</Text>
           </View>
           {/* Right side empty to balance layout */}
           <View style={{ width: 40 }} />
@@ -28,27 +30,27 @@ export default function Asset_2() {
       {/* Card */}
       <View style={styles.card}>
         <View style={styles.cardHeader}>
-          <Text style={styles.cardHeaderText}>Serial No. 121354</Text>
+          <Text style={styles.cardHeaderText}>{t('assets.serialNo')}: 121354</Text>
         </View>
         <View style={styles.yellowLine} />
         <View style={styles.cardBody}>
           <View style={styles.inputRow}>
-            <Text style={styles.label}>Asset Type</Text>
+            <Text style={styles.label}>{t('assets.assetType')}</Text>
             <Text style={styles.colon}>:</Text>
             <TextInput style={styles.input} value="122101" editable={false} />
           </View>
           <View style={styles.inputRow}>
-            <Text style={styles.label}>Department</Text>
+            <Text style={styles.label}>{t('employees.department')}</Text>
             <Text style={styles.colon}>:</Text>
             <TextInput style={styles.input} value="HR" editable={false} />
           </View>
           <View style={styles.inputRow}>
-            <Text style={styles.label}>Effective Date</Text>
+            <Text style={styles.label}>{t('assets.effectiveDate')}</Text>
             <Text style={styles.colon}>:</Text>
             <TextInput style={styles.input} value="20/12/2025" editable={false} />
           </View>
           <View style={styles.inputRow}>
-            <Text style={styles.label}>Return Date</Text>
+            <Text style={styles.label}>{t('assets.returnDate')}</Text>
             <Text style={styles.colon}>:</Text>
             <TextInput style={styles.input} value="20/12/2026" editable={false} />
           </View>
@@ -58,10 +60,10 @@ export default function Asset_2() {
       {/* Bottom Buttons */}
       <View style={styles.bottomBar}>
         <TouchableOpacity style={styles.cancelButton} onPress={() => navigation.goBack()}>
-          <Text style={styles.cancelButtonText}>Cancel Assign</Text>
+          <Text style={styles.cancelButtonText}>{t('assets.cancelAssign')}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.okayButton} onPress={() => navigation.goBack()}>
-          <Text style={styles.okayButtonText}>Okay</Text>
+          <Text style={styles.okayButtonText}>{t('assets.okay')}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

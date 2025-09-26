@@ -10,13 +10,16 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { authUtils } from '../utils/auth';
 import { useNavigation as useNavigationContext } from '../context/NavigationContext';
 import { navigationService } from '../services/navigationService';
+import { UI_CONSTANTS, COMMON_STYLES, UI_UTILS } from '../utils/uiConstants';
 
 const { width, height } = Dimensions.get('window');
 
 const SideMenu = ({ visible, onClose, onLogout }) => {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const { getSortedNavigation } = useNavigationContext();
   const slideAnim = React.useRef(new Animated.Value(-width)).current;
@@ -60,7 +63,7 @@ const SideMenu = ({ visible, onClose, onLogout }) => {
     const menuItems = [
       {
         id: 'dashboard',
-        title: 'Dashboard',
+        title: t('navigation.dashboard'),
         icon: 'view-dashboard',
         onPress: () => {
           onClose();
@@ -74,7 +77,7 @@ const SideMenu = ({ visible, onClose, onLogout }) => {
       menuItems.push(
         {
           id: 'asset_default',
-          title: 'Asset Assignment',
+          title: t('navigation.assetAssignment'),
           icon: 'barcode-scan',
           onPress: () => {
             onClose();
@@ -83,7 +86,7 @@ const SideMenu = ({ visible, onClose, onLogout }) => {
         },
         {
           id: 'employee_default',
-          title: 'Employee Assets',
+          title: t('navigation.employeeAssets'),
           icon: 'account-group',
           onPress: () => {
             onClose();
@@ -92,11 +95,29 @@ const SideMenu = ({ visible, onClose, onLogout }) => {
         },
         {
           id: 'department_default',
-          title: 'Department Assets',
+          title: t('navigation.departmentAssets'),
           icon: 'domain',
           onPress: () => {
             onClose();
             navigation.navigate('DepartmentAsset');
+          },
+        },
+        {
+          id: 'maintenance_default',
+          title: t('navigation.maintenanceSupervisor'),
+          icon: 'wrench',
+          onPress: () => {
+            onClose();
+            navigation.navigate('MaintenanceSupervisor');
+          },
+        },
+        {
+          id: 'report_breakdown_default',
+          title: t('navigation.reportBreakdown'),
+          icon: 'clipboard-alert',
+          onPress: () => {
+            onClose();
+            navigation.navigate('REPORTBREAKDOWN');
           },
         }
       );
@@ -110,7 +131,7 @@ const SideMenu = ({ visible, onClose, onLogout }) => {
       uniqueItems.forEach((item, index) => {
         menuItems.push({
           id: `${item.app_id.toLowerCase()}_${index}`,
-          title: item.label,
+          title: t(navigationService.getNavigationLabel(item.app_id)),
           icon: navigationService.getNavigationIcon(item.app_id),
           onPress: () => {
             onClose();
@@ -134,15 +155,21 @@ const SideMenu = ({ visible, onClose, onLogout }) => {
     >
       <MaterialCommunityIcons
         name={item.icon}
-        size={24}
-        color="#003667"
+        size={UI_CONSTANTS.ICON_SIZES.LG}
+        color={UI_CONSTANTS.COLORS.PRIMARY}
         style={styles.menuIcon}
       />
-      <Text style={styles.menuText}>{item.title}</Text>
+      <Text 
+        style={styles.menuText}
+        numberOfLines={2}
+        ellipsizeMode="tail"
+      >
+        {item.title}
+      </Text>
       <MaterialCommunityIcons
         name="chevron-right"
-        size={20}
-        color="#666"
+        size={UI_CONSTANTS.ICON_SIZES.MD}
+        color={UI_CONSTANTS.COLORS.GRAY_DARK}
       />
     </TouchableOpacity>
   );
@@ -173,8 +200,20 @@ const SideMenu = ({ visible, onClose, onLogout }) => {
               resizeMode="contain"
               tintColor="#FEC200"
             />
-            <Text style={styles.headerTitle}>Asset Management</Text>
-            <Text style={styles.headerSubtitle}>v1.0.0</Text>
+            <Text 
+              style={styles.headerTitle}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {t('navigation.assetManagement')}
+            </Text>
+            <Text 
+              style={styles.headerSubtitle}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {t('sideMenu.version')}
+            </Text>
           </View>
           
           {/* User Details */}
@@ -188,14 +227,26 @@ const SideMenu = ({ visible, onClose, onLogout }) => {
                 />
               </View>
               <View style={styles.userInfo}>
-                <Text style={styles.userName}>
-                  {userData.full_name || userData.name || userData.username || 'User'}
-                </Text>
-                <Text style={styles.userEmail}>
+              <Text 
+                style={styles.userName}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {userData.full_name || userData.name || userData.username || t('sideMenu.user')}
+              </Text>
+                <Text 
+                  style={styles.userEmail}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
                   {userData.email || 'user@example.com'}
                 </Text>
                 {userData.role && (
-                  <Text style={styles.userRole}>
+                  <Text 
+                    style={styles.userRole}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                  >
                     {userData.role}
                   </Text>
                 )}
@@ -224,7 +275,13 @@ const SideMenu = ({ visible, onClose, onLogout }) => {
                 size={24}
                 color="#F44336"
               />
-              <Text style={styles.logoutText}>Logout</Text>
+              <Text 
+                style={styles.logoutText}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {t('auth.logout')}
+              </Text>
             </TouchableOpacity>
             
             {/* User ID and Role Info */}
@@ -232,12 +289,12 @@ const SideMenu = ({ visible, onClose, onLogout }) => {
               <View style={styles.userInfoRight}>
                 {userData.user_id && (
                   <Text style={styles.userInfoText}>
-                    User ID: {userData.user_id}
+                    {t('sideMenu.userId')}: {userData.user_id}
                   </Text>
                 )}
                 {userData.job_role_id && (
                   <Text style={styles.userInfoText}>
-                    Role ID: {userData.job_role_id}
+                    {t('sideMenu.roleId')}: {userData.job_role_id}
                   </Text>
                 )}
               </View>
@@ -272,8 +329,8 @@ const styles = StyleSheet.create({
     left: 0,
     width: width * 0.8,
     height: height,
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
+    backgroundColor: UI_CONSTANTS.COLORS.WHITE,
+    shadowColor: UI_CONSTANTS.COLORS.BLACK,
     shadowOffset: {
       width: 2,
       height: 0,
@@ -283,10 +340,10 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   header: {
-    backgroundColor: '#003667',
+    backgroundColor: UI_CONSTANTS.COLORS.PRIMARY,
     paddingTop: 60,
-    paddingBottom: 30,
-    paddingHorizontal: 20,
+    paddingBottom: UI_CONSTANTS.SPACING.XXXL,
+    paddingHorizontal: UI_CONSTANTS.SPACING.LG,
   },
   headerContent: {
     alignItems: 'center',
@@ -294,76 +351,76 @@ const styles = StyleSheet.create({
   headerLogo: {
     width: 120,
     height: 50,
-    marginBottom: 10,
+    marginBottom: UI_CONSTANTS.SPACING.MD,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: UI_CONSTANTS.FONT_SIZES.LG,
     fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginTop: 12,
-    marginBottom: 4,
+    color: UI_CONSTANTS.COLORS.WHITE,
+    marginTop: UI_CONSTANTS.SPACING.MD,
+    marginBottom: UI_CONSTANTS.SPACING.XS,
   },
   headerSubtitle: {
-    fontSize: 14,
-    color: '#FEC200',
+    fontSize: UI_CONSTANTS.FONT_SIZES.MD,
+    color: UI_CONSTANTS.COLORS.SECONDARY,
   },
   userSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 20,
-    paddingHorizontal: 20,
-    paddingVertical: 15,
+    marginTop: UI_CONSTANTS.SPACING.LG,
+    paddingHorizontal: UI_CONSTANTS.SPACING.LG,
+    paddingVertical: UI_CONSTANTS.SPACING.MD,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 8,
+    borderRadius: UI_CONSTANTS.SPACING.SM,
   },
   userAvatar: {
-    marginRight: 15,
+    marginRight: UI_CONSTANTS.SPACING.MD,
   },
   userInfo: {
     flex: 1,
   },
   userName: {
-    fontSize: 16,
+    fontSize: UI_CONSTANTS.FONT_SIZES.LG,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: UI_CONSTANTS.COLORS.WHITE,
     marginBottom: 2,
   },
   userEmail: {
-    fontSize: 12,
-    color: '#FEC200',
+    fontSize: UI_CONSTANTS.FONT_SIZES.SM,
+    color: UI_CONSTANTS.COLORS.SECONDARY,
     marginBottom: 2,
   },
   userRole: {
-    fontSize: 12,
-    color: '#FFFFFF',
+    fontSize: UI_CONSTANTS.FONT_SIZES.SM,
+    color: UI_CONSTANTS.COLORS.WHITE,
     opacity: 0.8,
   },
   menuList: {
     flex: 1,
-    paddingTop: 20,
+    paddingTop: UI_CONSTANTS.SPACING.LG,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
+    paddingVertical: UI_CONSTANTS.SPACING.LG,
+    paddingHorizontal: UI_CONSTANTS.SPACING.LG,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: UI_CONSTANTS.COLORS.GRAY_LIGHT,
   },
   menuIcon: {
-    marginRight: 16,
-    width: 24,
+    marginRight: UI_CONSTANTS.SPACING.LG,
+    width: UI_CONSTANTS.ICON_SIZES.LG,
   },
   menuText: {
     flex: 1,
-    fontSize: 16,
-    color: '#222',
+    fontSize: UI_CONSTANTS.FONT_SIZES.LG,
+    color: UI_CONSTANTS.COLORS.TEXT_PRIMARY,
     fontWeight: '500',
   },
   footer: {
-    padding: 20,
+    padding: UI_CONSTANTS.SPACING.LG,
     borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
+    borderTopColor: UI_CONSTANTS.COLORS.GRAY_LIGHT,
   },
   footerContent: {
     flexDirection: 'row',
@@ -374,21 +431,21 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   userInfoText: {
-    fontSize: 12,
-    color: '#666',
+    fontSize: UI_CONSTANTS.FONT_SIZES.SM,
+    color: UI_CONSTANTS.COLORS.GRAY_DARK,
     marginBottom: 2,
     textAlign: 'right',
   },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: UI_CONSTANTS.SPACING.MD,
   },
   logoutText: {
-    fontSize: 16,
-    color: '#F44336',
+    fontSize: UI_CONSTANTS.FONT_SIZES.LG,
+    color: UI_CONSTANTS.COLORS.ERROR,
     fontWeight: '600',
-    marginLeft: 12,
+    marginLeft: UI_CONSTANTS.SPACING.MD,
   },
 });
 

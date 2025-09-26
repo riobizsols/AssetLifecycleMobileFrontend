@@ -1,10 +1,68 @@
 // API Configuration
 export const API_CONFIG = {
-  // For development on mobile device, use your computer's IP address instead of localhost
-  // BASE_URL: 'http://localhost:4000', // Use this for web development
-  BASE_URL: 'http://192.168.29.30:4000', // Your computer's IP address
-  ACCESS_TOKEN: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJvcmdfaWQiOiJPUkcwMDEiLCJ1c2VyX2lkIjoiVVNSMDAyIiwiZW1haWwiOiJuYXJlbnJpbzc1NkBnbWFpbC5jb20iLCJqb2Jfcm9sZV9pZCI6IkpSMDAxIiwiaWF0IjoxNzU0Mzc1NjkyLCJleHAiOjE3NTQ5ODA0OTJ9.5KfufndBAJbIWdR6zAsaySbwP9KWOys7HCTlN0ETB2w',
-  TIMEOUT: 10000, // 10 seconds
+  // Multiple server options for different environments
+  SERVERS: {
+    // Local development server (your computer's IP)
+    LOCAL: 'http://192.168.0.107:4000',
+    // Alternative local IPs (common for different network setups)
+    LOCAL_ALT1: 'http://10.0.2.2:4000', // Android emulator
+    LOCAL_ALT2: 'http://localhost:4000', // iOS simulator
+    LOCAL_ALT3: 'http://127.0.0.1:4000', // Localhost
+    // Production server (replace with your actual production URL)
+    PRODUCTION: 'https://your-production-server.com',
+  },
+  
+  // Default server to use
+  BASE_URL: 'http://192.168.0.107:4000', // Your computer's IP address
+  
+  // Fallback servers to try if the main one fails
+  FALLBACK_URLS: [
+    'http://10.0.2.2:4000',
+    'http://localhost:4000',
+    'http://127.0.0.1:4000',
+  ],
+  
+  ACCESS_TOKEN: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJvcmdfaWQiOiJPUkcwMDEiLCJ1c2VyX2lkIjoiVVNSMDAyIiwiZW1haWwiOiJuYXJlbnJpbzc1NkBnbWFpbC5jb20iLCJqb2Jfcm9sZV9pZCI6bnVsbCwiZW1wX2ludF9pZCI6IkVNUF9JTlRfMDAwMiIsImlhdCI6MTc1ODY5Mjg5NywiZXhwIjoxNzU5Mjk3Njk3fQ._bJ0Cv4QHqjF4gvbtg10b0JrjuOvCAGvxOg-ZAfcPDE',
+  TIMEOUT: 8000, // 8 seconds
+};
+
+// Function to get the current server URL
+export const getServerUrl = () => {
+  return API_CONFIG.BASE_URL;
+};
+
+// Function to test server connectivity
+export const testServerConnection = async (url = null) => {
+  const testUrl = url || API_CONFIG.BASE_URL;
+  try {
+    const response = await fetch(`${testUrl}/api/health`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      timeout: 5000,
+    });
+    return response.ok;
+  } catch (error) {
+    console.log(`Server test failed for ${testUrl}:`, error.message);
+    return false;
+  }
+};
+
+// Function to find a working server
+export const findWorkingServer = async () => {
+  const servers = [API_CONFIG.BASE_URL, ...API_CONFIG.FALLBACK_URLS];
+  
+  for (const server of servers) {
+    console.log(`Testing server: ${server}`);
+    const isWorking = await testServerConnection(server);
+    if (isWorking) {
+      console.log(`Found working server: ${server}`);
+      return server;
+    }
+  }
+  
+  throw new Error('No working server found');
 };
 
 // API Headers
@@ -29,4 +87,8 @@ export const API_ENDPOINTS = {
   GET_EMPLOYEE_ACTIVE_ASSETS: (employeeId) => `/api/asset-assignments/employee/${employeeId}/active`,
   GET_EMPLOYEE_ASSET_HISTORY: (employeeId) => `/api/asset-assignments/employee-history/${employeeId}`,
   GET_ASSET_DETAILS: (assetId) => `/api/assets/${assetId}`,
+  GET_BREAKDOWN_REPORTS: () => `/api/reportbreakdown/reports`,
+  UPDATE_BREAKDOWN_REPORT: (id) => `/api/reportbreakdown/update/${id}`,
+  LOGIN: () => `/api/auth/login`,
+  HEALTH: () => `/api/health`,
 }; 

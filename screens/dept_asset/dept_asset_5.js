@@ -14,9 +14,11 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { Appbar } from "react-native-paper";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { API_CONFIG, getApiHeaders, API_ENDPOINTS } from "../../config/api";
 
 export default function EmployeeAssetDetailScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute();
   const { employeeId, employeeName, departmentId } = route.params || {};
@@ -63,7 +65,7 @@ export default function EmployeeAssetDetailScreen() {
   // Fetch employee active assets
   const fetchEmployeeActiveAssets = async (empId) => {
     if (!empId) {
-      Alert.alert("Error", "Employee ID is required");
+      Alert.alert(t('common.error'), t('assets.employeeIdRequired'));
       return;
     }
 
@@ -87,9 +89,9 @@ export default function EmployeeAssetDetailScreen() {
       if (!response.ok) {
         if (response.status === 404) {
           Alert.alert(
-            "No Active Assets Found",
-            "No active assets found for this employee.",
-            [{ text: "OK" }]
+            t('assets.noActiveAssetsFound'),
+            t('assets.noActiveAssetsFoundForEmployee'),
+            [{ text: t('common.ok') }]
           );
           setAssetData([]);
           setEmployeeInfo({
@@ -102,9 +104,9 @@ export default function EmployeeAssetDetailScreen() {
         }
         if (response.status === 401) {
           Alert.alert(
-            "Authentication Error",
-            "Please check your authorization token.",
-            [{ text: "OK" }]
+            t('assets.authenticationError'),
+            t('assets.checkAuthorizationToken'),
+            [{ text: t('common.ok') }]
           );
           return;
         }
@@ -135,14 +137,14 @@ export default function EmployeeAssetDetailScreen() {
               console.log(`Asset details for ${assignment.asset_id}:`, assetDetails);
               
               // Handle the asset details response structure
-              let assetDescription = "Unknown Asset";
+              let assetDescription = t('assets.unknownAsset');
               let serialNumber = `SN-${assignment.asset_id}`;
               
               if (Array.isArray(assetDetails) && assetDetails.length > 0) {
-                assetDescription = assetDetails[0].description || assetDetails[0].text || assetDetails[0].name || `Asset ${assignment.asset_id}`;
+                assetDescription = assetDetails[0].description || assetDetails[0].text || assetDetails[0].name || `${t('assets.asset')} ${assignment.asset_id}`;
                 serialNumber = assetDetails[0].serial_number || `SN-${assignment.asset_id}`;
               } else if (assetDetails && typeof assetDetails === 'object') {
-                assetDescription = assetDetails.description || assetDetails.text || assetDetails.name || `Asset ${assignment.asset_id}`;
+                assetDescription = assetDetails.description || assetDetails.text || assetDetails.name || `${t('assets.asset')} ${assignment.asset_id}`;
                 serialNumber = assetDetails.serial_number || `SN-${assignment.asset_id}`;
               }
               
@@ -151,7 +153,7 @@ export default function EmployeeAssetDetailScreen() {
               processedAssets.push({
                 type: assetDescription,
                 serial: serialNumber,
-                remarks: assignment.remarks || "Active",
+                remarks: assignment.remarks || t('assets.active'),
                 assetId: assignment.asset_id,
                 assignmentId: assignment.asset_assign_id
               });
@@ -159,9 +161,9 @@ export default function EmployeeAssetDetailScreen() {
               console.log(`Asset details not available for ${assignment.asset_id}, using fallback`);
               // Fallback if asset details not available
               processedAssets.push({
-                type: `Asset ${assignment.asset_id}`,
+                type: `${t('assets.asset')} ${assignment.asset_id}`,
                 serial: `SN-${assignment.asset_id}`,
-                remarks: assignment.remarks || "Active",
+                remarks: assignment.remarks || t('assets.active'),
                 assetId: assignment.asset_id,
                 assignmentId: assignment.asset_assign_id
               });
@@ -170,7 +172,7 @@ export default function EmployeeAssetDetailScreen() {
             console.error(`Error fetching asset details for ${assignment.asset_id}:`, error);
             // Fallback if asset details fetch fails
             processedAssets.push({
-              type: `Asset ${assignment.asset_id}`,
+              type: `${t('assets.asset')} ${assignment.asset_id}`,
               serial: `SN-${assignment.asset_id}`,
               remarks: assignment.remarks || "Active",
               assetId: assignment.asset_id,
@@ -191,9 +193,9 @@ export default function EmployeeAssetDetailScreen() {
     } catch (error) {
       console.error("Error fetching employee active assets:", error);
       if (error.name === 'AbortError') {
-        Alert.alert("Timeout", "Request timed out. Please try again.");
+        Alert.alert(t('common.timeout'), t('assets.requestTimedOut'));
       } else {
-        Alert.alert("Error", "Failed to fetch employee assets. Please try again.");
+        Alert.alert(t('common.error'), t('assets.failedToFetchEmployeeAssets'));
       }
     } finally {
       setLoading(false);
@@ -220,7 +222,7 @@ export default function EmployeeAssetDetailScreen() {
           <Appbar.Action icon="menu" color="#FEC200" onPress={() => {}} />
           {/* Centered Title */}
           <View style={styles.centerTitleContainer}>
-            <Text style={styles.appbarTitle}>Employee Asset Detail</Text>
+            <Text style={styles.appbarTitle}>{t('assets.employeeAssetDetail')}</Text>
           </View>
           {/* Right side empty to balance layout */}
           <View style={{ width: 40 }} />
@@ -236,7 +238,7 @@ export default function EmployeeAssetDetailScreen() {
         {/* Form */}
         <View style={styles.formContainer}>
           <View style={styles.infoRow}>
-            <Text style={styles.label}>Employee Id</Text>
+            <Text style={styles.label}>{t('assets.employeeId')}</Text>
             <Text style={styles.colon}>:</Text>
             <TextInput
               style={styles.valueInput}
@@ -245,7 +247,7 @@ export default function EmployeeAssetDetailScreen() {
             />
           </View>
           <View style={styles.infoRow}>
-            <Text style={styles.label}>Employee Name</Text>
+            <Text style={styles.label}>{t('assets.employeeName')}</Text>
             <Text style={styles.colon}>:</Text>
             <TextInput
               style={styles.valueInput}
@@ -254,7 +256,7 @@ export default function EmployeeAssetDetailScreen() {
             />
           </View>
           <View style={styles.infoRow}>
-            <Text style={styles.label}>Department</Text>
+            <Text style={styles.label}>{t('assets.department')}</Text>
             <Text style={styles.colon}>:</Text>
             <TextInput 
               style={styles.valueInput} 
@@ -263,7 +265,7 @@ export default function EmployeeAssetDetailScreen() {
             />
           </View>
           <View style={styles.infoRow}>
-            <Text style={styles.label}>No. of. assets</Text>
+            <Text style={styles.label}>{t('assets.noOfAsset')}</Text>
             <Text style={styles.colon}>:</Text>
             <TextInput 
               style={styles.valueInput} 
@@ -277,19 +279,19 @@ export default function EmployeeAssetDetailScreen() {
         <View style={styles.tableContainer}>
           <View style={styles.tableHeader}>
             <Text style={[styles.tableHeaderText, { flex: 1.5 }]}>
-              Asset
+              {t('assets.asset')}
             </Text>
             <Text style={[styles.tableHeaderText, { flex: 1 }]}>
-              Serial No.
+              {t('assets.serialNo')}
             </Text>
-            <Text style={[styles.tableHeaderText, { flex: 2 }]}>Remarks</Text>
+            <Text style={[styles.tableHeaderText, { flex: 2 }]}>{t('assets.remarks')}</Text>
           </View>
           <View style={styles.yellowLine} />
           
           {loading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color="#003667" />
-              <Text style={styles.loadingText}>Loading employee assets...</Text>
+              <Text style={styles.loadingText}>{t('assets.loadingEmployeeAssets')}</Text>
             </View>
           ) : assetData.length > 0 ? (
             <FlatList
@@ -340,7 +342,7 @@ export default function EmployeeAssetDetailScreen() {
           ) : (
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>
-                {employeeId ? "No active assets found for this employee" : "No employee data available"}
+                {employeeId ? t('assets.noActiveAssetsFoundForEmployeeMessage') : t('assets.noEmployeeDataAvailableMessage')}
               </Text>
             </View>
           )}

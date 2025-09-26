@@ -14,9 +14,11 @@ import {
 } from "react-native";
 import { Appbar } from "react-native-paper";
 import { useNavigation, useRoute } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { API_CONFIG, getApiHeaders, API_ENDPOINTS } from "../../config/api";
 
 export default function EmployeeAssetHistory() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute();
   const { employeeId, employeeName } = route.params || {};
@@ -27,7 +29,7 @@ export default function EmployeeAssetHistory() {
 
   // Helper function to format date
   const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
+    if (!dateString) return t('common.notAvailable');
     try {
       const date = new Date(dateString);
       return date.toLocaleDateString("en-GB"); // DD/MM/YYYY format
@@ -40,15 +42,15 @@ export default function EmployeeAssetHistory() {
   const getActionDisplayText = (action) => {
     switch (action) {
       case "A":
-        return "Assigned";
+        return t('assets.assigned');
       case "U":
-        return "Unassigned";
+        return t('assets.unassigned');
       case "C":
-        return "Cancelled";
+        return t('assets.cancelled');
       case "T":
-        return "Transferred";
+        return t('assets.transferred');
       default:
-        return action || "N/A";
+        return action || t('common.notAvailable');
     }
   };
 
@@ -130,7 +132,7 @@ export default function EmployeeAssetHistory() {
   // Fetch employee asset history
   const fetchEmployeeHistory = async () => {
     if (!employeeId) {
-      Alert.alert("Error", "Employee ID not found");
+      Alert.alert(t('common.error'), t('assets.employeeIdNotFound'));
       return;
     }
 
@@ -160,9 +162,9 @@ export default function EmployeeAssetHistory() {
     } catch (error) {
       console.error("Error fetching employee history:", error);
       Alert.alert(
-        "Error",
-        "Failed to load employee history. Please try again.",
-        [{ text: "OK" }]
+        t('common.error'),
+        t('assets.failedToLoadEmployeeHistory'),
+        [{ text: t('common.ok') }]
       );
     } finally {
       setLoading(false);
@@ -184,37 +186,37 @@ export default function EmployeeAssetHistory() {
       ]}
     >
       <View style={styles.historyCell}>
-        <Text style={styles.historyLabel}>Action:</Text>
+        <Text style={styles.historyLabel}>{t('assets.action')}</Text>
         <Text style={styles.historyValue}>
           {getActionDisplayText(item.action)}
         </Text>
       </View>
       
       <View style={styles.historyCell}>
-        <Text style={styles.historyLabel}>Date:</Text>
+        <Text style={styles.historyLabel}>{t('assets.date')}</Text>
         <Text style={styles.historyValue}>
           {formatDate(item.action_on)}
         </Text>
       </View>
       
       <View style={styles.historyCell}>
-        <Text style={styles.historyLabel}>By:</Text>
+        <Text style={styles.historyLabel}>{t('assets.by')}</Text>
         <Text style={styles.historyValue}>
-          {item.action_by || "N/A"}
+          {item.action_by || t('common.notAvailable')}
         </Text>
       </View>
       
       <View style={styles.historyCell}>
-        <Text style={styles.historyLabel}>Asset:</Text>
+        <Text style={styles.historyLabel}>{t('assets.asset')}</Text>
         <Text style={styles.historyValue}>
-          {item.asset_id || "N/A"}
+          {item.asset_id || t('common.notAvailable')}
         </Text>
       </View>
       
       <View style={styles.historyCell}>
-        <Text style={styles.historyLabel}>Department:</Text>
+        <Text style={styles.historyLabel}>{t('assets.department')}</Text>
         <Text style={styles.historyValue}>
-          {departments[item.dept_id] || item.dept_id || "N/A"}
+          {departments[item.dept_id] || item.dept_id || t('common.notAvailable')}
         </Text>
       </View>
     </View>
@@ -230,28 +232,28 @@ export default function EmployeeAssetHistory() {
           onPress={() => navigation.goBack()}
         />
         <View style={styles.centerTitleContainer}>
-          <Text style={styles.appbarTitle}>Employee Asset History</Text>
+          <Text style={styles.appbarTitle}>{t('assets.employeeAssetHistory')}</Text>
         </View>
       </Appbar.Header>
 
       {/* Employee Info */}
       <View style={styles.assetInfo}>
         <Text style={styles.assetInfoText}>
-          Employee: {employeeName || "N/A"}
+          {t('assets.employee')} {employeeName || t('common.notAvailable')}
         </Text>
       </View>
 
       {/* History Table */}
       <View style={styles.tableContainer}>
         <View style={styles.tableHeader}>
-          <Text style={styles.tableHeaderText}>Assignment History</Text>
+          <Text style={styles.tableHeaderText}>{t('assets.assignmentHistory')}</Text>
         </View>
         <View style={styles.yellowLine} />
         
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#003667" />
-            <Text style={styles.loadingText}>Loading history...</Text>
+            <Text style={styles.loadingText}>{t('assets.loadingHistory')}</Text>
           </View>
         ) : historyData.length > 0 ? (
           <View style={styles.listContainer}>
@@ -269,7 +271,7 @@ export default function EmployeeAssetHistory() {
           </View>
         ) : (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No history found</Text>
+            <Text style={styles.emptyText}>{t('assets.noHistoryFound')}</Text>
           </View>
         )}
       </View>

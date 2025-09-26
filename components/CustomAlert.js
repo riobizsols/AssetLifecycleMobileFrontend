@@ -8,6 +8,8 @@ import {
   Dimensions,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
+import { UI_CONSTANTS, COMMON_STYLES, UI_UTILS } from '../utils/uiConstants';
 
 const { width } = Dimensions.get('window');
 
@@ -18,11 +20,16 @@ const CustomAlert = ({
   type = 'info', // 'success', 'error', 'warning', 'info'
   onConfirm, 
   onCancel,
-  confirmText = 'OK',
-  cancelText = 'Cancel',
+  confirmText,
+  cancelText,
   showCancel = false,
   onClose
 }) => {
+  const { t } = useTranslation();
+  
+  // Use translations if no custom text provided
+  const finalConfirmText = confirmText || t('common.ok');
+  const finalCancelText = cancelText || t('common.cancel');
   const getIconName = () => {
     switch (type) {
       case 'success':
@@ -81,10 +88,22 @@ const CustomAlert = ({
           </View>
 
           {/* Title */}
-          <Text style={styles.title}>{title}</Text>
+          <Text 
+            style={styles.title}
+            numberOfLines={2}
+            ellipsizeMode="tail"
+          >
+            {title}
+          </Text>
 
           {/* Message */}
-          <Text style={styles.message}>{message}</Text>
+          <Text 
+            style={styles.message}
+            numberOfLines={4}
+            ellipsizeMode="tail"
+          >
+            {message}
+          </Text>
 
           {/* Buttons */}
           <View style={styles.buttonContainer}>
@@ -93,7 +112,13 @@ const CustomAlert = ({
                 style={[styles.button, styles.cancelButton]}
                 onPress={onCancel}
               >
-                <Text style={styles.cancelButtonText}>{cancelText}</Text>
+                <Text 
+                  style={styles.cancelButtonText}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {finalCancelText}
+                </Text>
               </TouchableOpacity>
             )}
             <TouchableOpacity
@@ -105,7 +130,13 @@ const CustomAlert = ({
               ]}
               onPress={onConfirm}
             >
-              <Text style={styles.confirmButtonText}>{confirmText}</Text>
+              <Text 
+                style={styles.confirmButtonText}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {finalConfirmText}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -120,16 +151,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: UI_CONSTANTS.SPACING.LG,
   },
   alertContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 24,
+    backgroundColor: UI_CONSTANTS.COLORS.WHITE,
+    borderRadius: UI_CONSTANTS.CARD_BORDER_RADIUS,
+    padding: UI_CONSTANTS.SPACING.XXL,
     width: width * 0.85,
     maxWidth: 400,
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: UI_CONSTANTS.COLORS.BLACK,
     shadowOffset: {
       width: 0,
       height: 4,
@@ -139,52 +170,52 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   iconContainer: {
-    marginBottom: 16,
+    marginBottom: UI_CONSTANTS.SPACING.LG,
   },
   title: {
-    fontSize: 20,
+    fontSize: UI_CONSTANTS.FONT_SIZES.LG,
     fontWeight: 'bold',
-    color: '#222',
+    color: UI_CONSTANTS.COLORS.TEXT_PRIMARY,
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: UI_CONSTANTS.SPACING.SM,
   },
   message: {
-    fontSize: 16,
-    color: '#666',
+    fontSize: UI_CONSTANTS.FONT_SIZES.LG,
+    color: UI_CONSTANTS.COLORS.TEXT_SECONDARY,
     textAlign: 'center',
     lineHeight: 22,
-    marginBottom: 24,
+    marginBottom: UI_CONSTANTS.SPACING.XXL,
   },
   buttonContainer: {
     flexDirection: 'row',
     width: '100%',
-    gap: 12,
+    gap: UI_CONSTANTS.SPACING.MD,
   },
   button: {
     flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
+    paddingVertical: UI_CONSTANTS.SPACING.MD,
+    paddingHorizontal: UI_CONSTANTS.SPACING.XXL,
+    borderRadius: UI_CONSTANTS.SPACING.SM,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 44,
+    minHeight: UI_CONSTANTS.BUTTON_HEIGHT_SM,
   },
   confirmButton: {
-    backgroundColor: '#003667',
+    backgroundColor: UI_CONSTANTS.COLORS.PRIMARY,
   },
   cancelButton: {
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: '#DDD',
+    borderColor: UI_CONSTANTS.COLORS.GRAY_MEDIUM,
   },
   confirmButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
+    color: UI_CONSTANTS.COLORS.WHITE,
+    fontSize: UI_CONSTANTS.FONT_SIZES.LG,
     fontWeight: '600',
   },
   cancelButtonText: {
-    color: '#666',
-    fontSize: 16,
+    color: UI_CONSTANTS.COLORS.TEXT_SECONDARY,
+    fontSize: UI_CONSTANTS.FONT_SIZES.LG,
     fontWeight: '600',
   },
 });

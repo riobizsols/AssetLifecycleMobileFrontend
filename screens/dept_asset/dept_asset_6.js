@@ -13,9 +13,11 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { Appbar } from "react-native-paper";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { API_CONFIG, getApiHeaders, API_ENDPOINTS } from "../../config/api";
 
 export default function AssetDetailsScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute();
   const { assetId, serialNumber, employeeId, employeeName, departmentId } = route.params || {};
@@ -25,7 +27,7 @@ export default function AssetDetailsScreen() {
 
   // Helper function to format date
   const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
+    if (!dateString) return t('common.notAvailable');
     try {
       const date = new Date(dateString);
       return date.toLocaleDateString("en-GB"); // DD/MM/YYYY format
@@ -37,7 +39,7 @@ export default function AssetDetailsScreen() {
   // Fetch asset details
   const fetchAssetDetails = async () => {
     if (!assetId) {
-      Alert.alert("Error", "Asset ID is required");
+      Alert.alert(t('common.error'), t('assets.assetIdRequired'));
       return;
     }
 
@@ -54,7 +56,7 @@ export default function AssetDetailsScreen() {
       
       if (!response.ok) {
         if (response.status === 404) {
-          Alert.alert("Asset Not Found", "No asset found with this ID.");
+          Alert.alert(t('assets.assetNotFound'), t('assets.noAssetFoundWithId'));
           return;
         }
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -76,7 +78,7 @@ export default function AssetDetailsScreen() {
       
     } catch (error) {
       console.error("Error fetching asset details:", error);
-      Alert.alert("Error", "Failed to fetch asset details. Please try again.");
+      Alert.alert(t('common.error'), t('assets.failedToFetchAssetDetails'));
     } finally {
       setLoading(false);
     }
@@ -117,17 +119,17 @@ export default function AssetDetailsScreen() {
   // Handle cancel assignment
   const handleCancelAssignment = async () => {
     if (!assignmentData?.asset_id) {
-      Alert.alert("Error", "Assignment data not found");
+      Alert.alert(t('common.error'), t('assets.assignmentDataNotFound'));
       return;
     }
 
     Alert.alert(
-      "Cancel Assignment",
-      `Are you sure you want to cancel the assignment for ${assetData?.description || assetId}?`,
+      t('assets.cancelAssignment'),
+      t('assets.confirmCancelAssignmentForAsset', { assetName: assetData?.description || assetId }),
       [
-        { text: "No", style: "cancel" },
+        { text: t('assets.no'), style: "cancel" },
         {
-          text: "Yes",
+          text: t('assets.yes'),
           onPress: async () => {
             setLoading(true);
             try {
@@ -178,9 +180,9 @@ export default function AssetDetailsScreen() {
               });
 
               if (createResponse.ok) {
-                Alert.alert("Success", "Assignment cancelled successfully", [
+                Alert.alert(t('assets.success'), t('assets.assignmentCancelledSuccessfully'), [
                   {
-                    text: "OK",
+                    text: t('assets.ok'),
                     onPress: () => navigation.goBack(),
                   },
                 ]);
@@ -191,8 +193,8 @@ export default function AssetDetailsScreen() {
               }
             } catch (error) {
               console.error("Error cancelling assignment:", error);
-              Alert.alert("Error", "Failed to cancel assignment. Please try again.", [
-                { text: "OK" },
+              Alert.alert(t('common.error'), t('assets.failedToCancelAssignment'), [
+                { text: t('assets.ok') },
               ]);
             } finally {
               setLoading(false);
@@ -219,7 +221,7 @@ export default function AssetDetailsScreen() {
             onPress={() => navigation.goBack()}
           />
           <View style={styles.centerTitleContainer}>
-            <Text style={styles.appbarTitle}>Asset Details</Text>
+            <Text style={styles.appbarTitle}>{t('assets.assetDetails')}</Text>
           </View>
         </Appbar.Header>
 
@@ -227,43 +229,43 @@ export default function AssetDetailsScreen() {
           {loading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color="#003667" />
-              <Text style={styles.loadingText}>Loading asset details...</Text>
+              <Text style={styles.loadingText}>{t('assets.loadingAssetDetails')}</Text>
             </View>
           ) : assetData ? (
             <>
               {/* Asset Details Card */}
               <View style={styles.card}>
                 <View style={styles.cardHeader}>
-                  <Text style={styles.cardHeaderText}>Asset Information</Text>
+                  <Text style={styles.cardHeaderText}>{t('assets.assetInformation')}</Text>
                 </View>
                 <View style={styles.yellowLine} />
                 <View style={styles.detailsTable}>
                   <DetailRow
-                    label="Asset ID"
-                    value={assetData.asset_id || assetData.id || assetId || "N/A"}
+                    label={t('assets.assetId')}
+                    value={assetData.asset_id || assetData.id || assetId || t('common.notAvailable')}
                   />
                   <DetailRow
-                    label="Serial Number"
-                    value={assetData.serial_number || serialNumber || "N/A"}
+                    label={t('assets.serialNumber')}
+                    value={assetData.serial_number || serialNumber || t('common.notAvailable')}
                   />
                   <DetailRow
-                    label="Description"
-                    value={assetData.description || assetData.text || assetData.name || "N/A"}
+                    label={t('assets.description')}
+                    value={assetData.description || assetData.text || assetData.name || t('common.notAvailable')}
                   />
                   <DetailRow
-                    label="Status"
-                    value={assetData.current_status || assetData.status || "N/A"}
+                    label={t('assets.status')}
+                    value={assetData.current_status || assetData.status || t('common.notAvailable')}
                   />
                   <DetailRow
-                    label="Assigned To"
-                    value={employeeName || assignmentData?.employee_int_id || "N/A"}
+                    label={t('assets.assignedTo')}
+                    value={employeeName || assignmentData?.employee_int_id || t('common.notAvailable')}
                   />
                   <DetailRow
-                    label="Department"
-                    value={departmentId || assignmentData?.dept_id || "N/A"}
+                    label={t('employees.department')}
+                    value={departmentId || assignmentData?.dept_id || t('common.notAvailable')}
                   />
                   <DetailRow
-                    label="Assignment Date"
+                    label={t('assets.assignmentDate')}
                     value={formatDate(assignmentData?.action_on)}
                   />
                 </View>
@@ -271,7 +273,7 @@ export default function AssetDetailsScreen() {
             </>
           ) : (
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No asset data available</Text>
+              <Text style={styles.emptyText}>{t('assets.noAssetDataAvailable')}</Text>
             </View>
           )}
         </View>
@@ -286,7 +288,7 @@ export default function AssetDetailsScreen() {
             {loading ? (
               <ActivityIndicator size="small" color="#fff" />
             ) : (
-              <Text style={styles.cancelBtnText}>Cancel Assignment</Text>
+              <Text style={styles.cancelBtnText}>{t('assets.cancelAssignment')}</Text>
             )}
           </TouchableOpacity>
         </View>
