@@ -27,6 +27,22 @@ export const navigationService = {
       }
 
       const data = await response.json();
+      
+      // Transform the API response to match expected format
+      if (data.success && data.data) {
+        return {
+          user_id: data.user_id,
+          data: data.data.map(item => ({
+            app_id: item.app_id,
+            label: item.label,
+            sequence: item.seq,
+            access_level: item.access_level,
+            int_status: 1, // All items from API are active
+            icon: navigationService.getNavigationIcon(item.app_id)
+          }))
+        };
+      }
+      
       return data;
     } catch (error) {
       console.error('Error fetching user navigation:', error);

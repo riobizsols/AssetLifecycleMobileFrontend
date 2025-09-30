@@ -155,12 +155,59 @@ const UpdateBreakdownScreen = () => {
     decision_code: breakdownData.decision_code || '',
   });
 
-  // Mock data for dropdowns
-  const breakdownCodes = ['ATB001', 'ATB002', 'ATB003', 'ATB004', 'ATB005'];
-  const decisionCodes = ['BF01', 'BF02', 'BF03', 'BF04', 'BF05'];
+  // State for API data
+  const [breakdownCodes, setBreakdownCodes] = useState([]);
+  const [decisionCodes] = useState(['BF01', 'BF02', 'BF03', 'BF04', 'BF05']);
 
   const [showBreakdownCodeDropdown, setShowBreakdownCodeDropdown] = useState(false);
   const [showDecisionCodeDropdown, setShowDecisionCodeDropdown] = useState(false);
+  const [showDecisionCodeDropdownUpward, setShowDecisionCodeDropdownUpward] = useState(false);
+
+  // Fetch breakdown reason codes on component mount
+  useEffect(() => {
+    fetchBreakdownReasonCodes();
+  }, []);
+
+  // Fetch breakdown reason codes from API
+  const fetchBreakdownReasonCodes = async () => {
+    try {
+      const serverUrl = getServerUrl();
+      const endpoint = API_ENDPOINTS.GET_BREAKDOWN_REASON_CODES('ORG001');
+      const url = `${serverUrl}${endpoint}`;
+
+      console.log('Fetching breakdown reason codes:', url);
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: getApiHeaders(),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API Error:', response.status, errorText);
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+      }
+
+      const data = await response.json();
+      console.log('Breakdown reason codes fetched successfully:', data);
+      
+      // Handle the actual API response format: { data: [{ id, text, asset_type_id }] }
+      if (data.data && Array.isArray(data.data)) {
+        setBreakdownCodes(data.data);
+      } else if (Array.isArray(data)) {
+        setBreakdownCodes(data);
+      } else if (data.reason_codes && Array.isArray(data.reason_codes)) {
+        setBreakdownCodes(data.reason_codes);
+      } else {
+        console.warn('Unexpected API response format:', data);
+        setBreakdownCodes([]);
+      }
+    } catch (error) {
+      console.error('Error fetching breakdown reason codes:', error);
+      // Fallback to empty array on error
+      setBreakdownCodes([]);
+    }
+  };
 
   const showAlert = (title, message, type = 'info', onConfirm = () => {}, showCancel = false) => {
     setAlertConfig({
@@ -211,6 +258,10 @@ const UpdateBreakdownScreen = () => {
   };
 
   const handleCancel = () => {
+    // Close all dropdowns before navigating
+    setShowBreakdownCodeDropdown(false);
+    setShowDecisionCodeDropdown(false);
+    setShowDecisionCodeDropdownUpward(false);
     navigation.goBack();
   };
 
@@ -401,18 +452,36 @@ const UpdateBreakdownScreen = () => {
               
               {showBreakdownCodeDropdown && (
                 <View style={styles.dropdownOptions}>
-                  {breakdownCodes.map((code) => (
-                    <TouchableOpacity
-                      key={code}
-                      style={styles.dropdownOption}
-                      onPress={() => {
-                        updateFormData('atbrrc_id', code);
-                        setShowBreakdownCodeDropdown(false);
-                      }}
-                    >
-                      <Text style={styles.dropdownOptionText}>{code}</Text>
-                    </TouchableOpacity>
-                  ))}
+                  <ScrollView 
+                    style={styles.dropdownScrollView}
+                    showsVerticalScrollIndicator={true}
+                    nestedScrollEnabled={true}
+                  >
+                    {breakdownCodes.length > 0 ? (
+                      breakdownCodes.map((item) => {
+                        const code = typeof item === 'string' ? item : item.id;
+                        const displayText = typeof item === 'string' ? item : `${item.id} - ${item.text}`;
+                        return (
+                          <TouchableOpacity
+                            key={code}
+                            style={styles.dropdownOption}
+                            onPress={() => {
+                              updateFormData('atbrrc_id', code);
+                              setShowBreakdownCodeDropdown(false);
+                            }}
+                          >
+                            <Text style={styles.dropdownOptionText}>{displayText}</Text>
+                          </TouchableOpacity>
+                        );
+                      })
+                    ) : (
+                      <View style={styles.dropdownOption}>
+                        <Text style={[styles.dropdownOptionText, { color: UI_CONSTANTS.COLORS.GRAY_DARK }]}>
+                          {t('breakdown.noCodesAvailable')}
+                        </Text>
+                      </View>
+                    )}
+                  </ScrollView>
                 </View>
               )}
             </View>
@@ -437,7 +506,11 @@ const UpdateBreakdownScreen = () => {
             <View style={styles.dropdownContainer}>
               <TouchableOpacity
                 style={styles.dropdownButton}
-                onPress={() => setShowDecisionCodeDropdown(!showDecisionCodeDropdown)}
+                onPress={() => {
+                  // For decision code dropdown, always show upward to avoid button overlap
+                  setShowDecisionCodeDropdown(false);
+                  setShowDecisionCodeDropdownUpward(!showDecisionCodeDropdownUpward);
+                }}
               >
                 <Text style={[
                   styles.dropdownButtonText,
@@ -446,26 +519,32 @@ const UpdateBreakdownScreen = () => {
                   {formData.decision_code || t('breakdown.selectDecisionCode')}
                 </Text>
                 <MaterialCommunityIcons 
-                  name={showDecisionCodeDropdown ? "chevron-up" : "chevron-down"} 
+                  name={showDecisionCodeDropdownUpward ? "chevron-down" : "chevron-up"} 
                   size={UI_CONSTANTS.ICON_SIZES.MD} 
                   color={UI_CONSTANTS.COLORS.TEXT_SECONDARY} 
                 />
               </TouchableOpacity>
               
-              {showDecisionCodeDropdown && (
-                <View style={styles.dropdownOptions}>
-                  {decisionCodes.map((code) => (
-                    <TouchableOpacity
-                      key={code}
-                      style={styles.dropdownOption}
-                      onPress={() => {
-                        updateFormData('decision_code', code);
-                        setShowDecisionCodeDropdown(false);
-                      }}
-                    >
-                      <Text style={styles.dropdownOptionText}>{code}</Text>
-                    </TouchableOpacity>
-                  ))}
+              {showDecisionCodeDropdownUpward && (
+                <View style={styles.dropdownOptionsUpward}>
+                  <ScrollView 
+                    style={styles.dropdownScrollView}
+                    showsVerticalScrollIndicator={true}
+                    nestedScrollEnabled={true}
+                  >
+                    {decisionCodes.map((code) => (
+                      <TouchableOpacity
+                        key={code}
+                        style={styles.dropdownOption}
+                        onPress={() => {
+                          updateFormData('decision_code', code);
+                          setShowDecisionCodeDropdownUpward(false);
+                        }}
+                      >
+                        <Text style={styles.dropdownOptionText}>{code}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
                 </View>
               )}
             </View>
@@ -674,12 +753,33 @@ const styles = StyleSheet.create({
     borderColor: UI_CONSTANTS.COLORS.GRAY_MEDIUM,
     borderRadius: RESPONSIVE_CONSTANTS.SPACING.MD,
     marginTop: RESPONSIVE_CONSTANTS.SPACING.XS,
-    zIndex: 1000,
+    zIndex: 9999,
     shadowColor: UI_CONSTANTS.COLORS.BLACK,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
-    elevation: 5,
+    elevation: 10,
+    maxHeight: 150, // Reduced height to prevent overlap
+    overflow: 'hidden',
+  },
+  dropdownOptionsUpward: {
+    position: 'absolute',
+    bottom: '100%',
+    left: 0,
+    right: 0,
+    backgroundColor: UI_CONSTANTS.COLORS.WHITE,
+    borderWidth: 1,
+    borderColor: UI_CONSTANTS.COLORS.GRAY_MEDIUM,
+    borderRadius: RESPONSIVE_CONSTANTS.SPACING.MD,
+    marginBottom: RESPONSIVE_CONSTANTS.SPACING.XS,
+    zIndex: 9999,
+    shadowColor: UI_CONSTANTS.COLORS.BLACK,
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 10,
+    maxHeight: 150, // Reduced height to prevent overlap
+    overflow: 'hidden',
   },
   dropdownOption: {
     paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.LG,
@@ -690,6 +790,9 @@ const styles = StyleSheet.create({
   dropdownOptionText: {
     fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.LG,
     color: UI_CONSTANTS.COLORS.TEXT_PRIMARY,
+  },
+  dropdownScrollView: {
+    maxHeight: 150,
   },
   textArea: {
     borderWidth: 1,

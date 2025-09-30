@@ -393,7 +393,8 @@
     "resolveBreakdown": "Resolve Breakdown",
     "breakdownReportedSuccessfully": "Breakdown reported successfully",
     "breakdownUpdatedSuccessfully": "Breakdown updated successfully",
-    "breakdownResolvedSuccessfully": "Breakdown resolved successfully"
+    "breakdownResolvedSuccessfully": "Breakdown resolved successfully",
+    "noCodesAvailable": "No codes available"
   },
   "maintenance": {
     "maintenanceSupervisor": "Maintenance Supervisor",

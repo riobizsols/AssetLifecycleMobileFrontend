@@ -3,7 +3,7 @@ export const API_CONFIG = {
   // Multiple server options for different environments
   SERVERS: {
     // Local development server (your computer's IP)
-    LOCAL: 'http://192.168.0.107:4000',
+    LOCAL: 'http://192.168.0.104:4000',
     // Alternative local IPs (common for different network setups)
     LOCAL_ALT1: 'http://10.0.2.2:4000', // Android emulator
     LOCAL_ALT2: 'http://localhost:4000', // iOS simulator
@@ -13,7 +13,7 @@ export const API_CONFIG = {
   },
   
   // Default server to use
-  BASE_URL: 'http://192.168.0.107:4000', // Your computer's IP address
+  BASE_URL: 'http://192.168.0.104:4000', // Your computer's IP address
   
   // Fallback servers to try if the main one fails
   FALLBACK_URLS: [
@@ -89,6 +89,7 @@ export const API_ENDPOINTS = {
   GET_ASSET_DETAILS: (assetId) => `/api/assets/${assetId}`,
   GET_BREAKDOWN_REPORTS: () => `/api/reportbreakdown/reports`,
   UPDATE_BREAKDOWN_REPORT: (id) => `/api/reportbreakdown/update/${id}`,
+  GET_BREAKDOWN_REASON_CODES: (orgId) => `/api/reportbreakdown/reason-codes?org_id=${orgId}`,
   LOGIN: () => `/api/auth/login`,
   HEALTH: () => `/api/health`,
 }; 

@@ -52,7 +52,7 @@ export const getMockNavigationData = () => {
 
 // Function to check if mock data should be used
 export const shouldUseMockData = () => {
-  // Use mock data when API fails or for testing
+  // Use mock data only when API fails or for testing
   // This ensures the app works even when backend is not available
-  return true; // Set to true to use mock data for now
+  return false; // Set to false to use real API data
 };

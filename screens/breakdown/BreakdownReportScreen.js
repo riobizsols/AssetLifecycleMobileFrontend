@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import CustomAlert from '../../components/CustomAlert';
 import { authUtils } from '../../utils/auth';
 import SideMenu from '../../components/SideMenu';
 import { useNavigation as useNavigationContext } from '../../context/NavigationContext';
+import { getServerUrl, getApiHeaders, API_ENDPOINTS } from '../../config/api';
 import { UI_CONSTANTS, COMMON_STYLES, UI_UTILS } from '../../utils/uiConstants';
 
 const { width, height } = Dimensions.get('window');
@@ -175,9 +176,55 @@ const BreakdownReportScreen = () => {
     maintenanceDate: '',
   });
 
-  // Mock data for dropdowns
-  const breakdownCodes = ['BR001', 'BR002', 'BR003', 'BR004', 'BR005'];
+  // State for API data
+  const [breakdownCodes, setBreakdownCodes] = useState([]);
   const maintenanceOptions = [t('breakdown.yes'), t('breakdown.no')];
+
+  // Fetch breakdown reason codes on component mount
+  useEffect(() => {
+    fetchBreakdownReasonCodes();
+  }, []);
+
+  // Fetch breakdown reason codes from API
+  const fetchBreakdownReasonCodes = async () => {
+    try {
+      const serverUrl = getServerUrl();
+      const endpoint = API_ENDPOINTS.GET_BREAKDOWN_REASON_CODES('ORG001');
+      const url = `${serverUrl}${endpoint}`;
+
+      console.log('Fetching breakdown reason codes:', url);
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: getApiHeaders(),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API Error:', response.status, errorText);
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+      }
+
+      const data = await response.json();
+      console.log('Breakdown reason codes fetched successfully:', data);
+      
+      // Handle the actual API response format: { data: [{ id, text, asset_type_id }] }
+      if (data.data && Array.isArray(data.data)) {
+        setBreakdownCodes(data.data);
+      } else if (Array.isArray(data)) {
+        setBreakdownCodes(data);
+      } else if (data.reason_codes && Array.isArray(data.reason_codes)) {
+        setBreakdownCodes(data.reason_codes);
+      } else {
+        console.warn('Unexpected API response format:', data);
+        setBreakdownCodes([]);
+      }
+    } catch (error) {
+      console.error('Error fetching breakdown reason codes:', error);
+      // Fallback to empty array on error
+      setBreakdownCodes([]);
+    }
+  };
 
   const showAlert = (title, message, type = 'info', onConfirm = () => {}, showCancel = false) => {
     setAlertConfig({
@@ -445,24 +492,46 @@ const BreakdownReportScreen = () => {
               
               {showBreakdownCodeDropdown && (
                 <View style={styles.dropdownOptions}>
-                  {breakdownCodes.map((code) => (
-                    <TouchableOpacity
-                      key={code}
-                      style={styles.dropdownOption}
-                      onPress={() => {
-                        updateFormData('breakdownCode', code);
-                        setShowBreakdownCodeDropdown(false);
-                      }}
-                    >
-                      <Text 
-                        style={styles.dropdownOptionText}
-                        numberOfLines={1}
-                        ellipsizeMode="tail"
-                      >
-                        {code}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
+                  <ScrollView 
+                    style={styles.dropdownScrollView}
+                    showsVerticalScrollIndicator={true}
+                    nestedScrollEnabled={true}
+                  >
+                    {breakdownCodes.length > 0 ? (
+                      breakdownCodes.map((item) => {
+                        const code = typeof item === 'string' ? item : item.id;
+                        const displayText = typeof item === 'string' ? item : `${item.id} - ${item.text}`;
+                        return (
+                          <TouchableOpacity
+                            key={code}
+                            style={styles.dropdownOption}
+                            onPress={() => {
+                              updateFormData('breakdownCode', code);
+                              setShowBreakdownCodeDropdown(false);
+                            }}
+                          >
+                            <Text 
+                              style={styles.dropdownOptionText}
+                              numberOfLines={1}
+                              ellipsizeMode="tail"
+                            >
+                              {displayText}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })
+                    ) : (
+                      <View style={styles.dropdownOption}>
+                        <Text 
+                          style={[styles.dropdownOptionText, { color: UI_CONSTANTS.COLORS.GRAY_DARK }]}
+                          numberOfLines={1}
+                          ellipsizeMode="tail"
+                        >
+                          {t('breakdown.noCodesAvailable')}
+                        </Text>
+                      </View>
+                    )}
+                  </ScrollView>
                 </View>
               )}
             </View>
@@ -565,24 +634,30 @@ const BreakdownReportScreen = () => {
               
               {showMaintenanceDropdown && (
                 <View style={styles.dropdownOptions}>
-                  {maintenanceOptions.map((option) => (
-                    <TouchableOpacity
-                      key={option}
-                      style={styles.dropdownOption}
-                      onPress={() => {
-                        updateFormData('createMaintenance', option);
-                        setShowMaintenanceDropdown(false);
-                      }}
-                    >
-                      <Text 
-                        style={styles.dropdownOptionText}
-                        numberOfLines={1}
-                        ellipsizeMode="tail"
+                  <ScrollView 
+                    style={styles.dropdownScrollView}
+                    showsVerticalScrollIndicator={true}
+                    nestedScrollEnabled={true}
+                  >
+                    {maintenanceOptions.map((option) => (
+                      <TouchableOpacity
+                        key={option}
+                        style={styles.dropdownOption}
+                        onPress={() => {
+                          updateFormData('createMaintenance', option);
+                          setShowMaintenanceDropdown(false);
+                        }}
                       >
-                        {option}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
+                        <Text 
+                          style={styles.dropdownOptionText}
+                          numberOfLines={1}
+                          ellipsizeMode="tail"
+                        >
+                          {option}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
                 </View>
               )}
             </View>
@@ -820,8 +895,10 @@ const styles = StyleSheet.create({
     borderColor: UI_CONSTANTS.COLORS.GRAY_MEDIUM,
     borderRadius: scale(10),
     marginTop: RESPONSIVE_CONSTANTS.SPACING.XS,
-    zIndex: 1000,
+    zIndex: 9999,
     ...UI_CONSTANTS.SHADOW,
+    maxHeight: 150, // Reduced height to prevent overlap
+    overflow: 'hidden',
   },
   dropdownOption: {
     paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.LG,
@@ -832,6 +909,9 @@ const styles = StyleSheet.create({
   dropdownOptionText: {
     fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.LG,
     color: UI_CONSTANTS.COLORS.TEXT_PRIMARY,
+  },
+  dropdownScrollView: {
+    maxHeight: 150,
   },
   textInput: {
     borderWidth: 1,

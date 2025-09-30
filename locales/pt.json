@@ -410,7 +410,8 @@
     "resolveBreakdown": "Resolver Falha",
     "breakdownReportedSuccessfully": "Falha relatada com sucesso",
     "breakdownUpdatedSuccessfully": "Falha atualizada com sucesso",
-    "breakdownResolvedSuccessfully": "Falha resolvida com sucesso"
+    "breakdownResolvedSuccessfully": "Falha resolvida com sucesso",
+    "noCodesAvailable": "Nenhum código disponível"
   },
   "maintenance": {
     "maintenanceSupervisor": "Supervisor de Manutenção",

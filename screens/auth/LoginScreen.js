@@ -76,21 +76,59 @@ const LoginScreen = ({ navigation }) => {
     setIsLoading(true);
 
     try {
-      // Use the configured server URL directly for faster login
-      const serverUrl = API_CONFIG.BASE_URL;
+      // Try the configured server URL first, then fallback to other servers if needed
+      let serverUrl = API_CONFIG.BASE_URL;
+      let response;
+      let lastError;
 
-      const response = await fetch(`${serverUrl}${API_ENDPOINTS.LOGIN()}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({
-          email: email,
-          password: password,
-        }),
-        timeout: 8000, // 8 second timeout
-      });
+      // Try primary server first
+      try {
+        response = await fetch(`${serverUrl}${API_ENDPOINTS.LOGIN()}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: JSON.stringify({
+            email: email,
+            password: password,
+          }),
+          timeout: 8000, // 8 second timeout
+        });
+      } catch (error) {
+        console.log('Primary server failed, trying fallback servers...');
+        lastError = error;
+        
+        // Try fallback servers
+        for (const fallbackUrl of API_CONFIG.FALLBACK_URLS) {
+          try {
+            console.log(`Trying fallback server: ${fallbackUrl}`);
+            response = await fetch(`${fallbackUrl}${API_ENDPOINTS.LOGIN()}`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+              },
+              body: JSON.stringify({
+                email: email,
+                password: password,
+              }),
+              timeout: 8000,
+            });
+            serverUrl = fallbackUrl;
+            console.log(`Successfully connected to fallback server: ${fallbackUrl}`);
+            break;
+          } catch (fallbackError) {
+            console.log(`Fallback server ${fallbackUrl} also failed:`, fallbackError.message);
+            lastError = fallbackError;
+          }
+        }
+        
+        // If all servers failed, throw the last error
+        if (!response) {
+          throw lastError;
+        }
+      }
 
       const data = await response.json();
 

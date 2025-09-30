@@ -374,7 +374,8 @@
     "selectAsset": "Anlage auswählen",
     "null": "NULL",
     "dellXps13": "Dell XPS 13",
-    "hpEliteBook840": "HP EliteBook 840"
+    "hpEliteBook840": "HP EliteBook 840",
+    "noCodesAvailable": "Keine Codes verfügbar"
   },
   "maintenance": {
     "maintenanceSupervisor": "Wartungsaufsicht",
