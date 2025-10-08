@@ -12,7 +12,7 @@ import {
   Image,
   ActivityIndicator,
 } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
+import { StatusBar } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { API_CONFIG, getApiHeaders, findWorkingServer, API_ENDPOINTS } from '../../config/api';
 import { authUtils } from '../../utils/auth';
@@ -81,40 +81,57 @@ const LoginScreen = ({ navigation }) => {
       let response;
       let lastError;
 
+      console.log('=== Login Attempt Started ===');
+      console.log('Primary server URL:', serverUrl);
+      console.log('Login endpoint:', API_ENDPOINTS.LOGIN());
+      console.log('Full URL:', `${serverUrl}${API_ENDPOINTS.LOGIN()}`);
+
       // Try primary server first
       try {
-        response = await fetch(`${serverUrl}${API_ENDPOINTS.LOGIN()}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
-          body: JSON.stringify({
-            email: email,
-            password: password,
+        console.log('Attempting connection to primary server...');
+        response = await Promise.race([
+          fetch(`${serverUrl}${API_ENDPOINTS.LOGIN()}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: JSON.stringify({
+              email: email,
+              password: password,
+            }),
           }),
-          timeout: 8000, // 8 second timeout
-        });
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Request timeout')), 10000)
+          )
+        ]);
+        console.log('Primary server responded!');
       } catch (error) {
-        console.log('Primary server failed, trying fallback servers...');
+        console.log('Primary server failed:', error.message);
+        console.log('Error type:', error.constructor.name);
+        console.log('Trying fallback servers...');
         lastError = error;
         
         // Try fallback servers
         for (const fallbackUrl of API_CONFIG.FALLBACK_URLS) {
           try {
             console.log(`Trying fallback server: ${fallbackUrl}`);
-            response = await fetch(`${fallbackUrl}${API_ENDPOINTS.LOGIN()}`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-              },
-              body: JSON.stringify({
-                email: email,
-                password: password,
+            response = await Promise.race([
+              fetch(`${fallbackUrl}${API_ENDPOINTS.LOGIN()}`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/json',
+                },
+                body: JSON.stringify({
+                  email: email,
+                  password: password,
+                }),
               }),
-              timeout: 8000,
-            });
+              new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Request timeout')), 10000)
+              )
+            ]);
             serverUrl = fallbackUrl;
             console.log(`Successfully connected to fallback server: ${fallbackUrl}`);
             break;

@@ -101,6 +101,11 @@ export const LanguageProvider = ({ children }) => {
     isLoading,
   };
 
+  // Don't render children until language is loaded to avoid suspense issues
+  if (isLoading) {
+    return null;
+  }
+
   return (
     <LanguageContext.Provider value={value}>
       {children}

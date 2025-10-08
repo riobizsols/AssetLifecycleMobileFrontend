@@ -463,7 +463,10 @@
     "enterNotes": "Enter notes",
     "cancel": "Cancel",
     "submit": "Submit",
-    "maintenanceScheduleUpdatedSuccessfully": "Maintenance schedule updated successfully!"
+    "maintenanceScheduleUpdatedSuccessfully": "Maintenance schedule updated successfully!",
+    "checklist": "Checklist",
+    "noChecklistItems": "No checklist items found",
+    "failedToLoadChecklist": "Failed to load checklist data. Please try again."
   },
   "employees": {
     "employeeId": "Employee ID",

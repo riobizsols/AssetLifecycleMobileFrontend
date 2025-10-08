@@ -1,7 +1,6 @@
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import React, { useState, useEffect } from "react";
 import {
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,7 +10,10 @@ import {
   Alert,
   ActivityIndicator,
   FlatList,
+  Platform,
+  StatusBar,
 } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Appbar } from "react-native-paper";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
@@ -26,6 +28,7 @@ export default function EmployeeAssetHistory() {
   const [historyData, setHistoryData] = useState([]);
   const [departments, setDepartments] = useState({});
   const [employees, setEmployees] = useState({});
+  const insets = useSafeAreaInsets();
 
   // Helper function to format date
   const formatDate = (dateString) => {
@@ -132,40 +135,100 @@ export default function EmployeeAssetHistory() {
   // Fetch employee asset history
   const fetchEmployeeHistory = async () => {
     if (!employeeId) {
+      console.log('No employeeId provided to history screen');
       Alert.alert(t('common.error'), t('assets.employeeIdNotFound'));
       return;
     }
 
     setLoading(true);
     try {
-      const url = `${API_CONFIG.BASE_URL}${API_ENDPOINTS.GET_EMPLOYEE_ASSET_HISTORY(employeeId)}`;
-      console.log("Fetching employee history:", url);
+      // Use the correct API endpoint for employee asset history
+      const url = `${API_CONFIG.BASE_URL}/api/asset-assignments/employee-history/${employeeId}`;
+      console.log("Fetching employee history for ID:", employeeId);
+      console.log("API URL:", url);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
 
       const response = await fetch(url, {
         method: "GET",
         headers: getApiHeaders(),
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
+
+      console.log("History API response status:", response.status);
+
       if (!response.ok) {
+        if (response.status === 404) {
+          console.log('No history found (404)');
+          setHistoryData([]);
+          Alert.alert(
+            t('assets.noHistoryFound'),
+            t('assets.noHistoryFoundForEmployee'),
+            [{ text: t('common.ok') }]
+          );
+          return;
+        }
+        if (response.status === 401) {
+          Alert.alert(
+            t('assets.authenticationError'),
+            t('assets.checkAuthorizationToken'),
+            [{ text: t('common.ok') }]
+          );
+          return;
+        }
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const data = await response.json();
       console.log("Employee history data received:", data);
+      console.log("Number of history records:", data.length);
+      
+      // Handle different response structures
+      let historyRecords = [];
+      if (data.data && Array.isArray(data.data)) {
+        historyRecords = data.data;
+      } else if (Array.isArray(data)) {
+        historyRecords = data;
+      } else {
+        console.warn('Unexpected API response structure:', data);
+        historyRecords = [];
+      }
+      
+      if (historyRecords.length === 0) {
+        console.log('No history data found');
+        setHistoryData([]);
+        return;
+      }
       
       // Sort by action_on date (newest first)
-      const sortedData = data.sort((a, b) => 
+      const sortedData = historyRecords.sort((a, b) => 
         new Date(b.action_on) - new Date(a.action_on)
       );
       
       setHistoryData(sortedData);
+      console.log('History data set successfully');
     } catch (error) {
       console.error("Error fetching employee history:", error);
+      
+      let errorMessage = t('assets.failedToLoadEmployeeHistory');
+      
+      if (error.name === 'AbortError') {
+        errorMessage = t('assets.requestTimedOut');
+      } else if (error.message.includes("Network request failed")) {
+        errorMessage = t('assets.networkConnectionFailed');
+      } else if (error.message.includes("fetch")) {
+        errorMessage = t('assets.unableToConnectToServer');
+      }
+      
       Alert.alert(
         t('common.error'),
-        t('assets.failedToLoadEmployeeHistory'),
+        errorMessage + '\n' + error.message,
         [{ text: t('common.ok') }]
       );
+      setHistoryData([]);
     } finally {
       setLoading(false);
     }
@@ -223,18 +286,25 @@ export default function EmployeeAssetHistory() {
   );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#EEEEEE" }}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <StatusBar 
+        barStyle="light-content" 
+        backgroundColor="#003667"
+        translucent={Platform.OS === 'android'}
+      />
       {/* AppBar */}
-      <Appbar.Header style={styles.appbar}>
-        <Appbar.Action
-          icon="arrow-left"
-          color="#FEC200"
+      <View style={styles.appbarContainer}>
+        <TouchableOpacity 
+          style={styles.backButton} 
           onPress={() => navigation.goBack()}
-        />
+          activeOpacity={0.7}
+        >
+          <MaterialCommunityIcons name="arrow-left" size={24} color="#FEC200" />
+        </TouchableOpacity>
         <View style={styles.centerTitleContainer}>
           <Text style={styles.appbarTitle}>{t('assets.employeeAssetHistory')}</Text>
         </View>
-      </Appbar.Header>
+      </View>
 
       {/* Employee Info */}
       <View style={styles.assetInfo}>
@@ -275,20 +345,51 @@ export default function EmployeeAssetHistory() {
           </View>
         )}
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  appbar: {
+  container: {
+    flex: 1,
     backgroundColor: "#003667",
-    elevation: 0,
-    shadowOpacity: 0,
-    height: 60,
+  },
+  appbarContainer: {
+    backgroundColor: "#003667",
+    height: 56,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "flex-start",
     position: "relative",
+    paddingHorizontal: 0,
+    ...Platform.select({
+      ios: {
+        // iOS handles safe area automatically
+      },
+      android: {
+        // Android needs explicit handling
+        elevation: 4,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+    }),
+  },
+  appbar: {
+    backgroundColor: "#003667",
+    elevation: 0,
+    shadowOpacity: 0,
+    height: 56,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-start",
+    position: "relative",
+  },
+  backButton: {
+    padding: 12,
+    marginLeft: 8,
+    zIndex: 2,
   },
   centerTitleContainer: {
     position: "absolute",
@@ -322,7 +423,6 @@ const styles = StyleSheet.create({
   },
   tableContainer: {
     margin: 10,
-    // marginBottom : 30,
     backgroundColor: "#fff",
     borderRadius: 8,
     shadowColor: "#000",
@@ -392,4 +492,4 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#666",
   },
-}); 
+});

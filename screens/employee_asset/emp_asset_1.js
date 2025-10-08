@@ -6,24 +6,26 @@ import {
   TouchableOpacity,
   FlatList,
   StyleSheet,
-  SafeAreaView,
   Linking,
   Alert,
   ActivityIndicator,
+  Platform,
+  StatusBar,
 } from "react-native";
-import { Ionicons, MaterialIcons } from "@expo/vector-icons";
-// import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import Ionicons from "react-native-vector-icons/Ionicons";
+import MaterialIcons from "react-native-vector-icons/MaterialIcons";
+import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 
 import { Appbar } from "react-native-paper";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createStackNavigator } from "@react-navigation/stack";
 import Asset_2 from "./emp_asset_2";
-import * as FileSystem from "expo-file-system";
-import * as Sharing from "expo-sharing";
+import RNFS from "react-native-fs";
+import Share from "react-native-share";
 import { API_CONFIG, getApiHeaders, API_ENDPOINTS } from "../../config/api";
 import { authUtils } from "../../utils/auth";
 import CustomAlert from "../../components/CustomAlert";
@@ -44,6 +46,7 @@ export default function Asset_1() {
     department: "",
     assetCount: 0
   });
+  const insets = useSafeAreaInsets();
   const [alertConfig, setAlertConfig] = useState({
     visible: false,
     title: '',
@@ -351,13 +354,12 @@ export default function Asset_1() {
     try {
       const csv = assetDataToCSV();
       const fileName = `employee_${employeeId}_assets.csv`;
-      const fileUri = FileSystem.documentDirectory + fileName;
-      await FileSystem.writeAsStringAsync(fileUri, csv, {
-        encoding: FileSystem.EncodingType.UTF8,
-      });
-      await Sharing.shareAsync(fileUri, {
-        mimeType: "text/csv",
-        dialogTitle: t('assets.shareEmployeeAssetCSV'),
+      const fileUri = RNFS.DocumentDirectoryPath + '/' + fileName;
+      await RNFS.writeFile(fileUri, csv, 'utf8');
+      await Share.open({
+        url: fileUri,
+        type: "text/csv",
+        title: t('assets.shareEmployeeAssetCSV'),
         UTI: "public.comma-separated-values-text",
       });
     } catch (error) {
@@ -368,78 +370,84 @@ export default function Asset_1() {
 
   return (
     <SafeAreaProvider>
-      <SafeAreaView style={{ flex: 1, backgroundColor: "#EEEEEE" }}>
-        <Appbar.Header style={styles.appbar}>
-          <TouchableOpacity 
-            style={styles.backButton} 
-            onPress={() => navigation.goBack()}
-            activeOpacity={0.7}
-          >
-            <MaterialCommunityIcons name="arrow-left" size={24} color="#FEC200" />
-          </TouchableOpacity>
-          <View style={styles.titleRow}>
-            <Text style={styles.appbarTitle}>{t('assets.employeeAsset')}</Text>
-          </View>
-          <TouchableOpacity
-            onPress={handleDownload}
-            style={styles.downloadIcon}
-            disabled={assetData.length === 0}
-          >
-            <MaterialCommunityIcons 
-              name="download" 
-              size={22} 
-              color={assetData.length === 0 ? "#666" : "#FEC200"} 
-            />
-          </TouchableOpacity>
-          {/* <Appbar.Action icon="logout" color="#FEC200" onPress={handleLogout} /> */}
-        </Appbar.Header>
-
-        {/* Form */}
-        <View style={styles.formContainer}>
-          <View style={styles.inputRow}>
-            <TextInput
-              style={styles.assetInput}
-              placeholder={t('assets.enterEmployeeId')}
-              placeholderTextColor="#B6B7B8"
-              value={employeeId}
-              onChangeText={setEmployeeId}
-              onSubmitEditing={() => fetchEmployeeAssets(employeeId)}
-            />
+      <View style={[{ flex: 1, backgroundColor: "#003667" }, { paddingTop: insets.top }]}>
+        <StatusBar 
+          barStyle="light-content" 
+          backgroundColor="#003667"
+          translucent={Platform.OS === 'android'}
+        />
+        {/* AppBar */}
+        <View style={styles.appbarContainer}>
             <TouchableOpacity 
-              style={styles.qrButton}
-              onPress={() => fetchEmployeeAssets(employeeId)}
-              disabled={loading}
+              style={styles.backButton} 
+              onPress={() => navigation.goBack()}
+              activeOpacity={0.7}
             >
-              {loading ? (
-                <ActivityIndicator size="small" color="#FEC200" />
-              ) : (
-                <MaterialCommunityIcons
-                  name="magnify"
-                  size={22}
-                  color="#FEC200"
-                />
-              )}
+              <MaterialCommunityIcons name="arrow-left" size={24} color="#FEC200" />
+            </TouchableOpacity>
+            <View style={styles.titleRow}>
+              <Text style={styles.appbarTitle}>{t('assets.employeeAsset')}</Text>
+            </View>
+            <TouchableOpacity
+              onPress={handleDownload}
+              style={styles.downloadIcon}
+              disabled={assetData.length === 0}
+            >
+              <MaterialCommunityIcons 
+                name="download" 
+                size={22} 
+                color={assetData.length === 0 ? "#666" : "#FEC200"} 
+              />
             </TouchableOpacity>
           </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.label}>{t('employees.employeeName')}</Text>
-            <Text style={styles.colon}>:</Text>
-            <Text style={styles.value}>{employeeInfo.name || t('employees.employeeName')}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.label}>{t('employees.department')}</Text>
-            <Text style={styles.colon}>:</Text>
-            <Text style={styles.value}>{employeeInfo.department || t('employees.department')}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.label}>{t('assets.numberOfAssets')}</Text>
-            <Text style={styles.colon}>:</Text>
-            <Text style={styles.value}>{employeeInfo.assetCount || "0"}</Text>
-          </View>
-        </View>
 
-        {/* Table */}
-        <View style={styles.tableContainer}>
+        {/* Form */}
+        <View style={styles.contentContainer}>
+          <View style={styles.formContainer}>
+            <View style={styles.inputRow}>
+              <TextInput
+                style={styles.assetInput}
+                placeholder={t('assets.enterEmployeeId')}
+                placeholderTextColor="#B6B7B8"
+                value={employeeId}
+                onChangeText={setEmployeeId}
+                onSubmitEditing={() => fetchEmployeeAssets(employeeId)}
+              />
+              <TouchableOpacity 
+                style={styles.qrButton}
+                onPress={() => fetchEmployeeAssets(employeeId)}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color="#FEC200" />
+                ) : (
+                  <MaterialCommunityIcons
+                    name="magnify"
+                    size={22}
+                    color="#FEC200"
+                  />
+                )}
+              </TouchableOpacity>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.label}>{t('employees.employeeName')}</Text>
+              <Text style={styles.colon}>:</Text>
+              <Text style={styles.value}>{employeeInfo.name || t('employees.employeeName')}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.label}>{t('employees.department')}</Text>
+              <Text style={styles.colon}>:</Text>
+              <Text style={styles.value}>{employeeInfo.department || t('employees.department')}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.label}>{t('assets.numberOfAssets')}</Text>
+              <Text style={styles.colon}>:</Text>
+              <Text style={styles.value}>{employeeInfo.assetCount || "0"}</Text>
+            </View>
+          </View>
+
+          {/* Table */}
+          <View style={styles.tableContainer}>
           <View style={styles.tableHeader}>
             <Text style={[styles.tableHeaderText, { flex: 1.5 }]}>
               {t('assets.asset')}
@@ -507,17 +515,21 @@ export default function Asset_1() {
               onPress={() => {
                 console.log('History link pressed');
                 console.log('Employee ID:', employeeId);
-                console.log('Asset Data length:', assetData.length);
+                console.log('Employee Name:', employeeInfo.name);
                 
-                if (!employeeId) {
-                  Alert.alert(t('assets.noEmployee'), t('assets.pleaseEnterEmployeeIdFirst'));
+                if (!employeeId || !employeeId.trim()) {
+                  Alert.alert(
+                    t('assets.noEmployee'), 
+                    t('assets.pleaseEnterEmployeeIdFirst'),
+                    [{ text: t('common.ok') }]
+                  );
                   return;
                 }
                 
                 // Navigate to history screen
                 navigation.navigate('EmployeeAssetHistory', {
-                  employeeId: employeeId,
-                  employeeName: employeeInfo.name
+                  employeeId: employeeId.trim(),
+                  employeeName: employeeInfo.name || employeeId
                 });
               }}
               disabled={loading}
@@ -552,8 +564,8 @@ export default function Asset_1() {
             </TouchableOpacity>
           </View>
         )}
-              </SafeAreaView>
-        
+        </View>
+
         {/* Custom Alert */}
         <CustomAlert
           visible={alertConfig.visible}
@@ -565,25 +577,48 @@ export default function Asset_1() {
           confirmText={alertConfig.confirmText}
           cancelText={alertConfig.cancelText}
           showCancel={alertConfig.showCancel}
-                  onClose={() => setAlertConfig(prev => ({ ...prev, visible: false }))}
-      />
+          onClose={() => setAlertConfig(prev => ({ ...prev, visible: false }))}
+        />
 
-      {/* Side Menu */}
-      <SideMenu
-        visible={menuVisible}
-        onClose={closeMenu}
-        onLogout={handleLogout}
-      />
+        {/* Side Menu */}
+        <SideMenu
+          visible={menuVisible}
+          onClose={closeMenu}
+          onLogout={handleLogout}
+        />
+      </View>
     </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
+  appbarContainer: {
+    backgroundColor: "#003667",
+    height: 56,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-start",
+    position: "relative",
+    paddingHorizontal: 0,
+    ...Platform.select({
+      ios: {
+        // iOS handles safe area automatically
+      },
+      android: {
+        // Android needs explicit handling
+        elevation: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+    }),
+  },
   appbar: {
     backgroundColor: "#003667",
     elevation: 0,
     shadowOpacity: 0,
-    height: 60,
+    height: 56,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "flex-start",
@@ -615,6 +650,10 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontSize: 16,
     alignSelf: "center",
+  },
+  contentContainer: {
+    flex: 1,
+    backgroundColor: "#EEEEEE",
   },
   formContainer: {
     backgroundColor: "#EEEEEE",

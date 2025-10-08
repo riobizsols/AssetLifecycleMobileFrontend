@@ -1,21 +1,23 @@
 import { Platform } from 'react-native';
-import * as Localization from 'expo-localization';
+import { getLocales } from 'react-native-localize';
 
 /**
- * Get device language using Expo Localization
- * This works with Expo managed workflow
+ * Get device language using React Native Localize
+ * This works with React Native CLI
  */
 export const getDeviceLanguage = () => {
   try {
-    // Get the device's locale using Expo Localization
-    const locale = Localization.locale;
+    // Get the device's locale using React Native Localize
+    const locales = getLocales();
     
-    // Extract language code from locale (e.g., 'en-US' -> 'en')
-    const languageCode = locale.split('-')[0].toLowerCase();
-    
-    // Check if the language is supported
-    if (isLanguageSupported(languageCode)) {
-      return languageCode;
+    if (locales && locales.length > 0) {
+      // Extract language code from locale (e.g., 'en-US' -> 'en')
+      const languageCode = locales[0].languageCode.toLowerCase();
+      
+      // Check if the language is supported
+      if (isLanguageSupported(languageCode)) {
+        return languageCode;
+      }
     }
     
     // Default to English if not supported

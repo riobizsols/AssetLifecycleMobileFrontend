@@ -6,15 +6,15 @@ import {
   TouchableOpacity,
   FlatList,
   StyleSheet,
-  SafeAreaView,
   Alert,
   ActivityIndicator,
+  Platform,
+  StatusBar,
 } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
-import { SafeAreaProvider } from "react-native-safe-area-context";
+import MaterialIcons from "react-native-vector-icons/MaterialIcons";
+import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Appbar } from "react-native-paper";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { Platform } from "react-native";
+import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
@@ -34,6 +34,7 @@ export default function DepartmentScreenMain() {
   const [departmentId, setDepartmentId] = useState("");
   const [loading, setLoading] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
+  const insets = useSafeAreaInsets();
   const [departmentInfo, setDepartmentInfo] = useState({
     name: "",
     assetCount: 0,
@@ -420,9 +421,14 @@ export default function DepartmentScreenMain() {
 
   return (
     <SafeAreaProvider>
-      <SafeAreaView style={{ flex: 1, backgroundColor: "#EEEEEE" }}>
+      <View style={[{ flex: 1, backgroundColor: "#003667" }, { paddingTop: insets.top }]}>
+        <StatusBar 
+          barStyle="light-content" 
+          backgroundColor="#003667"
+          translucent={Platform.OS === 'android'}
+        />
         {/* AppBar */}
-        <Appbar.Header style={styles.appbar}>
+        <View style={styles.appbarContainer}>
           <TouchableOpacity 
             style={styles.backButton} 
             onPress={() => navigation.goBack()}
@@ -434,8 +440,7 @@ export default function DepartmentScreenMain() {
           <View style={styles.centerTitleContainer}>
             <Text style={styles.appbarTitle}>{t('assets.departmentMain')}</Text>
           </View>
-          {/* <Appbar.Action icon="logout" color="#FEC200" onPress={handleLogout} /> */}
-        </Appbar.Header>
+        </View>
 
         {/* Form */}
         <View style={styles.formContainer}>
@@ -577,7 +582,6 @@ export default function DepartmentScreenMain() {
             </View>
           )}
         </View>
-      </SafeAreaView>
       
       {/* Custom Alert */}
       <CustomAlert
@@ -599,16 +603,39 @@ export default function DepartmentScreenMain() {
         onClose={closeMenu}
         onLogout={handleLogout}
       />
+      </View>
     </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
+  appbarContainer: {
+    backgroundColor: "#003667",
+    height: 56,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-start",
+    position: "relative",
+    paddingHorizontal: 0,
+    ...Platform.select({
+      ios: {
+        // iOS handles safe area automatically
+      },
+      android: {
+        // Android needs explicit handling
+        elevation: 4,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+    }),
+  },
   appbar: {
     backgroundColor: "#003667",
     elevation: 0,
     shadowOpacity: 0,
-    height: 60,
+    height: 56,
     flexDirection: "row",
     alignItems: "center",
     position: "relative",

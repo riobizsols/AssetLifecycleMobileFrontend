@@ -3,13 +3,15 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   TouchableOpacity,
   ScrollView,
   Dimensions,
+  Platform,
+  StatusBar,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Appbar } from 'react-native-paper';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import CustomAlert from '../components/CustomAlert';
@@ -18,6 +20,7 @@ import SideMenu from '../components/SideMenu';
 import { useNavigation as useNavigationContext } from '../context/NavigationContext';
 import { navigationService } from '../services/navigationService';
 import { UI_CONSTANTS, COMMON_STYLES, UI_UTILS } from '../utils/uiConstants';
+import { useSafeAreaConfig, getSafeAreaStyles, getContainerStyles } from '../utils/safeAreaUtils';
 
 const { width } = Dimensions.get('window');
 
@@ -26,6 +29,8 @@ const HomeScreen = () => {
   const navigation = useNavigation();
   const { getSortedNavigation, clearNavigation } = useNavigationContext();
   const [menuVisible, setMenuVisible] = useState(false);
+  const insets = useSafeAreaInsets();
+  const safeAreaConfig = useSafeAreaConfig();
   const [alertConfig, setAlertConfig] = useState({
     visible: false,
     title: '',
@@ -196,29 +201,29 @@ const HomeScreen = () => {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[getContainerStyles(UI_CONSTANTS.COLORS.PRIMARY), { paddingTop: insets.top }]}>
+      <StatusBar {...safeAreaConfig.statusBarConfig} />
       {/* AppBar */}
-      <Appbar.Header style={styles.appbar}>
-        <TouchableOpacity 
-          style={styles.menuButton} 
-          onPress={toggleMenu}
-          activeOpacity={0.7}
-        >
-          <MaterialCommunityIcons name="menu" size={24} color="#FEC200" />
-        </TouchableOpacity>
-        <View style={styles.centerTitleContainer}>
-          <Text 
-            style={styles.appbarTitle}
-            numberOfLines={1}
-            ellipsizeMode="tail"
+      <View style={safeAreaConfig.appBarContainerStyles}>
+          <TouchableOpacity 
+            style={styles.menuButton} 
+            onPress={toggleMenu}
+            activeOpacity={0.7}
           >
-            {t('navigation.assetManagement')}
-          </Text>
+            <MaterialCommunityIcons name="menu" size={24} color="#FEC200" />
+          </TouchableOpacity>
+          <View style={styles.centerTitleContainer}>
+            <Text 
+              style={styles.appbarTitle}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {t('navigation.assetManagement')}
+            </Text>
+          </View>
         </View>
-        {/* <Appbar.Action icon="logout" color="#FEC200" onPress={handleLogout} /> */}
-      </Appbar.Header>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView style={[styles.content, { backgroundColor: UI_CONSTANTS.COLORS.BACKGROUND }]} showsVerticalScrollIndicator={false}>
         {/* Welcome Section */}
         <View style={styles.welcomeSection}>
           <Text 
@@ -341,13 +346,14 @@ const HomeScreen = () => {
         onClose={closeMenu}
         onLogout={handleLogout}
       />
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    ...COMMON_STYLES.container,
+  safeArea: {
+    flex: 1,
+    backgroundColor: UI_CONSTANTS.COLORS.BACKGROUND,
   },
   appbar: {
     ...COMMON_STYLES.appBar,

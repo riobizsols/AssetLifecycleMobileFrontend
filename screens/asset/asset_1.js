@@ -1,18 +1,20 @@
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import React, { useState } from "react";
 import {
-  SafeAreaView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
   Alert,
   ActivityIndicator,
+  Platform,
+  StatusBar,
 } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Appbar } from "react-native-paper";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
-import { CameraView, useCameraPermissions } from "expo-camera";
+import { Camera, useCameraPermission, useCameraDevice, useCodeScanner } from "react-native-vision-camera";
 import { API_CONFIG, getApiHeaders, API_ENDPOINTS } from "../../config/api";
 import { authUtils } from "../../utils/auth";
 import CustomAlert from "../../components/CustomAlert";
@@ -26,8 +28,19 @@ export default function App() {
   const [showCamera, setShowCamera] = useState(false);
   const [barcode, setBarcode] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [permission, requestPermission] = useCameraPermissions();
+  const { hasPermission, requestPermission } = useCameraPermission();
   const [menuVisible, setMenuVisible] = useState(false);
+  const device = useCameraDevice('back');
+  const insets = useSafeAreaInsets();
+  
+  const codeScanner = useCodeScanner({
+    codeTypes: ['qr', 'ean-13', 'code-128', 'code-39', 'ean-8', 'upc-e'],
+    onCodeScanned: (codes) => {
+      if (codes.length > 0 && !loading) {
+        handleBarcodeScanned({ data: codes[0].value });
+      }
+    },
+  });
   const [alertConfig, setAlertConfig] = useState({
     visible: false,
     title: '',
@@ -89,7 +102,7 @@ export default function App() {
   };
 
   const openCamera = async () => {
-    if (!permission?.granted) {
+    if (!hasPermission) {
       await requestPermission();
     }
     setShowCamera(true);
@@ -327,21 +340,21 @@ export default function App() {
           <MaterialCommunityIcons name="close" size={28} color="#fff" />
         </TouchableOpacity>
       </View>
-      <CameraView
-        style={{ flex: 1 }}
-        barcodeScannerSettings={{
-          barcodeTypes: [
-            "qr",
-            "ean13",
-            "ean8",
-            "code39",
-            "code128",
-            "upc_a",
-            "upc_e",
-          ],
-        }}
-        onBarcodeScanned={handleBarcodeScanned}
-      />
+      {device != null && hasPermission && (
+        <Camera
+          style={StyleSheet.absoluteFill}
+          device={device}
+          isActive={showCamera}
+          codeScanner={codeScanner}
+        />
+      )}
+      {!hasPermission && (
+        <View style={{ flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }}>
+          <Text style={{ color: '#fff', fontSize: 18, textAlign: 'center' }}>
+            {t('scanning.cameraPermissionRequired')}
+          </Text>
+        </View>
+      )}
       <View
         style={{
           position: "absolute",
@@ -356,9 +369,14 @@ export default function App() {
       </View>
     </View>
   ) : (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#EEEEEE" }}>
+    <View style={[{ flex: 1, backgroundColor: "#003667" }, { paddingTop: insets.top }]}>
+      <StatusBar 
+        barStyle="light-content" 
+        backgroundColor="#003667"
+        translucent={Platform.OS === 'android'}
+      />
       {/* AppBar */}
-                      <Appbar.Header style={styles.appbar}>
+      <View style={styles.appbarContainer}>
           <TouchableOpacity 
             style={styles.backButton} 
             onPress={() => navigation.goBack()}
@@ -369,11 +387,10 @@ export default function App() {
           <View style={styles.centerTitleContainer}>
             <Text style={styles.appbarTitle}>{t('navigation.assetAssignment')}</Text>
           </View>
-          {/* <Appbar.Action icon="logout" color="#FEC200" onPress={handleLogout} /> */}
-        </Appbar.Header>
+        </View>
 
       {/* Main Content */}
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: "#EEEEEE" }]}>
         {/* Card */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>{t('scanning.scanBarcode')}</Text>
@@ -431,16 +448,38 @@ export default function App() {
         onClose={closeMenu}
         onLogout={handleLogout}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  appbarContainer: {
+    backgroundColor: "#003667",
+    height: 56,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-start",
+    position: "relative",
+    paddingHorizontal: 0,
+    ...Platform.select({
+      ios: {
+        // iOS handles safe area automatically
+      },
+      android: {
+        // Android needs explicit handling
+        elevation: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+    }),
+  },
   appbar: {
     backgroundColor: "#003667",
     elevation: 0,
     shadowOpacity: 0,
-    height: 60,
+    height: 56,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "flex-start",

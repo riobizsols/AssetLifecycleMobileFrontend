@@ -11,8 +11,8 @@ import {
 import { Appbar } from "react-native-paper";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { CameraView, useCameraPermissions } from "expo-camera";
+import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
+import { Camera, useCameraPermission, useCameraDevice, useCodeScanner } from "react-native-vision-camera";
 import { API_CONFIG, getApiHeaders, API_ENDPOINTS } from "../../config/api";
 import CustomAlert from "../../components/CustomAlert";
 
@@ -24,7 +24,17 @@ export default function EmployeeAssetAssign() {
   const [showCamera, setShowCamera] = useState(false);
   const [barcode, setBarcode] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [permission, requestPermission] = useCameraPermissions();
+  const { hasPermission, requestPermission } = useCameraPermission();
+  const device = useCameraDevice('back');
+  
+  const codeScanner = useCodeScanner({
+    codeTypes: ['qr', 'ean-13', 'ean-8', 'code-128', 'code-39', 'code-93', 'codabar', 'upc-a', 'upc-e', 'pdf-417', 'aztec', 'data-matrix'],
+    onCodeScanned: (codes) => {
+      if (codes.length > 0) {
+        handleBarcodeScanned({ data: codes[0].value });
+      }
+    }
+  });
   const [alertConfig, setAlertConfig] = useState({
     visible: false,
     title: '',
@@ -57,7 +67,7 @@ export default function EmployeeAssetAssign() {
   };
 
   const openCamera = async () => {
-    if (!permission?.granted) {
+    if (!hasPermission) {
       await requestPermission();
     }
     setShowCamera(true);
@@ -263,7 +273,7 @@ export default function EmployeeAssetAssign() {
   };
 
   return showCamera ? (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: "#000" }}>
       <View style={{ position: "absolute", top: 40, right: 20, zIndex: 2 }}>
         <TouchableOpacity
           onPress={() => setShowCamera(false)}
@@ -276,27 +286,51 @@ export default function EmployeeAssetAssign() {
           <MaterialCommunityIcons name="close" size={28} color="#fff" />
         </TouchableOpacity>
       </View>
-      <CameraView
-        style={{ flex: 1 }}
-        barcodeScannerSettings={{
-          barcodeTypes: [
-            "qr",
-            "ean13",
-            "ean8",
-            "code39",
-            "code128",
-            "upc_a",
-            "upc_e",
-          ],
-        }}
-        onBarcodeScanned={handleBarcodeScanned}
-      />
+      
+      {device && hasPermission ? (
+        <Camera
+          style={StyleSheet.absoluteFill}
+          device={device}
+          isActive={true}
+          codeScanner={codeScanner}
+        />
+      ) : (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <Text style={{ color: '#fff', fontSize: 18, textAlign: 'center' }}>
+            {t('scanning.cameraPermissionRequired')}
+          </Text>
+        </View>
+      )}
+      
+      {/* Scanning Overlay */}
+      <View style={{
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        transform: [{ translateX: -150 }, { translateY: -100 }],
+        width: 300,
+        height: 200,
+        borderWidth: 2,
+        borderColor: '#FEC200',
+        backgroundColor: 'transparent',
+      }}>
+        <View style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 2,
+          backgroundColor: '#FEC200',
+          opacity: 0.8,
+        }} />
+      </View>
+      
       <View
         style={{
           position: "absolute",
           bottom: 40,
           alignSelf: "center",
-          backgroundColor: "#003667",
+          backgroundColor: "rgba(0,54,103,0.8)",
           padding: 12,
           borderRadius: 40,
         }}

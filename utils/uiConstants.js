@@ -221,11 +221,12 @@ export const COMMON_STYLES = {
     backgroundColor: UI_CONSTANTS.COLORS.PRIMARY,
     elevation: 0,
     shadowOpacity: 0,
-    height: 60,
+    height: 56, // Reduced height for better iOS compatibility
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-start',
     position: 'relative',
+    paddingTop: 0, // Let SafeAreaView handle the top padding
   },
   
   appBarTitle: {

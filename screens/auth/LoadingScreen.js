@@ -5,7 +5,7 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
+import { StatusBar } from 'react-native';
 import { authUtils } from '../../utils/auth';
 import { useNavigation } from '../../context/NavigationContext';
 

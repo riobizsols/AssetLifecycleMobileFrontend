@@ -8,11 +8,14 @@ import {
   TextInput,
   SafeAreaView,
   StatusBar,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { Appbar } from 'react-native-paper';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useTranslation } from 'react-i18next';
+import { API_CONFIG, getApiHeaders, API_ENDPOINTS, getServerUrl } from '../../config/api';
 
 const MaintenanceSupervisorScreen = ({ navigation }) => {
   const { t } = useTranslation();
@@ -27,6 +30,9 @@ const MaintenanceSupervisorScreen = ({ navigation }) => {
   });
 
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+  const [checklistData, setChecklistData] = useState([]);
+  const [loadingChecklist, setLoadingChecklist] = useState(false);
+  const [showChecklist, setShowChecklist] = useState(false);
   const statusOptions = [t('maintenance.pending'), t('maintenance.inProgress'), t('maintenance.completed'), t('maintenance.cancelled')];
 
   const handleInputChange = (field, value) => {
@@ -34,6 +40,69 @@ const MaintenanceSupervisorScreen = ({ navigation }) => {
       ...prev,
       [field]: value,
     }));
+  };
+
+  // Fetch checklist data by asset type
+  const fetchChecklistData = async (assetTypeId = 1) => {
+    try {
+      setLoadingChecklist(true);
+      
+      const serverUrl = getServerUrl();
+      const endpoint = API_ENDPOINTS.GET_CHECKLIST_BY_ASSET_TYPE(assetTypeId);
+      const url = `${serverUrl}${endpoint}`;
+
+      console.log('Fetching checklist data from:', url);
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: getApiHeaders(),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Checklist API Error:', response.status, errorText);
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+      }
+
+      const data = await response.json();
+      console.log('Checklist data fetched successfully:', data);
+      console.log('Full API response structure:', JSON.stringify(data, null, 2));
+      
+      // Handle different response structures
+      let checklistArray = [];
+      if (data.success && data.data) {
+        checklistArray = data.data;
+        console.log('Using data.success && data.data structure, found', checklistArray.length, 'items');
+      } else if (data.data && Array.isArray(data.data)) {
+        checklistArray = data.data;
+        console.log('Using data.data array structure, found', checklistArray.length, 'items');
+      } else if (Array.isArray(data)) {
+        checklistArray = data;
+        console.log('Using direct array structure, found', checklistArray.length, 'items');
+      } else {
+        console.warn('Unexpected checklist API response structure:', data);
+        console.log('Available keys in response:', Object.keys(data));
+        checklistArray = [];
+      }
+      
+      console.log('Final checklist array:', checklistArray);
+      setChecklistData(checklistArray);
+      setShowChecklist(true);
+    } catch (error) {
+      console.error('Error fetching checklist data:', error);
+      Alert.alert(
+        t('maintenance.error') || 'Error',
+        t('maintenance.failedToLoadChecklist') || 'Failed to load checklist data. Please try again.',
+        [{ text: t('common.ok') || 'OK' }]
+      );
+    } finally {
+      setLoadingChecklist(false);
+    }
+  };
+
+  const handleViewChecklist = () => {
+    // Using asset type ID AT010 as specified
+    fetchChecklistData('AT010');
   };
 
   const handleSubmit = () => {
@@ -82,20 +151,78 @@ const MaintenanceSupervisorScreen = ({ navigation }) => {
 
         {/* Quick Actions */}
         <View style={styles.quickActionsContainer}>
-          <TouchableOpacity style={styles.quickActionCard} activeOpacity={0.8}>
+          <TouchableOpacity 
+            style={styles.quickActionCard} 
+            activeOpacity={0.8}
+            onPress={handleViewChecklist}
+            disabled={loadingChecklist}
+          >
             <View style={styles.quickActionIcon}>
-              <MaterialCommunityIcons name="clipboard-check-outline" size={24} color="#003667" />
+              {loadingChecklist ? (
+                <ActivityIndicator size="small" color="#003667" />
+              ) : (
+                <MaterialCommunityIcons name="clipboard-check-outline" size={24} color="#003667" />
+              )}
             </View>
-            <Text style={styles.quickActionText}>{t('maintenance.viewChecklist')}</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.quickActionCard} activeOpacity={0.8}>
-            <View style={styles.quickActionIcon}>
-              <MaterialCommunityIcons name="history" size={24} color="#003667" />
-            </View>
-            <Text style={styles.quickActionText}>{t('maintenance.history')}</Text>
+            <Text style={styles.quickActionText}>
+              {loadingChecklist ? t('common.loading') || 'Loading...' : t('maintenance.viewChecklist')}
+            </Text>
           </TouchableOpacity>
         </View>
+
+        {/* Checklist Section */}
+        {showChecklist && (
+          <View style={styles.checklistSection}>
+            <View style={styles.checklistHeader}>
+              <MaterialCommunityIcons name="clipboard-list" size={24} color="#003667" />
+              <Text style={styles.checklistTitle}>{t('maintenance.checklist') || 'Checklist'}</Text>
+              <TouchableOpacity 
+                onPress={() => setShowChecklist(false)}
+                style={styles.closeButton}
+              >
+                <MaterialCommunityIcons name="close" size={20} color="#666" />
+              </TouchableOpacity>
+            </View>
+            
+            {checklistData.length > 0 ? (
+              <View style={styles.checklistContent}>
+                {checklistData.map((item, index) => (
+                  <View key={index} style={styles.checklistItem}>
+                    <View style={styles.checklistItemHeader}>
+                      <Text style={styles.checklistItemTitle}>
+                        {item.item || item.title || item.name || item.checklist_item || `Item ${index + 1}`}
+                      </Text>
+                    </View>
+                    {item.description && (
+                      <Text style={styles.checklistItemDescription}>
+                        {item.description}
+                      </Text>
+                    )}
+                    {item.instructions && (
+                      <Text style={styles.checklistItemInstructions}>
+                        Instructions: {item.instructions}
+                      </Text>
+                    )}
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <View style={styles.emptyChecklist}>
+                <MaterialCommunityIcons name="clipboard-outline" size={48} color="#ccc" />
+                <Text style={styles.emptyChecklistText}>
+                  {t('maintenance.noChecklistItems') || 'No checklist items found'}
+                </Text>
+                {/* Debug info - remove this after fixing */}
+                <Text style={[styles.emptyChecklistText, { fontSize: 12, marginTop: 8 }]}>
+                  Debug: API called with assetTypeId=AT010
+                </Text>
+                <Text style={[styles.emptyChecklistText, { fontSize: 12 }]}>
+                  Check console logs for API response details
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
 
         {/* Form Section */}
         <View style={styles.formSection}>
@@ -484,6 +611,76 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 8,
+  },
+  checklistSection: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  checklistHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  checklistTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#003667',
+    marginLeft: 12,
+    flex: 1,
+  },
+  closeButton: {
+    padding: 4,
+  },
+  checklistContent: {
+    marginTop: 8,
+  },
+  checklistItem: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#003667',
+  },
+  checklistItemHeader: {
+    marginBottom: 8,
+  },
+  checklistItemTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  checklistItemDescription: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 8,
+    lineHeight: 20,
+  },
+  checklistItemInstructions: {
+    fontSize: 13,
+    color: '#888',
+    fontStyle: 'italic',
+    lineHeight: 18,
+  },
+  emptyChecklist: {
+    alignItems: 'center',
+    padding: 32,
+  },
+  emptyChecklistText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
   },
 });
 

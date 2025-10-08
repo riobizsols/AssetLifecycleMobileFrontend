@@ -11,7 +11,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { Appbar } from 'react-native-paper';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import CustomAlert from '../../components/CustomAlert';

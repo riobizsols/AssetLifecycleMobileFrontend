@@ -3,15 +3,17 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   TouchableOpacity,
   ScrollView,
   Dimensions,
   FlatList,
   ActivityIndicator,
+  Platform,
+  StatusBar,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Appbar } from 'react-native-paper';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import CustomAlert from '../../components/CustomAlert';
@@ -152,6 +154,7 @@ const ReportBreakdownScreen = () => {
   const navigation = useNavigation();
   const { hasAccess } = useNavigationContext();
   const [menuVisible, setMenuVisible] = useState(false);
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [alertConfig, setAlertConfig] = useState({
@@ -449,9 +452,14 @@ const ReportBreakdownScreen = () => {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <StatusBar 
+        barStyle="light-content" 
+        backgroundColor={UI_CONSTANTS.COLORS.PRIMARY}
+        translucent={Platform.OS === 'android'}
+      />
       {/* AppBar */}
-      <Appbar.Header style={styles.appbar}>
+      <View style={styles.appbarContainer}>
         <TouchableOpacity 
           style={styles.menuButton} 
           onPress={() => navigation.goBack()}
@@ -472,7 +480,7 @@ const ReportBreakdownScreen = () => {
             {t('breakdown.reportBreakdown')}
           </Text>
         </View>
-      </Appbar.Header>
+      </View>
 
       <View style={[
         styles.content,
@@ -557,20 +565,42 @@ const ReportBreakdownScreen = () => {
       />
 
       <CustomAlert {...alertConfig} />
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: UI_CONSTANTS.COLORS.BACKGROUND,
+    backgroundColor: UI_CONSTANTS.COLORS.PRIMARY,
+  },
+  appbarContainer: {
+    backgroundColor: UI_CONSTANTS.COLORS.PRIMARY,
+    height: 56,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    position: 'relative',
+    paddingHorizontal: 0,
+    ...Platform.select({
+      ios: {
+        // iOS handles safe area automatically
+      },
+      android: {
+        // Android needs explicit handling
+        elevation: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+    }),
   },
   appbar: {
     backgroundColor: UI_CONSTANTS.COLORS.PRIMARY,
     elevation: 0,
     shadowOpacity: 0,
-    height: 60,
+    height: 56,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-start',
@@ -596,6 +626,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+    backgroundColor: UI_CONSTANTS.COLORS.BACKGROUND,
     paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.LG,
     paddingTop: RESPONSIVE_CONSTANTS.SPACING.LG,
     alignItems: 'center',
