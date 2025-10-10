@@ -12,12 +12,85 @@ import {
   FlatList,
   Platform,
   StatusBar,
+  Dimensions,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Appbar } from "react-native-paper";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { API_CONFIG, getApiHeaders, API_ENDPOINTS } from "../../config/api";
+
+const { width, height } = Dimensions.get('window');
+
+// Responsive design breakpoints
+const BREAKPOINTS = {
+  SMALL: 320,   // iPhone SE, small phones
+  MEDIUM: 375,  // iPhone X, standard phones
+  LARGE: 414,   // iPhone Plus, large phones
+  TABLET: 768,  // iPad, tablets
+  DESKTOP: 1024, // Desktop/large tablets
+};
+
+// Device type detection
+const getDeviceType = () => {
+  if (width >= BREAKPOINTS.DESKTOP) return 'desktop';
+  if (width >= BREAKPOINTS.TABLET) return 'tablet';
+  if (width >= BREAKPOINTS.LARGE) return 'large';
+  if (width >= BREAKPOINTS.MEDIUM) return 'medium';
+  return 'small';
+};
+
+const DEVICE_TYPE = getDeviceType();
+
+// Responsive scaling functions
+const scale = (size) => {
+  const scaleFactor = width / BREAKPOINTS.MEDIUM; // Base on iPhone X (375px)
+  return Math.max(size * scaleFactor, size * 0.8); // Minimum 80% of original size
+};
+
+const verticalScale = (size) => {
+  const scaleFactor = height / 812; // Base on iPhone X height
+  return Math.max(size * scaleFactor, size * 0.8);
+};
+
+const moderateScale = (size, factor = 0.5) => {
+  return size + (scale(size) - size) * factor;
+};
+
+// Responsive UI constants for this screen
+const RESPONSIVE_CONSTANTS = {
+  // Responsive spacing
+  SPACING: {
+    XS: scale(4),
+    SM: scale(8),
+    MD: scale(12),
+    LG: scale(16),
+    XL: scale(20),
+    XXL: scale(24),
+  },
+  
+  // Responsive font sizes
+  FONT_SIZES: {
+    XS: moderateScale(10),
+    SM: moderateScale(12),
+    MD: moderateScale(14),
+    LG: moderateScale(16),
+    XL: moderateScale(18),
+    XXL: moderateScale(20),
+  },
+  
+  // Responsive dimensions
+  CARD_PADDING: scale(12),
+  CARD_BORDER_RADIUS: scale(8),
+  
+  // Layout helpers
+  getCardMargin: () => {
+    if (DEVICE_TYPE === 'desktop' || DEVICE_TYPE === 'tablet') {
+      return scale(20);
+    }
+    return scale(10);
+  },
+};
 
 export default function EmployeeAssetHistory() {
   const { t } = useTranslation();
@@ -142,9 +215,11 @@ export default function EmployeeAssetHistory() {
 
     setLoading(true);
     try {
+      // Convert employee ID to uppercase for case-insensitive search
+      const normalizedEmpId = employeeId.trim().toUpperCase();
       // Use the correct API endpoint for employee asset history
-      const url = `${API_CONFIG.BASE_URL}/api/asset-assignments/employee-history/${employeeId}`;
-      console.log("Fetching employee history for ID:", employeeId);
+      const url = `${API_CONFIG.BASE_URL}/api/asset-assignments/employee-history/${normalizedEmpId}`;
+      console.log("Fetching employee history for ID:", normalizedEmpId);
       console.log("API URL:", url);
 
       const controller = new AbortController();
@@ -238,6 +313,7 @@ export default function EmployeeAssetHistory() {
     fetchEmployeeHistory();
     fetchDepartments();
     fetchEmployees();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [employeeId]);
 
   // Render history item
@@ -249,35 +325,35 @@ export default function EmployeeAssetHistory() {
       ]}
     >
       <View style={styles.historyCell}>
-        <Text style={styles.historyLabel}>{t('assets.action')}</Text>
+        <Text style={styles.historyLabel}>Action:</Text>
         <Text style={styles.historyValue}>
           {getActionDisplayText(item.action)}
         </Text>
       </View>
       
       <View style={styles.historyCell}>
-        <Text style={styles.historyLabel}>{t('assets.date')}</Text>
+        <Text style={styles.historyLabel}>Action On:</Text>
         <Text style={styles.historyValue}>
           {formatDate(item.action_on)}
         </Text>
       </View>
       
       <View style={styles.historyCell}>
-        <Text style={styles.historyLabel}>{t('assets.by')}</Text>
+        <Text style={styles.historyLabel}>Action By:</Text>
         <Text style={styles.historyValue}>
           {item.action_by || t('common.notAvailable')}
         </Text>
       </View>
       
       <View style={styles.historyCell}>
-        <Text style={styles.historyLabel}>{t('assets.asset')}</Text>
+        <Text style={styles.historyLabel}>Employee name:</Text>
         <Text style={styles.historyValue}>
-          {item.asset_id || t('common.notAvailable')}
+          {employees[item.employee_int_id] || employeeName || t('common.notAvailable')}
         </Text>
       </View>
       
       <View style={styles.historyCell}>
-        <Text style={styles.historyLabel}>{t('assets.department')}</Text>
+        <Text style={styles.historyLabel}>Department:</Text>
         <Text style={styles.historyValue}>
           {departments[item.dept_id] || item.dept_id || t('common.notAvailable')}
         </Text>
@@ -306,15 +382,17 @@ export default function EmployeeAssetHistory() {
         </View>
       </View>
 
-      {/* Employee Info */}
-      <View style={styles.assetInfo}>
-        <Text style={styles.assetInfoText}>
-          {t('assets.employee')} {employeeName || t('common.notAvailable')}
-        </Text>
-      </View>
+      {/* Content Container */}
+      <View style={styles.contentContainer}>
+        {/* Employee Info */}
+        <View style={styles.assetInfo}>
+          <Text style={styles.assetInfoText}>
+            {t('assets.employee')} {employeeName || t('common.notAvailable')}
+          </Text>
+        </View>
 
-      {/* History Table */}
-      <View style={styles.tableContainer}>
+        {/* History Table */}
+        <View style={styles.tableContainer}>
         <View style={styles.tableHeader}>
           <Text style={styles.tableHeaderText}>{t('assets.assignmentHistory')}</Text>
         </View>
@@ -344,6 +422,7 @@ export default function EmployeeAssetHistory() {
             <Text style={styles.emptyText}>{t('assets.noHistoryFound')}</Text>
           </View>
         )}
+        </View>
       </View>
     </View>
   );
@@ -354,9 +433,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#003667",
   },
+  contentContainer: {
+    flex: 1,
+    backgroundColor: "#EEEEEE",
+  },
   appbarContainer: {
     backgroundColor: "#003667",
-    height: 56,
+    height: verticalScale(56),
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "flex-start",
@@ -380,15 +463,15 @@ const styles = StyleSheet.create({
     backgroundColor: "#003667",
     elevation: 0,
     shadowOpacity: 0,
-    height: 56,
+    height: verticalScale(56),
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "flex-start",
     position: "relative",
   },
   backButton: {
-    padding: 12,
-    marginLeft: 8,
+    padding: RESPONSIVE_CONSTANTS.SPACING.MD,
+    marginLeft: RESPONSIVE_CONSTANTS.SPACING.SM,
     zIndex: 2,
   },
   centerTitleContainer: {
@@ -401,14 +484,14 @@ const styles = StyleSheet.create({
   appbarTitle: {
     color: "#fff",
     fontWeight: "600",
-    fontSize: 16,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.LG,
     alignSelf: "center",
   },
   assetInfo: {
     backgroundColor: "#fff",
-    margin: 10,
-    padding: 15,
-    borderRadius: 8,
+    margin: RESPONSIVE_CONSTANTS.getCardMargin(),
+    padding: RESPONSIVE_CONSTANTS.SPACING.LG,
+    borderRadius: RESPONSIVE_CONSTANTS.CARD_BORDER_RADIUS,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -416,15 +499,15 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   assetInfoText: {
-    fontSize: 16,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.LG,
     fontWeight: "600",
     color: "#003667",
     textAlign: "center",
   },
   tableContainer: {
-    margin: 10,
+    margin: RESPONSIVE_CONSTANTS.getCardMargin(),
     backgroundColor: "#fff",
-    borderRadius: 8,
+    borderRadius: RESPONSIVE_CONSTANTS.CARD_BORDER_RADIUS,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -437,15 +520,15 @@ const styles = StyleSheet.create({
   },
   tableHeader: {
     backgroundColor: "#003667",
-    borderTopLeftRadius: 8,
-    borderTopRightRadius: 8,
-    paddingVertical: 12,
+    borderTopLeftRadius: RESPONSIVE_CONSTANTS.CARD_BORDER_RADIUS,
+    borderTopRightRadius: RESPONSIVE_CONSTANTS.CARD_BORDER_RADIUS,
+    paddingVertical: RESPONSIVE_CONSTANTS.SPACING.MD,
     alignItems: "center",
   },
   tableHeaderText: {
     color: "#FFFFFF",
     fontWeight: "600",
-    fontSize: 16,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.LG,
   },
   yellowLine: {
     height: 3,
@@ -453,7 +536,7 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   historyRow: {
-    padding: 12,
+    padding: RESPONSIVE_CONSTANTS.CARD_PADDING,
     borderBottomWidth: 1,
     borderBottomColor: "#e0e0e0",
   },
@@ -461,35 +544,36 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: RESPONSIVE_CONSTANTS.SPACING.SM,
   },
   historyLabel: {
-    fontSize: 14,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
     fontWeight: "500",
     color: "#616161",
     flex: 1,
   },
   historyValue: {
-    fontSize: 14,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
     color: "#333",
     flex: 2,
     textAlign: "right",
   },
   loadingContainer: {
-    padding: 40,
+    padding: RESPONSIVE_CONSTANTS.SPACING.XXL * 1.5,
     alignItems: "center",
   },
   loadingText: {
-    marginTop: 10,
-    fontSize: 16,
+    marginTop: RESPONSIVE_CONSTANTS.SPACING.MD,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.LG,
     color: "#666",
   },
   emptyContainer: {
-    padding: 40,
+    padding: RESPONSIVE_CONSTANTS.SPACING.XXL * 1.5,
     alignItems: "center",
   },
   emptyText: {
-    fontSize: 16,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.LG,
     color: "#666",
+    textAlign: "center",
   },
 });

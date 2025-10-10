@@ -1,5 +1,5 @@
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   SafeAreaView,
   ScrollView,
@@ -10,17 +10,158 @@ import {
   View,
   Alert,
   ActivityIndicator,
+  Dimensions,
+  Platform,
+  StatusBar,
 } from "react-native";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Appbar } from "react-native-paper";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { API_CONFIG, getApiHeaders, API_ENDPOINTS } from "../../config/api";
+import { UI_CONSTANTS, COMMON_STYLES, UI_UTILS } from "../../utils/uiConstants";
 import CustomAlert from "../../components/CustomAlert";
+
+const { width, height } = Dimensions.get('window');
+
+// Responsive design breakpoints
+const BREAKPOINTS = {
+  SMALL: 320,   // iPhone SE, small phones
+  MEDIUM: 375,  // iPhone X, standard phones
+  LARGE: 414,   // iPhone Plus, large phones
+  TABLET: 768,  // iPad, tablets
+  DESKTOP: 1024, // Desktop/large tablets
+};
+
+// Device type detection
+const getDeviceType = () => {
+  if (width >= BREAKPOINTS.DESKTOP) return 'desktop';
+  if (width >= BREAKPOINTS.TABLET) return 'tablet';
+  if (width >= BREAKPOINTS.LARGE) return 'large';
+  if (width >= BREAKPOINTS.MEDIUM) return 'medium';
+  return 'small';
+};
+
+const DEVICE_TYPE = getDeviceType();
+
+// Responsive scaling functions
+const scale = (size) => {
+  const scaleFactor = width / BREAKPOINTS.MEDIUM; // Base on iPhone X (375px)
+  return Math.max(size * scaleFactor, size * 0.8); // Minimum 80% of original size
+};
+
+const verticalScale = (size) => {
+  const scaleFactor = height / 812; // Base on iPhone X height
+  return Math.max(size * scaleFactor, size * 0.8);
+};
+
+const moderateScale = (size, factor = 0.5) => {
+  return size + (scale(size) - size) * factor;
+};
+
+// Responsive UI constants for this screen
+const RESPONSIVE_CONSTANTS = {
+  // Responsive spacing
+  SPACING: {
+    XS: scale(4),
+    SM: scale(8),
+    MD: scale(12),
+    LG: scale(16),
+    XL: scale(20),
+    XXL: scale(24),
+    XXXL: scale(32),
+  },
+  
+  // Responsive font sizes
+  FONT_SIZES: {
+    XS: moderateScale(10),
+    SM: moderateScale(12),
+    MD: moderateScale(14),
+    LG: moderateScale(16),
+    XL: moderateScale(18),
+    XXL: moderateScale(20),
+    XXXL: moderateScale(24),
+    TITLE: moderateScale(28),
+  },
+  
+  // Responsive dimensions
+  CARD_PADDING: scale(16),
+  CARD_BORDER_RADIUS: scale(12),
+  INPUT_HEIGHT: verticalScale(45),
+  BUTTON_HEIGHT: verticalScale(40),
+  
+  // Responsive layout
+  getCardWidth: () => {
+    if (DEVICE_TYPE === 'desktop') return Math.min(width * 0.6, 600);
+    if (DEVICE_TYPE === 'tablet') return Math.min(width * 0.8, 500);
+    return width - scale(20); // Mobile: full width minus padding
+  },
+  
+  getDetailRowLayout: () => {
+    if (DEVICE_TYPE === 'desktop' || DEVICE_TYPE === 'tablet') {
+      return {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: scale(16),
+      };
+    }
+    return {
+      flexDirection: 'column',
+      alignItems: 'stretch',
+      marginBottom: scale(16),
+    };
+  },
+  
+  getLabelWidth: () => {
+    if (DEVICE_TYPE === 'desktop' || DEVICE_TYPE === 'tablet') {
+      return { width: scale(100) };
+    }
+    return { width: '100%', marginBottom: scale(4) };
+  },
+  
+  getValueWidth: () => {
+    if (DEVICE_TYPE === 'desktop' || DEVICE_TYPE === 'tablet') {
+      return { flex: 1 };
+    }
+    return { width: '100%' };
+  },
+  
+  getFooterLayout: () => {
+    if (DEVICE_TYPE === 'desktop' || DEVICE_TYPE === 'tablet') {
+      return {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+      };
+    }
+    return {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+    };
+  },
+  
+  getButtonSize: () => {
+    if (DEVICE_TYPE === 'desktop' || DEVICE_TYPE === 'tablet') {
+      return {
+        paddingHorizontal: scale(20),
+        paddingVertical: scale(12),
+        minWidth: scale(120),
+      };
+    }
+    return {
+      paddingHorizontal: scale(16),
+      paddingVertical: scale(12),
+      width: '100%',
+    };
+  },
+};
 
 export default function EmployeeAssetDetails() {
   const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute();
+  const insets = useSafeAreaInsets();
   const { assetData, assetAssignment, barcode, serialNumber, employeeId, employeeName } = route.params || {};
   const [loading, setLoading] = useState(false);
   const [departmentDetails, setDepartmentDetails] = useState(null);
@@ -102,7 +243,7 @@ export default function EmployeeAssetDetails() {
   };
 
   // Fetch employee details by ID
-  const fetchEmployeeDetails = async (employeeId) => {
+  const fetchEmployeeDetails = useCallback(async (employeeId) => {
     if (!employeeId) return;
 
     try {
@@ -139,7 +280,7 @@ export default function EmployeeAssetDetails() {
       // Try to find employee by searching through all employees
       await searchEmployeeById(employeeId);
     }
-  };
+  }, []);
 
   // Fallback method to search for employee by ID
   const searchEmployeeById = async (employeeId) => {
@@ -198,7 +339,7 @@ export default function EmployeeAssetDetails() {
   };
 
   // Fetch all details when component loads
-  const fetchAssignmentDetails = async () => {
+  const fetchAssignmentDetails = useCallback(async () => {
     // Handle both assetData (from API call) and assetAssignment (from scanning)
     const dataToUse = assetData || assetAssignment;
     if (!dataToUse) return;
@@ -266,12 +407,12 @@ export default function EmployeeAssetDetails() {
     } finally {
       setLoadingDetails(false);
     }
-  };
+  }, [assetData, assetAssignment, fetchEmployeeDetails]);
 
   // Fetch details when component loads
   useEffect(() => {
     fetchAssignmentDetails();
-  }, [assetData, assetAssignment]);
+  }, [fetchAssignmentDetails]);
 
   // Function to handle cancel assignment via API - creates new row and updates existing
   const handleCancelAssignment = async () => {
@@ -279,7 +420,7 @@ export default function EmployeeAssetDetails() {
     const assetId = assetData?.asset_id || assetData?.id || assetAssignment?.asset_id;
     
     if (!assetId) {
-      showAlert(t('common.error'), t('assets.assetIdNotFound'), "error");
+      showAlert(t('common.error'), t('assets.assetIdNotFound'), 'error');
       return;
     }
 
@@ -386,42 +527,71 @@ export default function EmployeeAssetDetails() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#EEEEEE" }}>
-      {/* AppBar */}
-      <Appbar.Header style={styles.appbar}>
-        <Appbar.Action
-          icon="arrow-left"
-          color="#FEC200"
-          onPress={() => navigation.goBack()}
-        />
-        <View style={styles.centerTitleContainer}>
-          <Text style={styles.appbarTitle}>{t('assets.assetAssignmentDetails')}</Text>
+    <View style={[styles.safeAreaContainer, { paddingTop: insets.top }]}>
+      <StatusBar 
+        barStyle="light-content" 
+        backgroundColor={UI_CONSTANTS.COLORS.PRIMARY}
+        translucent={Platform.OS === 'android'}
+      />
+      <View style={styles.container}>
+        {/* AppBar */}
+        <View style={styles.appbar}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.7}
+          >
+            <MaterialCommunityIcons
+              name="arrow-left"
+              size={UI_CONSTANTS.ICON_SIZES.LG}
+              color={UI_CONSTANTS.COLORS.SECONDARY}
+            />
+          </TouchableOpacity>
+          <View style={styles.centerTitleContainer}>
+            <Text 
+              style={styles.appbarTitle}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {t('assets.assetAssignmentDetails')}
+            </Text>
+          </View>
         </View>
-      </Appbar.Header>
 
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+      <ScrollView 
+        contentContainerStyle={[
+          styles.scroll,
+          DEVICE_TYPE === 'desktop' && styles.scrollDesktop,
+          DEVICE_TYPE === 'tablet' && styles.scrollTablet
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Search Bar */}
         <View style={styles.searchRow}>
           <TextInput
             style={styles.searchInput}
             placeholder={t('assets.serialNumber')}
-            placeholderTextColor="#7A7A7A"
+            placeholderTextColor={UI_CONSTANTS.COLORS.GRAY_DARK}
             value={serialNumber || barcode || ""}
             editable={false}
           />
-          <TouchableOpacity style={styles.qrButton}>
-            <MaterialCommunityIcons
-              name="line-scan"
-              size={22}
-              color="#FEC200"
-            />
-          </TouchableOpacity>
         </View>
 
         {/* Asset Details Card */}
-        <View style={styles.card}>
+        <View style={[
+          styles.card,
+          { width: RESPONSIVE_CONSTANTS.getCardWidth() },
+          DEVICE_TYPE === 'desktop' && styles.cardDesktop,
+          DEVICE_TYPE === 'tablet' && styles.cardTablet
+        ]}>
           <View style={styles.cardHeader}>
-            <Text style={styles.cardHeaderText}>{t('assets.assetDetails')}</Text>
+            <Text 
+              style={styles.cardHeaderText}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {t('assets.assetDetails')}
+            </Text>
           </View>
           <View style={styles.yellowLine} />
           <View style={styles.detailsTable}>
@@ -458,35 +628,39 @@ export default function EmployeeAssetDetails() {
                   : t('common.notAvailable')
               }
             />
-            {/* <DetailRow
-              label="Effective Date"
-              value={formatDate(assetAssignment?.action_on)}
-            /> */}
           </View>
         </View>
       </ScrollView>
 
-      {/* Cancel Assignment Button and Link */}
-      <View style={styles.footer}>
-        <View style={styles.footerRow}>
-          <TouchableOpacity 
-            style={styles.linkButton}
-            // onPress={() => navigation.navigate('EmployeeAssetHistory', { 
-            //   assetId: assetAssignment?.asset_id,
-            //   assetAssignment: assetAssignment 
-            // })}
-          >
-            {/* <Text style={styles.linkText}>View History</Text> */}
-          </TouchableOpacity>
+      {/* Cancel Assignment Button */}
+      <View style={[
+        styles.footer,
+        DEVICE_TYPE === 'desktop' && styles.footerDesktop,
+        DEVICE_TYPE === 'tablet' && styles.footerTablet
+      ]}>
+        <View style={[
+          styles.footerContent,
+          RESPONSIVE_CONSTANTS.getFooterLayout()
+        ]}>
           <TouchableOpacity
-            style={[styles.cancelBtn, loading && styles.buttonDisabled]}
+            style={[
+              styles.cancelBtn,
+              RESPONSIVE_CONSTANTS.getButtonSize(),
+              loading && styles.buttonDisabled
+            ]}
             onPress={handleCancelAssignment}
             disabled={loading}
           >
             {loading ? (
-              <ActivityIndicator size="small" color="#fff" />
+              <ActivityIndicator size="small" color={UI_CONSTANTS.COLORS.WHITE} />
             ) : (
-              <Text style={styles.cancelBtnText}>{t('assets.cancelAssignment')}</Text>
+              <Text 
+                style={styles.cancelBtnText}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {t('assets.cancelAssignment')}
+              </Text>
             )}
           </TouchableOpacity>
         </View>
@@ -505,23 +679,49 @@ export default function EmployeeAssetDetails() {
         showCancel={alertConfig.showCancel}
         onClose={() => setAlertConfig(prev => ({ ...prev, visible: false }))}
       />
-    </SafeAreaView>
+      </View>
+    </View>
   );
 }
 
 function DetailRow({ label, value }) {
   return (
-    <View style={styles.detailRow}>
-      <Text style={styles.detailLabel}>{label}</Text>
-      <Text style={styles.detailColon}>:</Text>
-      <TextInput style={styles.detailValue} value={value} editable={false} />
+    <View style={[
+      styles.detailRow,
+      RESPONSIVE_CONSTANTS.getDetailRowLayout()
+    ]}>
+      <Text style={[
+        styles.detailLabel,
+        RESPONSIVE_CONSTANTS.getLabelWidth()
+      ]}>
+        {label}
+      </Text>
+      {DEVICE_TYPE === 'desktop' || DEVICE_TYPE === 'tablet' ? (
+        <Text style={styles.detailColon}>:</Text>
+      ) : null}
+      <TextInput 
+        style={[
+          styles.detailValue,
+          RESPONSIVE_CONSTANTS.getValueWidth()
+        ]} 
+        value={value} 
+        editable={false} 
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  safeAreaContainer: {
+    flex: 1,
+    backgroundColor: UI_CONSTANTS.COLORS.PRIMARY,
+  },
+  container: {
+    flex: 1,
+    backgroundColor: UI_CONSTANTS.COLORS.BACKGROUND,
+  },
   appbar: {
-    backgroundColor: "#003667",
+    backgroundColor: UI_CONSTANTS.COLORS.PRIMARY,
     elevation: 0,
     shadowOpacity: 0,
     height: 60,
@@ -530,6 +730,11 @@ const styles = StyleSheet.create({
     justifyContent: "flex-start",
     position: "relative",
   },
+  backButton: {
+    padding: RESPONSIVE_CONSTANTS.SPACING.MD,
+    marginLeft: RESPONSIVE_CONSTANTS.SPACING.SM,
+    zIndex: 2,
+  },
   centerTitleContainer: {
     position: "absolute",
     left: 0,
@@ -537,153 +742,166 @@ const styles = StyleSheet.create({
     alignItems: "center",
     zIndex: 1,
   },
-  titleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    flex: 1,
-  },
   appbarTitle: {
-    color: "#fff",
+    color: UI_CONSTANTS.COLORS.WHITE,
     fontWeight: "600",
-    fontSize: 16,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.LG,
     alignSelf: "center",
   },
+  scroll: {
+    flexGrow: 1,
+    paddingBottom: RESPONSIVE_CONSTANTS.SPACING.LG,
+    alignItems: 'center',
+  },
+  scrollDesktop: {
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.XXL,
+  },
+  scrollTablet: {
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.XL,
+  },
   searchRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    margin: 10,
-    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    margin: RESPONSIVE_CONSTANTS.SPACING.MD,
+    marginBottom: RESPONSIVE_CONSTANTS.SPACING.MD,
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.LG,
+    width: '100%',
   },
   searchInput: {
     flex: 1,
-    borderColor: "#e0e0e0",
+    borderColor: UI_CONSTANTS.COLORS.GRAY_MEDIUM,
     borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    height: 45,
-    backgroundColor: "#f3f3f3",
-    fontSize: 14,
+    borderRadius: RESPONSIVE_CONSTANTS.SPACING.SM,
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.MD,
+    height: RESPONSIVE_CONSTANTS.INPUT_HEIGHT,
+    backgroundColor: UI_CONSTANTS.COLORS.GRAY_LIGHT,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
     fontWeight: "400",
-    textAlignVertical: "center",
+    textAlignVertical: 'center',
     paddingVertical: 0,
   },
   qrButton: {
-    backgroundColor: "#003667",
-    borderRadius: 8,
-    padding: 8,
-    marginLeft: 8,
+    padding: RESPONSIVE_CONSTANTS.SPACING.SM,
     justifyContent: "center",
     alignItems: "center",
-    height: 45,
-    width: 40,
+    backgroundColor: UI_CONSTANTS.COLORS.PRIMARY,
+    borderRadius: RESPONSIVE_CONSTANTS.SPACING.SM,
+    marginLeft: RESPONSIVE_CONSTANTS.SPACING.SM,
+    height: RESPONSIVE_CONSTANTS.INPUT_HEIGHT,
+    width: RESPONSIVE_CONSTANTS.INPUT_HEIGHT,
   },
   card: {
-    marginHorizontal: 8,
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    marginTop: 4,
-    shadowColor: "#000",
+    backgroundColor: UI_CONSTANTS.COLORS.WHITE,
+    borderRadius: RESPONSIVE_CONSTANTS.CARD_BORDER_RADIUS,
+    marginHorizontal: RESPONSIVE_CONSTANTS.SPACING.MD,
+    marginTop: RESPONSIVE_CONSTANTS.SPACING.SM,
+    shadowColor: UI_CONSTANTS.COLORS.BLACK,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
     elevation: 2,
+    overflow: "hidden",
+  },
+  cardDesktop: {
+    maxWidth: 600,
+    alignSelf: 'center',
+  },
+  cardTablet: {
+    maxWidth: 500,
+    alignSelf: 'center',
   },
   cardHeader: {
-    backgroundColor: "#003667",
-    borderTopLeftRadius: 10,
-    borderTopRightRadius: 10,
-    paddingVertical: 10,
+    backgroundColor: UI_CONSTANTS.COLORS.PRIMARY,
+    paddingVertical: RESPONSIVE_CONSTANTS.SPACING.MD,
     alignItems: "center",
+    borderTopLeftRadius: RESPONSIVE_CONSTANTS.CARD_BORDER_RADIUS,
+    borderTopRightRadius: RESPONSIVE_CONSTANTS.CARD_BORDER_RADIUS,
   },
   cardHeaderText: {
-    color: "#FFFFFF",
+    color: UI_CONSTANTS.COLORS.WHITE,
     fontWeight: "600",
-    fontSize: 14,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
   },
   detailsTable: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
+    padding: RESPONSIVE_CONSTANTS.CARD_PADDING,
   },
   detailRow: {
     flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 20,
+    alignItems: "stretch",
+    marginBottom: RESPONSIVE_CONSTANTS.SPACING.MD,
   },
   detailLabel: {
-    width: 100,
-    color: "#616161",
-    fontSize: 14,
+    flex: 1.2,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
     fontWeight: "500",
+    color: UI_CONSTANTS.COLORS.TEXT_SECONDARY,
+    textAlign: "left",
+    marginRight: RESPONSIVE_CONSTANTS.SPACING.XS,
   },
   detailColon: {
-    width: 10,
-    color: "#333",
-    fontSize: 12,
-    fontWeight: "400",
+    width: RESPONSIVE_CONSTANTS.SPACING.MD,
     textAlign: "center",
-    marginRight: 10,
+    color: UI_CONSTANTS.COLORS.TEXT_PRIMARY,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
+    margin: RESPONSIVE_CONSTANTS.SPACING.MD,
   },
   detailValue: {
-    flex: 1,
-    borderColor: "#e0e0e0",
+    flex: 2,
     borderWidth: 1,
-    borderRadius: 2,
-    paddingHorizontal: 8,
-    height: "140%",
-    color: "#616161",
-    fontSize: 12,
+    borderColor: UI_CONSTANTS.COLORS.GRAY_MEDIUM,
+    borderRadius: RESPONSIVE_CONSTANTS.SPACING.XS,
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.SM,
+    paddingVertical: RESPONSIVE_CONSTANTS.SPACING.XS,
+    backgroundColor: UI_CONSTANTS.COLORS.GRAY_LIGHT,
+    color: UI_CONSTANTS.COLORS.TEXT_SECONDARY,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
     fontWeight: "400",
-    textAlignVertical: "center",
-    textAlign: "left",
-    paddingVertical: 0,
-    marginRight: 15,
+    height: RESPONSIVE_CONSTANTS.INPUT_HEIGHT,
   },
   yellowLine: {
     height: 3,
-    backgroundColor: "#FEC200",
+    backgroundColor: UI_CONSTANTS.COLORS.SECONDARY,
     width: "100%",
-    marginBottom: 8,
+    marginBottom: RESPONSIVE_CONSTANTS.SPACING.SM,
   },
   footer: {
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    backgroundColor: "#fff",
+    paddingHorizontal: RESPONSIVE_CONSTANTS.CARD_PADDING,
+    paddingVertical: RESPONSIVE_CONSTANTS.CARD_PADDING,
+    backgroundColor: UI_CONSTANTS.COLORS.WHITE,
     borderTopWidth: 1,
-    borderTopColor: "#e0e0e0",
+    borderTopColor: UI_CONSTANTS.COLORS.GRAY_LIGHT,
   },
-  footerRow: {
+  footerDesktop: {
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.XXL,
+  },
+  footerTablet: {
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.XL,
+  },
+  footerContent: {
     flexDirection: "row",
+    justifyContent: "center",
     alignItems: "center",
-    justifyContent: "space-between",
+    minHeight: 60,
   },
   cancelBtn: {
-    backgroundColor: "#dc3545",
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
+    backgroundColor: UI_CONSTANTS.COLORS.ERROR,
+    borderRadius: RESPONSIVE_CONSTANTS.SPACING.SM,
+    paddingVertical: RESPONSIVE_CONSTANTS.SPACING.MD,
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.LG,
     alignItems: "center",
     justifyContent: "center",
     elevation: 2,
-    flex: 1,
-    marginLeft: 90,
+    minHeight: RESPONSIVE_CONSTANTS.BUTTON_HEIGHT,
   },
   cancelBtnText: {
-    color: "#fff",
+    color: UI_CONSTANTS.COLORS.WHITE,
     fontWeight: "600",
-    fontSize: 14,
-  },
-  linkButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-  },
-  linkText: {
-    color: "#003667",
-    fontWeight: "500",
-    fontSize: 14,
-    textDecorationLine: "underline",
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
   },
   buttonDisabled: {
-    backgroundColor: "#cccccc",
+    backgroundColor: UI_CONSTANTS.COLORS.GRAY_DARK,
   },
 }); 

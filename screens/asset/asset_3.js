@@ -1,10 +1,10 @@
-import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
-import DateTimePicker from "@react-native-community/datetimepicker";
-import React, { useState, useEffect } from "react";
-import { Appbar } from "react-native-paper";
-import { useNavigation, useRoute } from "@react-navigation/native";
-import { useTranslation } from "react-i18next";
-import Toast from "react-native-toast-message";
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Appbar } from 'react-native-paper';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
+import Toast from 'react-native-toast-message';
 
 import {
     Platform,
@@ -15,14 +15,12 @@ import {
     TextInput,
     TouchableOpacity,
     View,
-    Alert,
     ActivityIndicator,
     Dimensions,
-} from "react-native";
-import Icon from "react-native-vector-icons/MaterialIcons";
-import RNPickerSelect from "react-native-picker-select";
-import { API_CONFIG, getApiHeaders, API_ENDPOINTS } from "../../config/api";
-import { UI_CONSTANTS, COMMON_STYLES, UI_UTILS } from "../../utils/uiConstants";
+} from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialIcons';
+import { API_CONFIG, getApiHeaders, API_ENDPOINTS } from '../../config/api';
+import { UI_CONSTANTS } from '../../utils/uiConstants';
 
 const { width, height } = Dimensions.get('window');
 
@@ -37,10 +35,10 @@ const BREAKPOINTS = {
 
 // Device type detection
 const getDeviceType = () => {
-  if (width >= BREAKPOINTS.DESKTOP) return 'desktop';
-  if (width >= BREAKPOINTS.TABLET) return 'tablet';
-  if (width >= BREAKPOINTS.LARGE) return 'large';
-  if (width >= BREAKPOINTS.MEDIUM) return 'medium';
+  if (width >= BREAKPOINTS.DESKTOP) {return 'desktop';}
+  if (width >= BREAKPOINTS.TABLET) {return 'tablet';}
+  if (width >= BREAKPOINTS.LARGE) {return 'large';}
+  if (width >= BREAKPOINTS.MEDIUM) {return 'medium';}
   return 'small';
 };
 
@@ -73,7 +71,7 @@ const RESPONSIVE_CONSTANTS = {
     XXL: scale(24),
     XXXL: scale(32),
   },
-  
+
   // Responsive font sizes
   FONT_SIZES: {
     XS: moderateScale(10),
@@ -85,20 +83,20 @@ const RESPONSIVE_CONSTANTS = {
     XXXL: moderateScale(24),
     TITLE: moderateScale(28),
   },
-  
+
   // Responsive dimensions
   CARD_PADDING: scale(16),
   CARD_BORDER_RADIUS: scale(12),
   INPUT_HEIGHT: verticalScale(45),
   BUTTON_HEIGHT: verticalScale(40),
-  
+
   // Responsive layout
   getCardWidth: () => {
-    if (DEVICE_TYPE === 'desktop') return Math.min(width * 0.6, 600);
-    if (DEVICE_TYPE === 'tablet') return Math.min(width * 0.8, 500);
+    if (DEVICE_TYPE === 'desktop') {return Math.min(width * 0.6, 600);}
+    if (DEVICE_TYPE === 'tablet') {return Math.min(width * 0.8, 500);}
     return width - scale(20); // Mobile: full width minus padding
   },
-  
+
   getFormRowLayout: () => {
     if (DEVICE_TYPE === 'desktop' || DEVICE_TYPE === 'tablet') {
       return {
@@ -113,21 +111,21 @@ const RESPONSIVE_CONSTANTS = {
       marginBottom: scale(16),
     };
   },
-  
+
   getLabelWidth: () => {
     if (DEVICE_TYPE === 'desktop' || DEVICE_TYPE === 'tablet') {
       return { flex: 1.2 };
     }
     return { width: '100%', marginBottom: scale(4) };
   },
-  
+
   getInputWidth: () => {
     if (DEVICE_TYPE === 'desktop' || DEVICE_TYPE === 'tablet') {
       return { flex: 2 };
     }
     return { width: '100%' };
   },
-  
+
   getFooterLayout: () => {
     if (DEVICE_TYPE === 'desktop' || DEVICE_TYPE === 'tablet') {
       return {
@@ -142,7 +140,7 @@ const RESPONSIVE_CONSTANTS = {
       gap: scale(12),
     };
   },
-  
+
   getButtonSize: () => {
     if (DEVICE_TYPE === 'desktop' || DEVICE_TYPE === 'tablet') {
       return {
@@ -162,29 +160,24 @@ const RESPONSIVE_CONSTANTS = {
 
 export default function App() {
   const { t } = useTranslation();
-  
+
   const departments = [
-    { label: t('assets.loading'), value: "" },
+    { label: t('assets.loading'), value: '' },
   ];
   const employees = [
-    { label: t('assets.selectDepartmentFirst'), value: "" },
-  ];
-  const statuses = [
-    { label: t('assets.assigned'), value: "assigned" },
-    { label: t('assets.unassigned'), value: "unassigned" },
-    { label: t('assets.available'), value: "available" },
+    { label: t('assets.selectDepartmentFirst'), value: '' },
   ];
   const navigation = useNavigation();
   const route = useRoute();
-  const { assetId, barcode } = route.params || {};
-  const [serial] = useState(assetId || "122101");
-  const [department, setDepartment] = useState("");
-  const [employee, setEmployee] = useState("");
-  const [status, setStatus] = useState("");
+  const { assetId, assetData, barcode } = route.params || {};
+  const [serial] = useState(assetData?.serial_number || barcode || assetId || '122101');
+  const [department, setDepartment] = useState('');
+  const [employee, setEmployee] = useState('');
+  const [] = useState('');
   const [effectiveDate, setEffectiveDate] = useState(new Date());
-  const [returnDate, setReturnDate] = useState(new Date());
+  const [returnDate] = useState(new Date());
   const [showEffective, setShowEffective] = useState(false);
-  const [showReturn, setShowReturn] = useState(false);
+  const [] = useState(false);
   const [departmentsList, setDepartmentsList] = useState(departments);
   const [loadingDepartments, setLoadingDepartments] = useState(false);
   const [employeesList, setEmployeesList] = useState(employees);
@@ -192,8 +185,8 @@ export default function App() {
   const [loadingAssignment, setLoadingAssignment] = useState(false);
   const [showDepartmentDropdown, setShowDepartmentDropdown] = useState(false);
   const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
-  const [departmentSearchText, setDepartmentSearchText] = useState("");
-  const [employeeSearchText, setEmployeeSearchText] = useState("");
+  const [departmentSearchText, setDepartmentSearchText] = useState('');
+  const [employeeSearchText, setEmployeeSearchText] = useState('');
 
   // Helper function to show toast messages
   const showToast = (type, title, message) => {
@@ -208,27 +201,27 @@ export default function App() {
 
   // Filter departments based on search text
   const getFilteredDepartments = () => {
-    if (!departmentSearchText) return departmentsList;
-    return departmentsList.filter(dept => 
+    if (!departmentSearchText) {return departmentsList;}
+    return departmentsList.filter(dept =>
       dept.label.toLowerCase().includes(departmentSearchText.toLowerCase())
     );
   };
 
   // Filter employees based on search text
   const getFilteredEmployees = () => {
-    if (!employeeSearchText) return employeesList;
-    return employeesList.filter(emp => 
+    if (!employeeSearchText) {return employeesList;}
+    return employeesList.filter(emp =>
       emp.label.toLowerCase().includes(employeeSearchText.toLowerCase())
     );
   };
 
   // Fetch departments from API
-  const fetchDepartments = async () => {
+  const fetchDepartments = useCallback(async () => {
     setLoadingDepartments(true);
     try {
       const url = `${API_CONFIG.BASE_URL}${API_ENDPOINTS.GET_DEPARTMENTS()}`;
       console.log('Fetching departments:', url);
-      
+
       const response = await fetch(url, {
         method: 'GET',
         headers: getApiHeaders(),
@@ -240,13 +233,13 @@ export default function App() {
 
       const data = await response.json();
       console.log('Departments data received:');
-      
+
       // Transform the data to match the dropdown format
       const transformedDepartments = data.map(dept => ({
         label: dept.text,
-        value: dept.dept_id
+        value: dept.dept_id,
       }));
-      
+
       setDepartmentsList(transformedDepartments);
     } catch (error) {
       console.error('Error fetching departments:', error);
@@ -254,12 +247,12 @@ export default function App() {
     } finally {
       setLoadingDepartments(false);
     }
-  };
+  }, [t]);
 
   // Fetch employees by department
   const fetchEmployeesByDepartment = async (deptId) => {
     if (!deptId) {
-      setEmployeesList([{ label: t('assets.selectDepartmentFirst'), value: "" }]);
+      setEmployeesList([{ label: t('assets.selectDepartmentFirst'), value: '' }]);
       return;
     }
 
@@ -267,7 +260,7 @@ export default function App() {
     try {
       const url = `${API_CONFIG.BASE_URL}${API_ENDPOINTS.GET_EMPLOYEES_BY_DEPARTMENT(deptId)}`;
       console.log('Fetching employees for department:', url);
-      
+
       const response = await fetch(url, {
         method: 'GET',
         headers: getApiHeaders(),
@@ -280,32 +273,32 @@ export default function App() {
       const data = await response.json();
       console.log('Employees data received:', data);
       console.log('Number of employees received:', data.length);
-      
+
       // Log each employee for debugging
       data.forEach((emp, index) => {
         console.log(`Employee ${index + 1}:`, {
           employee_id: emp.employee_id,
           emp_int_id: emp.emp_int_id,
           name: emp.name || emp.full_name,
-          dept_id: emp.dept_id
+          dept_id: emp.dept_id,
         });
       });
-      
+
       // Transform the data to match the dropdown format
       // Use emp_int_id as the value for the assignment
       const transformedEmployees = data.map(emp => ({
         label: `${emp.employee_id} - ${emp.name || emp.full_name || 'Unknown'}`,
         value: emp.emp_int_id || emp.employee_id, // Use emp_int_id if available, fallback to employee_id
         dept_id: emp.dept_id, // Store department ID for validation
-        employee_id: emp.employee_id // Store original employee_id for display
+        employee_id: emp.employee_id, // Store original employee_id for display
       }));
-      
+
       console.log('Transformed employees:', transformedEmployees);
       setEmployeesList(transformedEmployees);
     } catch (error) {
       console.error('Error fetching employees:', error);
       showToast('error', t('common.error'), t('assets.failedToLoadEmployees'));
-      setEmployeesList([{ label: t('assets.noEmployeesFound'), value: "" }]);
+      setEmployeesList([{ label: t('assets.noEmployeesFound'), value: '' }]);
     } finally {
       setLoadingEmployees(false);
     }
@@ -314,27 +307,27 @@ export default function App() {
   // Validate form fields
   const validateForm = () => {
     const errors = [];
-    
+
     if (!department) {
       errors.push(t('assets.pleaseSelectDepartment'));
     }
-    
+
     if (!employee) {
       errors.push(t('assets.pleaseSelectEmployee'));
     }
-    
+
     if (!effectiveDate) {
       errors.push(t('assets.pleaseSelectEffectiveDate'));
     }
-    
+
     if (!returnDate) {
       errors.push(t('assets.pleaseSelectReturnDate'));
     }
-    
+
     if (effectiveDate && returnDate && effectiveDate > returnDate) {
       errors.push(t('assets.effectiveDateAfterReturnDate'));
     }
-    
+
     return errors;
   };
 
@@ -343,7 +336,7 @@ export default function App() {
     try {
       const url = `${API_CONFIG.BASE_URL}${API_ENDPOINTS.GET_EMPLOYEE(employeeId)}`;
       console.log('Validating employee exists:', url);
-      
+
       const response = await fetch(url, {
         method: 'GET',
         headers: getApiHeaders(),
@@ -363,27 +356,13 @@ export default function App() {
   };
 
   // Helper function to get action type based on context
-  const getActionType = (context) => {
-    switch (context) {
-      case 'assign':
-        return 'ASSIGN';
-      case 'unassign':
-        return 'UNASSIGN';
-      case 'transfer':
-        return 'TRANSFER';
-      case 'return':
-        return 'RETURN';
-      default:
-        return 'ASSIGN';
-    }
-  };
 
   // Update previous assignments to set latest_assignment_flag to false
   const updatePreviousAssignments = async (assetId) => {
     try {
       const url = `${API_CONFIG.BASE_URL}${API_ENDPOINTS.GET_ASSET_ASSIGNMENT(assetId)}`;
       console.log('Fetching current assignments for asset:', url);
-      
+
       const response = await fetch(url, {
         method: 'GET',
         headers: getApiHeaders(),
@@ -392,17 +371,17 @@ export default function App() {
       if (response.ok) {
         const assignments = await response.json();
         console.log('Current assignments:', assignments);
-        
+
         // Update all existing assignments to set latest_assignment_flag to false
         for (const assignment of assignments) {
           if (assignment.latest_assignment_flag) {
             const updateUrl = `${API_CONFIG.BASE_URL}${API_ENDPOINTS.UPDATE_ASSET_ASSIGNMENT(assignment.asset_assign_id)}`;
             const updateData = {
               latest_assignment_flag: false,
-              changed_by: "SYSTEM",
+              changed_by: 'SYSTEM',
               changed_on: new Date().toISOString()
             };
-            
+
             await fetch(updateUrl, {
               method: 'PUT',
               headers: getApiHeaders(),
@@ -421,9 +400,9 @@ export default function App() {
   // Create asset assignment
   const createAssetAssignment = async () => {
     const validationErrors = validateForm();
-    
+
     if (validationErrors.length > 0) {
-      showToast('error', t('assets.validationError'), validationErrors.join("\n"));
+      showToast('error', t('assets.validationError'), validationErrors.join('\n'));
       return;
     }
 
@@ -432,7 +411,7 @@ export default function App() {
     if (selectedEmployee) {
       console.log('Selected employee:', selectedEmployee);
       console.log('Selected department:', department);
-      
+
       // Check if employee's department matches selected department
       if (selectedEmployee.dept_id && selectedEmployee.dept_id !== department) {
         showToast('error', t('assets.validationError'), `Employee ${selectedEmployee.label} belongs to department ${selectedEmployee.dept_id}, but you selected ${department}. Please select the correct department.`);
@@ -442,7 +421,7 @@ export default function App() {
     }
 
     setLoadingAssignment(true);
-    
+
     // Validate employee exists in database (optional - will continue if validation fails)
     try {
       const employeeExists = await validateEmployeeExists(employee);
@@ -458,29 +437,29 @@ export default function App() {
     try {
       // First, update previous assignments to set latest_assignment_flag to false
       await updatePreviousAssignments(assetId);
-      
+
       const url = `${API_CONFIG.BASE_URL}${API_ENDPOINTS.CREATE_ASSET_ASSIGNMENT()}`;
       console.log('Creating asset assignment:', url);
-      
+
       // Generate a unique asset assignment ID
       const assetAssignId = `AA${Date.now()}`;
-      
+
       const assignmentData = {
         asset_assign_id: assetAssignId,
         dept_id: department,
         asset_id: assetId,
-        org_id: "ORG001",
+        org_id: 'ORG001',
         employee_int_id: employee,
-        action: "A", // Assign action
+        action: 'A', // Assign action
         action_on: new Date().toISOString(),
-        action_by: "EMP001",
+        action_by: 'EMP001',
         latest_assignment_flag: true
       };
-      
+
       console.log('Assignment data:', assignmentData);
       console.log('Selected employee value (emp_int_id):', employee);
       console.log('Selected employee details:', selectedEmployee);
-      
+
       const response = await fetch(url, {
         method: 'POST',
         headers: getApiHeaders(),
@@ -490,14 +469,14 @@ export default function App() {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         console.error('Server error details:', errorData);
-        
+
         // Handle specific foreign key constraint errors
-        if (errorData.err && errorData.err.code === "23503") {
-          if (errorData.err.constraint === "tbl_Employees_FK") {
+        if (errorData.err && errorData.err.code === '23503') {
+          if (errorData.err.constraint === 'tbl_Employees_FK') {
             showToast('error', t('assets.employeeNotFound'), t('assets.employeeNotExistMessage'));
-          } else if (errorData.err.constraint === "tbl_Departments_FK") {
+          } else if (errorData.err.constraint === 'tbl_Departments_FK') {
             showToast('error', t('assets.departmentNotFound'), t('assets.departmentNotExistMessage'));
-          } else if (errorData.err.constraint === "tbl_Assets_FK") {
+          } else if (errorData.err.constraint === 'tbl_Assets_FK') {
             showToast('error', t('assets.assetNotFound'), t('assets.assetNotExistMessage'));
           } else {
             showToast('error', t('assets.databaseConstraintError'), `${t('assets.databaseConstraintViolated')}: ${errorData.err.detail || errorData.err.message || 'Unknown constraint error'}`);
@@ -512,10 +491,10 @@ export default function App() {
 
       const data = await response.json();
       console.log('Assignment created successfully:', data);
-      
+
       showToast('success', t('common.success'), t('assets.assetAssignedSuccessfully'));
       setTimeout(() => {
-        navigation.goBack();
+        navigation.navigate('Home');
       }, 1500);
     } catch (error) {
       console.error('Error creating asset assignment:', error);
@@ -528,20 +507,18 @@ export default function App() {
   // Fetch departments on component mount
   useEffect(() => {
     fetchDepartments();
-  }, []);
+  }, [fetchDepartments]);
 
   // Custom searchable dropdown component
   const renderSearchableDropdown = (
-    value, 
-    setValue, 
-    options, 
-    placeholder, 
-    searchText, 
-    setSearchText, 
-    showDropdown, 
-    setShowDropdown,
-    selectedLabel
-  ) => {
+    value,
+    setValue,
+    options,
+    placeholder,
+    searchText,
+    setSearchText,
+    showDropdown,
+    setShowDropdown  ) => {
     const selectedOption = options.find(option => option.value === value);
     const displayText = selectedOption ? selectedOption.label : placeholder;
 
@@ -554,10 +531,10 @@ export default function App() {
           <Text style={styles.dropdownButtonText}>
             {displayText}
           </Text>
-          <Icon 
-            name={showDropdown ? "arrow-drop-up" : "arrow-drop-down"} 
-            size={22} 
-            color="#888" 
+          <Icon
+            name={showDropdown ? 'arrow-drop-up' : 'arrow-drop-down'}
+            size={22}
+            color="#888"
           />
         </TouchableOpacity>
       </View>
@@ -567,58 +544,32 @@ export default function App() {
   // Handle department selection
   const handleDepartmentChange = (selectedDeptId) => {
     setDepartment(selectedDeptId);
-    setEmployee(""); // Reset employee selection
+    setEmployee(''); // Reset employee selection
     if (selectedDeptId) {
       fetchEmployeesByDepartment(selectedDeptId);
     } else {
-      setEmployeesList([{ label: t('assets.selectDepartmentFirst'), value: "" }]);
+      setEmployeesList([{ label: t('assets.selectDepartmentFirst'), value: '' }]);
     }
   };
 
-  const pickerSelectStyles = {
-    inputIOS: {
-      color: "#616161",
-      fontSize: 14,
-      fontWeight: "400",
-      height: 36,
-      paddingVertical: 8,
-      paddingHorizontal: 0,
-      backgroundColor: "transparent",
-    },
-    inputAndroid: {
-      color: "#616161",
-      fontSize: 14,
-      fontWeight: "400",
-      height: 36,
-      paddingVertical: 8,
-      paddingHorizontal: 0,
-      backgroundColor: "transparent",
-    },
-    placeholder: {
-      color: "#aaa",
-    },
-    iconContainer: {
-      display: "none",
-    },
-  };
 
   return (
     <SafeAreaView style={styles.safe}>
       {/* AppBar */}
       <Appbar.Header style={styles.appbar}>
-        <TouchableOpacity 
-          style={styles.backButton} 
-          onPress={() => navigation.goBack()}
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.navigate('Home')}
           activeOpacity={0.7}
         >
-          <MaterialCommunityIcons 
-            name="arrow-left" 
-            size={UI_CONSTANTS.ICON_SIZES.LG} 
-            color={UI_CONSTANTS.COLORS.SECONDARY} 
+          <MaterialCommunityIcons
+            name="arrow-left"
+            size={UI_CONSTANTS.ICON_SIZES.LG}
+            color={UI_CONSTANTS.COLORS.SECONDARY}
           />
         </TouchableOpacity>
         <View style={styles.centerTitleContainer}>
-          <Text 
+          <Text
             style={styles.appbarTitle}
             numberOfLines={1}
             ellipsizeMode="tail"
@@ -627,8 +578,8 @@ export default function App() {
           </Text>
         </View>
       </Appbar.Header>
-      
-      <ScrollView 
+
+      <ScrollView
         contentContainerStyle={[
           styles.scroll,
           DEVICE_TYPE === 'desktop' && styles.scrollDesktop,
@@ -640,20 +591,23 @@ export default function App() {
         <View style={styles.searchRow}>
           <TextInput
             style={styles.searchInput}
-            placeholder={serial || "627384567868"}
+            placeholder={serial || '627384567868'}
             placeholderTextColor={UI_CONSTANTS.COLORS.GRAY_DARK}
             value={serial || ''}
             editable={false}
           />
-          <TouchableOpacity style={styles.qrButton}>
-            <MaterialCommunityIcons 
-              name="line-scan" 
-              size={UI_CONSTANTS.ICON_SIZES.MD} 
-              color={UI_CONSTANTS.COLORS.SECONDARY} 
+          <TouchableOpacity 
+            style={styles.qrButton}
+            onPress={() => navigation.replace('Asset')}
+          >
+            <MaterialCommunityIcons
+              name="line-scan"
+              size={UI_CONSTANTS.ICON_SIZES.MD}
+              color={UI_CONSTANTS.COLORS.SECONDARY}
             />
           </TouchableOpacity>
         </View>
-        
+
         {/* Asset Details Card */}
         <View style={[
           styles.card,
@@ -662,7 +616,7 @@ export default function App() {
           DEVICE_TYPE === 'tablet' && styles.cardTablet
         ]}>
           <View style={styles.cardHeader}>
-            <Text 
+            <Text
               style={styles.cardHeaderText}
               numberOfLines={1}
               ellipsizeMode="tail"
@@ -686,16 +640,16 @@ export default function App() {
               {DEVICE_TYPE === 'desktop' || DEVICE_TYPE === 'tablet' ? (
                 <Text style={styles.colon}>:</Text>
               ) : null}
-              <TextInput 
+              <TextInput
                 style={[
                   styles.input,
                   RESPONSIVE_CONSTANTS.getInputWidth()
-                ]} 
-                value={serial} 
-                editable={false} 
+                ]}
+                value={serial}
+                editable={false}
               />
             </View>
-            
+
             {/* Department */}
             <View style={[
               styles.formRow,
@@ -733,7 +687,7 @@ export default function App() {
                 )
               )}
             </View>
-            
+
             {/* Employee */}
             <View style={[
               styles.formRow,
@@ -801,20 +755,20 @@ export default function App() {
                 <Text style={{ flex: 1, color: UI_CONSTANTS.COLORS.TEXT_SECONDARY }}>
                   {effectiveDate.toLocaleDateString()}
                 </Text>
-                <Icon 
-                  name="calendar-today" 
-                  size={UI_CONSTANTS.ICON_SIZES.MD} 
-                  color={UI_CONSTANTS.COLORS.PRIMARY} 
+                <Icon
+                  name="calendar-today"
+                  size={UI_CONSTANTS.ICON_SIZES.MD}
+                  color={UI_CONSTANTS.COLORS.PRIMARY}
                 />
               </TouchableOpacity>
               {showEffective && (
                 <DateTimePicker
                   value={effectiveDate}
                   mode="date"
-                  display={Platform.OS === "ios" ? "spinner" : "default"}
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                   onChange={(e, date) => {
                     setShowEffective(false);
-                    if (date) setEffectiveDate(date);
+                    if (date) {setEffectiveDate(date);}
                   }}
                 />
               )}
@@ -847,10 +801,10 @@ export default function App() {
             </View>
           </View>
         </ScrollView>
-        
+
         {/* Dropdown Overlays - Positioned outside ScrollView */}
         {showDepartmentDropdown && (
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.dropdownOverlay}
             activeOpacity={1}
             onPress={() => setShowDepartmentDropdown(false)}
@@ -869,13 +823,13 @@ export default function App() {
                 {departmentSearchText.length > 0 && (
                   <TouchableOpacity
                     style={styles.clearButton}
-                    onPress={() => setDepartmentSearchText("")}
+                    onPress={() => setDepartmentSearchText('')}
                   >
                     <Icon name="close" size={16} color="#888" />
                   </TouchableOpacity>
                 )}
               </View>
-              
+
               {/* Options List */}
               <ScrollView style={styles.optionsList} nestedScrollEnabled={true}>
                 {getFilteredDepartments().map((option, index) => (
@@ -887,7 +841,7 @@ export default function App() {
                     ]}
                     onPress={() => {
                       handleDepartmentChange(option.value);
-                      setDepartmentSearchText("");
+                      setDepartmentSearchText('');
                       setShowDepartmentDropdown(false);
                     }}
                   >
@@ -903,9 +857,9 @@ export default function App() {
             </View>
           </TouchableOpacity>
         )}
-        
+
         {showEmployeeDropdown && (
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.dropdownOverlay}
             activeOpacity={1}
             onPress={() => setShowEmployeeDropdown(false)}
@@ -924,13 +878,13 @@ export default function App() {
                 {employeeSearchText.length > 0 && (
                   <TouchableOpacity
                     style={styles.clearButton}
-                    onPress={() => setEmployeeSearchText("")}
+                    onPress={() => setEmployeeSearchText('')}
                   >
                     <Icon name="close" size={16} color="#888" />
                   </TouchableOpacity>
                 )}
               </View>
-              
+
               {/* Options List */}
               <ScrollView style={styles.optionsList} nestedScrollEnabled={true}>
                 {getFilteredEmployees().map((option, index) => (
@@ -942,7 +896,7 @@ export default function App() {
                     ]}
                     onPress={() => {
                       setEmployee(option.value);
-                      setEmployeeSearchText("");
+                      setEmployeeSearchText('');
                       setShowEmployeeDropdown(false);
                     }}
                   >
@@ -968,14 +922,14 @@ export default function App() {
           styles.footerContent,
           RESPONSIVE_CONSTANTS.getFooterLayout()
         ]}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.historyLink}
-            onPress={() => navigation.navigate('AssetHistory', { 
+            onPress={() => navigation.navigate('AssetHistory', {
               assetId: assetId,
-              assetAssignment: null 
+              assetAssignment: null
             })}
           >
-            <Text 
+            <Text
               style={styles.historyLinkText}
               numberOfLines={1}
               ellipsizeMode="tail"
@@ -983,20 +937,20 @@ export default function App() {
               {t('assets.viewHistory')}
             </Text>
           </TouchableOpacity>
-          
+
           <View style={[
             styles.buttonContainer,
             DEVICE_TYPE === 'mobile' && styles.buttonContainerMobile
           ]}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[
                 styles.cancelBtn,
                 RESPONSIVE_CONSTANTS.getButtonSize()
-              ]} 
-              onPress={() => navigation.goBack()}
+              ]}
+              onPress={() => navigation.navigate('Home')}
               disabled={loadingAssignment}
             >
-              <Text 
+              <Text
                 style={styles.cancelBtnText}
                 numberOfLines={1}
                 ellipsizeMode="tail"
@@ -1004,19 +958,19 @@ export default function App() {
                 {t('assets.cancel')}
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[
-                styles.assignBtn, 
+                styles.assignBtn,
                 RESPONSIVE_CONSTANTS.getButtonSize(),
                 loadingAssignment && styles.buttonDisabled
-              ]} 
+              ]}
               onPress={createAssetAssignment}
               disabled={loadingAssignment}
             >
               {loadingAssignment ? (
                 <ActivityIndicator size="small" color={UI_CONSTANTS.COLORS.WHITE} />
               ) : (
-                <Text 
+                <Text
                   style={styles.assignBtnText}
                   numberOfLines={1}
                   ellipsizeMode="tail"
@@ -1046,10 +1000,10 @@ const styles = StyleSheet.create({
     elevation: 0,
     shadowOpacity: 0,
     height: 60,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "flex-start",
-    position: "relative",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    position: 'relative',
   },
   backButton: {
     padding: RESPONSIVE_CONSTANTS.SPACING.MD,
@@ -1057,37 +1011,37 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   centerTitleContainer: {
-    position: "absolute",
+    position: 'absolute',
     left: 0,
     right: 0,
-    alignItems: "center",
+    alignItems: 'center',
     zIndex: 1,
   },
   titleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     flex: 1,
   },
   appbarTitle: {
     color: UI_CONSTANTS.COLORS.WHITE,
-    fontWeight: "600",
+    fontWeight: '600',
     fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.LG,
-    alignSelf: "center",
+    alignSelf: 'center',
   },
   header: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#003667",
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#003667',
     height: 56,
     paddingHorizontal: 16,
-    justifyContent: "space-between",
+    justifyContent: 'space-between',
   },
   headerTitle: {
-    color: "#fff",
+    color: '#fff',
     fontSize: 18,
-    fontWeight: "bold",
-    textAlign: "center",
+    fontWeight: 'bold',
+    textAlign: 'center',
     flex: 1,
   },
   scroll: {
@@ -1102,8 +1056,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.XL,
   },
   searchBar: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     margin: RESPONSIVE_CONSTANTS.SPACING.MD,
     backgroundColor: UI_CONSTANTS.COLORS.WHITE,
     borderRadius: RESPONSIVE_CONSTANTS.SPACING.SM,
@@ -1120,14 +1074,14 @@ const styles = StyleSheet.create({
     height: RESPONSIVE_CONSTANTS.INPUT_HEIGHT,
     backgroundColor: UI_CONSTANTS.COLORS.GRAY_LIGHT,
     fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
-    fontWeight: "400",
+    fontWeight: '400',
     textAlignVertical: 'center',
     paddingVertical: 0,
   },
   qrButton: {
     padding: RESPONSIVE_CONSTANTS.SPACING.SM,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
     backgroundColor: UI_CONSTANTS.COLORS.PRIMARY,
     borderRadius: RESPONSIVE_CONSTANTS.SPACING.SM,
     marginLeft: RESPONSIVE_CONSTANTS.SPACING.SM,
@@ -1144,7 +1098,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 4,
     elevation: 2,
-    overflow: "hidden",
+    overflow: 'hidden',
   },
   cardDesktop: {
     maxWidth: 600,
@@ -1157,34 +1111,34 @@ const styles = StyleSheet.create({
   cardHeader: {
     backgroundColor: UI_CONSTANTS.COLORS.PRIMARY,
     paddingVertical: RESPONSIVE_CONSTANTS.SPACING.MD,
-    alignItems: "center",
+    alignItems: 'center',
     borderTopLeftRadius: RESPONSIVE_CONSTANTS.CARD_BORDER_RADIUS,
     borderTopRightRadius: RESPONSIVE_CONSTANTS.CARD_BORDER_RADIUS,
   },
   cardHeaderText: {
     color: UI_CONSTANTS.COLORS.WHITE,
-    fontWeight: "600",
+    fontWeight: '600',
     fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
   },
   cardBody: {
     padding: RESPONSIVE_CONSTANTS.CARD_PADDING,
   },
   formRow: {
-    flexDirection: "row",
-    alignItems: "stretch",
+    flexDirection: 'row',
+    alignItems: 'stretch',
     marginBottom: RESPONSIVE_CONSTANTS.SPACING.MD,
   },
   label: {
     flex: 1.2,
     fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
-    fontWeight: "500",
+    fontWeight: '500',
     color: UI_CONSTANTS.COLORS.TEXT_SECONDARY,
-    textAlign: "left",
+    textAlign: 'left',
     marginRight: RESPONSIVE_CONSTANTS.SPACING.XS,
   },
   colon: {
     width: RESPONSIVE_CONSTANTS.SPACING.MD,
-    textAlign: "center",
+    textAlign: 'center',
     color: UI_CONSTANTS.COLORS.TEXT_PRIMARY,
     fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
     margin: RESPONSIVE_CONSTANTS.SPACING.MD,
@@ -1205,11 +1159,11 @@ const styles = StyleSheet.create({
     paddingVertical: RESPONSIVE_CONSTANTS.SPACING.XS,
     backgroundColor: UI_CONSTANTS.COLORS.GRAY_LIGHT,
     color: UI_CONSTANTS.COLORS.TEXT_SECONDARY,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "flex-end",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
     fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
-    fontWeight: "400",
+    fontWeight: '400',
     height: RESPONSIVE_CONSTANTS.INPUT_HEIGHT,
   },
   inputWithIcon: {
@@ -1220,8 +1174,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.SM,
     paddingVertical: RESPONSIVE_CONSTANTS.SPACING.XS,
     backgroundColor: UI_CONSTANTS.COLORS.GRAY_LIGHT,
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     height: RESPONSIVE_CONSTANTS.INPUT_HEIGHT,
   },
   footer: {
@@ -1238,21 +1192,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.XL,
   },
   footerContent: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     minHeight: 60,
   },
   buttonContainer: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
     gap: RESPONSIVE_CONSTANTS.SPACING.MD,
   },
   buttonContainerMobile: {
-    flexDirection: "row",
-    justifyContent: "center",
+    flexDirection: 'row',
+    justifyContent: 'center',
     gap: RESPONSIVE_CONSTANTS.SPACING.MD,
-    width: "100%",
+    width: '100%',
   },
   cancelBtn: {
     backgroundColor: UI_CONSTANTS.COLORS.SECONDARY,
@@ -1274,12 +1228,12 @@ const styles = StyleSheet.create({
   },
   cancelBtnText: {
     color: UI_CONSTANTS.COLORS.WHITE,
-    fontWeight: "500",
+    fontWeight: '500',
     fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.SM,
   },
   assignBtnText: {
     color: UI_CONSTANTS.COLORS.WHITE,
-    fontWeight: "500",
+    fontWeight: '500',
     fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.SM,
   },
   historyLink: {
@@ -1289,21 +1243,21 @@ const styles = StyleSheet.create({
   },
   historyLinkText: {
     color: UI_CONSTANTS.COLORS.PRIMARY,
-    fontWeight: "500",
+    fontWeight: '500',
     fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
-    textDecorationLine: "underline",
+    textDecorationLine: 'underline',
   },
   buttonDisabled: {
     backgroundColor: UI_CONSTANTS.COLORS.GRAY_DARK,
   },
   dropdownWrapper: {
     flex: 2,
-    position: "relative",
+    position: 'relative',
   },
   dropdownButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     borderWidth: 1,
     borderColor: UI_CONSTANTS.COLORS.GRAY_MEDIUM,
     borderRadius: RESPONSIVE_CONSTANTS.SPACING.XS,
@@ -1314,20 +1268,20 @@ const styles = StyleSheet.create({
   dropdownButtonText: {
     color: UI_CONSTANTS.COLORS.TEXT_SECONDARY,
     fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
-    fontWeight: "400",
+    fontWeight: '400',
     flex: 1,
   },
   dropdownOverlay: {
-    position: "absolute",
+    position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(0,0,0,0.3)",
+    backgroundColor: 'rgba(0,0,0,0.3)',
     zIndex: 999,
   },
   dropdownList: {
-    position: "absolute",
+    position: 'absolute',
     top: DEVICE_TYPE === 'desktop' ? 150 : 200,
     left: RESPONSIVE_CONSTANTS.SPACING.LG,
     right: RESPONSIVE_CONSTANTS.SPACING.LG,
@@ -1344,8 +1298,8 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
   },
   searchContainer: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     borderBottomWidth: 1,
     borderBottomColor: UI_CONSTANTS.COLORS.GRAY_LIGHT,
     paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.SM,
@@ -1357,7 +1311,7 @@ const styles = StyleSheet.create({
     fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
     color: UI_CONSTANTS.COLORS.TEXT_PRIMARY,
     paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.SM,
-    backgroundColor: "transparent",
+    backgroundColor: 'transparent',
   },
   clearButton: {
     padding: RESPONSIVE_CONSTANTS.SPACING.XS,
@@ -1381,12 +1335,12 @@ const styles = StyleSheet.create({
   },
   selectedOptionText: {
     color: UI_CONSTANTS.COLORS.PRIMARY,
-    fontWeight: "500",
+    fontWeight: '500',
   },
   yellowLine: {
     height: 3,
     backgroundColor: UI_CONSTANTS.COLORS.SECONDARY,
-    width: "100%",
+    width: '100%',
     marginBottom: RESPONSIVE_CONSTANTS.SPACING.SM,
   },
 });

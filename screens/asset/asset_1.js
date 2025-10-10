@@ -120,8 +120,10 @@ export default function App() {
   const checkSerialNumber = async (serialNumber) => {
     setLoading(true);
     try {
-      console.log(`Checking serial number: ${serialNumber}`);
-      const url = `${API_CONFIG.BASE_URL}${API_ENDPOINTS.CHECK_SERIAL(serialNumber)}`;
+      // Convert serial number to uppercase for case-insensitive search
+      const normalizedSerial = serialNumber.trim().toUpperCase();
+      console.log(`Checking serial number: ${normalizedSerial}`);
+      const url = `${API_CONFIG.BASE_URL}${API_ENDPOINTS.CHECK_SERIAL(normalizedSerial)}`;
       console.log('API URL:', url);
       console.log('API Headers:', getApiHeaders());
       
@@ -173,17 +175,20 @@ export default function App() {
       
       // Check if data is an array or object
       let assetId = null;
+      let assetData = null;
       if (Array.isArray(data) && data.length > 0) {
         assetId = data[0].asset_id;
+        assetData = data[0];
         console.log('Asset ID from array:', assetId);
       } else if (data && typeof data === 'object') {
         assetId = data.asset_id || data.id || data.assetId;
+        assetData = data;
         console.log('Asset ID from object:', assetId);
       }
       
-      if (assetId) {
-        // Call API to get asset assignment data
-        await getAssetAssignment(assetId);
+      if (assetId && assetData) {
+        // Call API to get asset assignment data, passing the full asset data
+        await getAssetAssignment(assetId, assetData);
       } else {
         Alert.alert(
           t('assets.assetNotFound'),
@@ -215,7 +220,7 @@ export default function App() {
     }
   };
 
-  const getAssetAssignment = async (assetId) => {
+  const getAssetAssignment = async (assetId, assetData) => {
     try {
       console.log(`Getting asset assignment for asset ID: ${assetId}`);
       const url = `${API_CONFIG.BASE_URL}${API_ENDPOINTS.GET_ASSET_ASSIGNMENT(assetId)}`;
@@ -275,9 +280,10 @@ export default function App() {
         console.log('Filtered assignments:', filteredAssignments);
         
         if (filteredAssignments.length > 0) {
-          // Navigate to asset_2.js with the filtered asset assignment data
+          // Navigate to asset_2.js with the filtered asset assignment data and asset details
           navigation.navigate('AssetDetails', { 
             assetAssignment: filteredAssignments[0],
+            assetData: assetData,
             barcode: barcode 
           });
         } else {
@@ -286,6 +292,7 @@ export default function App() {
             // Navigate to asset_3.js for unassigned assets or assets without matching criteria
             navigation.navigate('AssetAssignment', { 
               assetId: assetId,
+              assetData: assetData,
               barcode: barcode 
             });
           } else {
@@ -298,6 +305,7 @@ export default function App() {
           // Navigate to asset_3.js for unassigned assets
           navigation.navigate('AssetAssignment', { 
             assetId: assetId,
+            assetData: assetData,
             barcode: barcode 
           });
         } else {

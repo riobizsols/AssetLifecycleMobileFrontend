@@ -157,7 +157,7 @@ export default function App() {
   const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute();
-  const { assetAssignment, barcode } = route.params || {};
+  const { assetAssignment, assetData, barcode } = route.params || {};
   const [loading, setLoading] = useState(false);
   const [departmentDetails, setDepartmentDetails] = useState(null);
   const [employeeDetails, setEmployeeDetails] = useState(null);
@@ -449,7 +449,7 @@ export default function App() {
 
       if (createResponse.ok) {
         showAlert(t('common.success'), t('assets.assignmentCancelledSuccessfully'), "success", () => {
-          navigation.goBack();
+          navigation.navigate('Home');
         });
       } else {
         const errorData = await createResponse.json().catch(() => ({}));
@@ -504,7 +504,7 @@ export default function App() {
 
           if (response.ok) {
             showAlert(t('common.success'), t('assets.assignmentCancelledSuccessfully'), "success", () => {
-              navigation.goBack();
+              navigation.navigate('Home');
             });
           } else {
             const errorData = await response.json().catch(() => ({}));
@@ -526,11 +526,17 @@ export default function App() {
     <SafeAreaView style={styles.safe}>
       {/* AppBar */}
       <Appbar.Header style={styles.appbar}>
-        <Appbar.Action
-          icon="arrow-left"
-          color={UI_CONSTANTS.COLORS.SECONDARY}
-          onPress={() => navigation.goBack()}
-        />
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.navigate('Home')}
+          activeOpacity={0.7}
+        >
+          <MaterialCommunityIcons
+            name="arrow-left"
+            size={UI_CONSTANTS.ICON_SIZES.LG}
+            color={UI_CONSTANTS.COLORS.SECONDARY}
+          />
+        </TouchableOpacity>
         <View style={styles.centerTitleContainer}>
           <Text 
             style={styles.appbarTitle}
@@ -554,12 +560,15 @@ export default function App() {
         <View style={styles.searchRow}>
           <TextInput
             style={styles.searchInput}
-            placeholder={assetAssignment?.asset_id || t('common.na')}
+            placeholder={t('assets.serialNumber')}
             placeholderTextColor={UI_CONSTANTS.COLORS.GRAY_DARK}
-            value={barcode || ""}
+            value={assetData?.serial_number || barcode || ""}
             editable={false}
           />
-          <TouchableOpacity style={styles.qrButton}>
+          <TouchableOpacity 
+            style={styles.qrButton}
+            onPress={() => navigation.replace('Asset')}
+          >
             <MaterialCommunityIcons
               name="line-scan"
               size={UI_CONSTANTS.ICON_SIZES.MD}
@@ -588,7 +597,7 @@ export default function App() {
           <View style={styles.detailsTable}>
             <DetailRow
               label={t('assets.serialNumber')}
-              value={assetAssignment?.asset_id || t('common.na')}
+              value={assetData?.serial_number || barcode || t('common.na')}
             />
             <DetailRow
               label={t('employees.department')}
@@ -748,6 +757,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "flex-start",
     position: "relative",
+  },
+  backButton: {
+    padding: RESPONSIVE_CONSTANTS.SPACING.MD,
+    marginLeft: RESPONSIVE_CONSTANTS.SPACING.SM,
+    zIndex: 2,
   },
   centerTitleContainer: {
     position: "absolute",

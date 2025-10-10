@@ -8,18 +8,83 @@ import {
   SafeAreaView,
   Alert,
   ActivityIndicator,
+  Dimensions,
+  Platform,
+  StatusBar,
 } from "react-native";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
-import { SafeAreaProvider } from "react-native-safe-area-context";
+import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
+import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Appbar } from "react-native-paper";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { API_CONFIG, getApiHeaders, API_ENDPOINTS } from "../../config/api";
 
+const { width, height } = Dimensions.get('window');
+
+// Responsive design breakpoints
+const BREAKPOINTS = {
+  SMALL: 320,
+  MEDIUM: 375,
+  LARGE: 414,
+  TABLET: 768,
+  DESKTOP: 1024,
+};
+
+// Device type detection
+const getDeviceType = () => {
+  if (width >= BREAKPOINTS.DESKTOP) return 'desktop';
+  if (width >= BREAKPOINTS.TABLET) return 'tablet';
+  if (width >= BREAKPOINTS.LARGE) return 'large';
+  if (width >= BREAKPOINTS.MEDIUM) return 'medium';
+  return 'small';
+};
+
+const DEVICE_TYPE = getDeviceType();
+
+// Responsive scaling functions
+const scale = (size) => {
+  const scaleFactor = width / BREAKPOINTS.MEDIUM;
+  return Math.max(size * scaleFactor, size * 0.8);
+};
+
+const verticalScale = (size) => {
+  const scaleFactor = height / 812;
+  return Math.max(size * scaleFactor, size * 0.8);
+};
+
+const moderateScale = (size, factor = 0.5) => {
+  return size + (scale(size) - size) * factor;
+};
+
+// Responsive UI constants
+const RESPONSIVE_CONSTANTS = {
+  SPACING: {
+    XS: scale(4),
+    SM: scale(8),
+    MD: scale(12),
+    LG: scale(16),
+    XL: scale(20),
+    XXL: scale(24),
+  },
+  
+  FONT_SIZES: {
+    XS: moderateScale(10),
+    SM: moderateScale(12),
+    MD: moderateScale(14),
+    LG: moderateScale(16),
+    XL: moderateScale(18),
+    XXL: moderateScale(20),
+  },
+  
+  CARD_BORDER_RADIUS: scale(8),
+};
+
 export default function DepartmentAssetsScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute();
+  const insets = useSafeAreaInsets();
   const { departmentId } = route.params || {};
   const [loading, setLoading] = useState(false);
   const [assetData, setAssetData] = useState([]);
@@ -281,6 +346,7 @@ export default function DepartmentAssetsScreen() {
   // Load data when component mounts
   useEffect(() => {
     fetchEmployees();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Fetch department assets when departmentId changes
@@ -288,28 +354,36 @@ export default function DepartmentAssetsScreen() {
     if (departmentId) {
       fetchDepartmentAssets(departmentId);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [departmentId]);
 
   return (
     <SafeAreaProvider>
-      <SafeAreaView style={{ flex: 1, backgroundColor: "#f4f4f4" }}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <StatusBar 
+          barStyle="light-content" 
+          backgroundColor="#003667"
+          translucent={Platform.OS === 'android'}
+        />
         {/* AppBar */}
-        <Appbar.Header style={styles.appbar}>
-          <Appbar.Action icon="menu" color="#FEC200" onPress={() => {}} />
-          {/* Centered Title */}
+        <View style={styles.appbar}>
+          <TouchableOpacity 
+            style={styles.backButton} 
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.7}
+          >
+            <MaterialCommunityIcons 
+              name="arrow-left" 
+              size={24} 
+              color="#FEC200" 
+            />
+          </TouchableOpacity>
           <View style={styles.centerTitleContainer}>
             <Text style={styles.appbarTitle}>{t('assets.departmentAssets')}</Text>
           </View>
-          {/* Right side empty to balance layout */}
-          <View style={{ width: 40 }} />
-        </Appbar.Header>
-
-        {/* Back Arrow */}
-        <View style={styles.backRow}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <MaterialIcons name="arrow-back" size={24} color="#333" />
-          </TouchableOpacity>
         </View>
+
+        <View style={styles.contentContainer}>
 
         {/* Table */}
         <View style={styles.tableContainer}>
@@ -385,39 +459,67 @@ export default function DepartmentAssetsScreen() {
             </View>
           )}
         </View>
-      </SafeAreaView>
+        </View>
+      </View>
     </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#003667",
+  },
+  contentContainer: {
+    flex: 1,
+    backgroundColor: "#EEEEEE",
+  },
   appbar: {
-    backgroundColor: "#003366",
-    height: 60,
+    backgroundColor: "#003667",
+    height: verticalScale(56),
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    justifyContent: "space-between",
+    justifyContent: "flex-start",
+    position: "relative",
+    ...Platform.select({
+      ios: {
+        // iOS handles safe area automatically
+      },
+      android: {
+        elevation: 4,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+    }),
+  },
+  backButton: {
+    padding: RESPONSIVE_CONSTANTS.SPACING.MD,
+    marginLeft: RESPONSIVE_CONSTANTS.SPACING.SM,
+    zIndex: 2,
+  },
+  centerTitleContainer: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    alignItems: "center",
+    zIndex: 1,
   },
   appbarTitle: {
     color: "#fff",
     fontWeight: "600",
-    fontSize: 16,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.LG,
     alignSelf: "center",
-  },
-  centerTitleContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
   },
   backRow: {
     backgroundColor: "#ededed",
-    paddingHorizontal: 10,
-    paddingVertical: 10,
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.MD,
+    paddingVertical: RESPONSIVE_CONSTANTS.SPACING.MD,
   },
   tableContainer: {
-    margin: 10,
-    borderRadius: 8,
+    margin: RESPONSIVE_CONSTANTS.SPACING.MD,
+    borderRadius: RESPONSIVE_CONSTANTS.CARD_BORDER_RADIUS,
     backgroundColor: "#fff",
     overflow: "hidden",
     flex: 1,
@@ -425,47 +527,49 @@ const styles = StyleSheet.create({
   tableHeader: {
     flexDirection: "row",
     backgroundColor: "#003366",
-    paddingVertical: 8,
-    paddingHorizontal: 8,
+    paddingVertical: RESPONSIVE_CONSTANTS.SPACING.SM,
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.SM,
   },
   tableHeaderText: {
     color: "#fff",
     fontWeight: "500",
-    fontSize: 13,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.SM,
     textAlign: "center",
   },
   tableRow: {
     flexDirection: "row",
-    paddingVertical: 10,
-    paddingHorizontal: 8,
+    paddingVertical: RESPONSIVE_CONSTANTS.SPACING.MD,
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.SM,
     alignItems: "center",
   },
   tableCell: {
-    fontSize: 12,
-    fontWeight : '500',
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.SM,
+    fontWeight: '500',
     color: "#616161",
     textAlign: "center",
   },
-  yellowLine:{
+  yellowLine: {
     height: 3,
     backgroundColor: "#FEC200",
     width: "100%",
   },
   loadingContainer: {
-    padding: 40,
+    padding: RESPONSIVE_CONSTANTS.SPACING.XXL * 1.5,
     alignItems: "center",
   },
   loadingText: {
-    marginTop: 10,
-    fontSize: 16,
+    marginTop: RESPONSIVE_CONSTANTS.SPACING.MD,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.LG,
     color: "#666",
   },
   emptyContainer: {
-    padding: 40,
+    padding: RESPONSIVE_CONSTANTS.SPACING.XXL * 1.5,
     alignItems: "center",
   },
   emptyText: {
-    fontSize: 16,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.LG,
     color: "#666",
+    textAlign: "center",
   },
 });
+

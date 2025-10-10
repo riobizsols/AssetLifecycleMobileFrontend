@@ -214,21 +214,21 @@ export default function AssetHistoryScreen() {
       ]}
     >
       <View style={styles.historyCell}>
-        <Text style={styles.historyLabel}>{t('assets.action')}:</Text>
+        <Text style={styles.historyLabel}>Action:</Text>
         <Text style={styles.historyValue}>
           {getActionDisplayText(item.action)}
         </Text>
       </View>
       
       <View style={styles.historyCell}>
-        <Text style={styles.historyLabel}>{t('assets.date')}:</Text>
+        <Text style={styles.historyLabel}>Action On:</Text>
         <Text style={styles.historyValue}>
           {formatDate(item.action_on)}
         </Text>
       </View>
       
       <View style={styles.historyCell}>
-        <Text style={styles.historyLabel}>{t('assets.by')}:</Text>
+        <Text style={styles.historyLabel}>Action By:</Text>
         <Text style={styles.historyValue}>
           {item.action_by || t('common.na')}
         </Text>
@@ -242,14 +242,14 @@ export default function AssetHistoryScreen() {
       </View> */}
       
       <View style={styles.historyCell}>
-        <Text style={styles.historyLabel}>{t('employees.employeeName')}:</Text>
+        <Text style={styles.historyLabel}>Employee Name:</Text>
         <Text style={styles.historyValue}>
           {employees[item.employee_int_id] || item.employee_int_id || t('common.na')}
         </Text>
       </View>
       
       <View style={styles.historyCell}>
-        <Text style={styles.historyLabel}>{t('employees.department')}:</Text>
+        <Text style={styles.historyLabel}>Department:</Text>
         <Text style={styles.historyValue}>
           {departments[item.dept_id] || item.dept_id || t('common.na')}
         </Text>

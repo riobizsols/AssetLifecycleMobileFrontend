@@ -11,7 +11,11 @@ import {
   FlatList,
   ScrollView,
   Modal,
+  Dimensions,
+  Platform,
+  StatusBar,
 } from "react-native";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Appbar } from "react-native-paper";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
@@ -19,10 +23,87 @@ import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityI
 import Icon from "react-native-vector-icons/MaterialIcons";
 import { API_CONFIG, getApiHeaders, API_ENDPOINTS } from "../../config/api";
 
+const { width, height } = Dimensions.get('window');
+
+// Responsive design breakpoints
+const BREAKPOINTS = {
+  SMALL: 320,
+  MEDIUM: 375,
+  LARGE: 414,
+  TABLET: 768,
+  DESKTOP: 1024,
+};
+
+// Device type detection
+const getDeviceType = () => {
+  if (width >= BREAKPOINTS.DESKTOP) return 'desktop';
+  if (width >= BREAKPOINTS.TABLET) return 'tablet';
+  if (width >= BREAKPOINTS.LARGE) return 'large';
+  if (width >= BREAKPOINTS.MEDIUM) return 'medium';
+  return 'small';
+};
+
+const DEVICE_TYPE = getDeviceType();
+
+// Responsive scaling functions
+const scale = (size) => {
+  const scaleFactor = width / BREAKPOINTS.MEDIUM;
+  return Math.max(size * scaleFactor, size * 0.8);
+};
+
+const verticalScale = (size) => {
+  const scaleFactor = height / 812;
+  return Math.max(size * scaleFactor, size * 0.8);
+};
+
+const moderateScale = (size, factor = 0.5) => {
+  return size + (scale(size) - size) * factor;
+};
+
+// Responsive UI constants
+const RESPONSIVE_CONSTANTS = {
+  SPACING: {
+    XS: scale(4),
+    SM: scale(8),
+    MD: scale(12),
+    LG: scale(16),
+    XL: scale(20),
+    XXL: scale(24),
+  },
+  
+  FONT_SIZES: {
+    XS: moderateScale(10),
+    SM: moderateScale(12),
+    MD: moderateScale(14),
+    LG: moderateScale(16),
+    XL: moderateScale(18),
+    XXL: moderateScale(20),
+  },
+  
+  INPUT_HEIGHT: verticalScale(45),
+  BUTTON_HEIGHT: verticalScale(40),
+  LABEL_WIDTH: scale(120),
+  CARD_BORDER_RADIUS: scale(8),
+  MODAL_BORDER_RADIUS: scale(12),
+  
+  getModalWidth: () => {
+    if (DEVICE_TYPE === 'desktop') return '60%';
+    if (DEVICE_TYPE === 'tablet') return '75%';
+    return '90%';
+  },
+  
+  getModalHeight: () => {
+    if (DEVICE_TYPE === 'desktop') return '60%';
+    if (DEVICE_TYPE === 'tablet') return '65%';
+    return '70%';
+  },
+};
+
 export default function EmployeeAssetSelect() {
   const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute();
+  const insets = useSafeAreaInsets();
   const { employeeId, employeeName } = route.params || {};
   
   const [selectedAssetType, setSelectedAssetType] = useState("");
@@ -43,7 +124,7 @@ export default function EmployeeAssetSelect() {
   const fetchAssetTypes = async () => {
     setLoadingAssetTypes(true);
     try {
-      const url = `${API_CONFIG.BASE_URL}/api/asset-types/assignment-type/User`;
+      const url = `${API_CONFIG.BASE_URL}/api/asset-types/assignment-type/user`;
       console.log('Fetching asset types:', url);
       
       const response = await fetch(url, {
@@ -291,18 +372,31 @@ export default function EmployeeAssetSelect() {
   );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#EEEEEE" }}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <StatusBar 
+        barStyle="light-content" 
+        backgroundColor="#003667"
+        translucent={Platform.OS === 'android'}
+      />
       {/* AppBar */}
-      <Appbar.Header style={styles.appbar}>
-        <Appbar.Action
-          icon="arrow-left"
-          color="#FEC200"
+      <View style={styles.appbar}>
+        <TouchableOpacity 
+          style={styles.backButton} 
           onPress={() => navigation.goBack()}
-        />
+          activeOpacity={0.7}
+        >
+          <MaterialCommunityIcons 
+            name="arrow-left" 
+            size={24} 
+            color="#FEC200" 
+          />
+        </TouchableOpacity>
         <View style={styles.centerTitleContainer}>
           <Text style={styles.appbarTitle}>{t('assets.selectAsset')}</Text>
         </View>
-      </Appbar.Header>
+      </View>
+      
+      <View style={styles.contentContainer}>
 
       {/* Employee Info */}
       <View style={styles.employeeInfo}>
@@ -567,20 +661,44 @@ export default function EmployeeAssetSelect() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#003667",
+  },
+  contentContainer: {
+    flex: 1,
+    backgroundColor: "#EEEEEE",
+  },
   appbar: {
     backgroundColor: "#003667",
-    elevation: 0,
-    shadowOpacity: 0,
-    height: 60,
+    height: verticalScale(56),
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "flex-start",
     position: "relative",
+    ...Platform.select({
+      ios: {
+        // iOS handles safe area automatically
+      },
+      android: {
+        elevation: 4,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+    }),
+  },
+  backButton: {
+    padding: RESPONSIVE_CONSTANTS.SPACING.MD,
+    marginLeft: RESPONSIVE_CONSTANTS.SPACING.SM,
+    zIndex: 2,
   },
   centerTitleContainer: {
     position: "absolute",
@@ -592,14 +710,14 @@ const styles = StyleSheet.create({
   appbarTitle: {
     color: "#FFFFFF",
     fontWeight: "600",
-    fontSize: 16,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.LG,
     alignSelf: "center",
   },
   employeeInfo: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 8,
-    padding: 16,
-    margin: 16,
+    borderRadius: RESPONSIVE_CONSTANTS.CARD_BORDER_RADIUS,
+    padding: RESPONSIVE_CONSTANTS.SPACING.LG,
+    margin: RESPONSIVE_CONSTANTS.SPACING.LG,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -607,34 +725,34 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   employeeInfoTitle: {
-    fontSize: 16,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.LG,
     fontWeight: "600",
     color: "#003667",
-    marginBottom: 12,
+    marginBottom: RESPONSIVE_CONSTANTS.SPACING.MD,
   },
   infoRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: RESPONSIVE_CONSTANTS.SPACING.SM,
   },
   label: {
-    width: 120,
+    width: RESPONSIVE_CONSTANTS.LABEL_WIDTH,
     color: "#616161",
-    fontSize: 14,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
     fontWeight: "500",
   },
   value: {
     flex: 1,
     color: "#333",
-    fontSize: 14,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
     fontWeight: "400",
   },
   searchContainer: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 8,
-    padding: 16,
-    marginHorizontal: 16,
-    marginBottom: 16,
+    borderRadius: RESPONSIVE_CONSTANTS.CARD_BORDER_RADIUS,
+    padding: RESPONSIVE_CONSTANTS.SPACING.LG,
+    marginHorizontal: RESPONSIVE_CONSTANTS.SPACING.LG,
+    marginBottom: RESPONSIVE_CONSTANTS.SPACING.LG,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -642,10 +760,10 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   searchTitle: {
-    fontSize: 16,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.LG,
     fontWeight: "600",
     color: "#003667",
-    marginBottom: 12,
+    marginBottom: RESPONSIVE_CONSTANTS.SPACING.MD,
   },
   searchRow: {
     flexDirection: "row",
@@ -654,21 +772,22 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     backgroundColor: "#FFFFFF",
-    borderRadius: 4,
-    paddingHorizontal: 12,
-    height: 45,
+    borderRadius: scale(4),
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.MD,
+    height: RESPONSIVE_CONSTANTS.INPUT_HEIGHT,
     borderWidth: 1,
     borderColor: "#ccc",
     textAlignVertical: "center",
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
   },
   searchButton: {
-    marginLeft: 8,
+    marginLeft: RESPONSIVE_CONSTANTS.SPACING.SM,
     backgroundColor: "#003667",
-    height: 45,
-    width: 45,
+    height: RESPONSIVE_CONSTANTS.INPUT_HEIGHT,
+    width: RESPONSIVE_CONSTANTS.INPUT_HEIGHT,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 6,
+    borderRadius: scale(6),
   },
   resultsContainer: {
     flex: 1,
@@ -774,14 +893,14 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     borderWidth: 1,
     borderColor: "#ccc",
-    borderRadius: 4,
+    borderRadius: scale(4),
     backgroundColor: "#f9f9f9",
-    height: 45,
-    paddingHorizontal: 12,
+    height: RESPONSIVE_CONSTANTS.INPUT_HEIGHT,
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.MD,
   },
   dropdownButtonText: {
     color: "#616161",
-    fontSize: 14,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
     fontWeight: "400",
     flex: 1,
   },
@@ -833,9 +952,9 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     backgroundColor: "#fff",
-    borderRadius: 12,
-    width: "90%",
-    height: "70%",
+    borderRadius: RESPONSIVE_CONSTANTS.MODAL_BORDER_RADIUS,
+    width: RESPONSIVE_CONSTANTS.getModalWidth(),
+    height: RESPONSIVE_CONSTANTS.getModalHeight(),
     elevation: 10,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
@@ -846,45 +965,45 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 16,
+    padding: RESPONSIVE_CONSTANTS.SPACING.LG,
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.XL,
     fontWeight: "600",
     color: "#333",
   },
   closeButton: {
-    padding: 4,
+    padding: RESPONSIVE_CONSTANTS.SPACING.XS,
   },
   modalSearchContainer: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.LG,
+    paddingVertical: RESPONSIVE_CONSTANTS.SPACING.MD,
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
   },
   modalSearchInput: {
     flex: 1,
-    height: 40,
-    fontSize: 14,
+    height: verticalScale(40),
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
     color: "#333",
-    paddingHorizontal: 12,
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.MD,
     backgroundColor: "#f5f5f5",
-    borderRadius: 6,
+    borderRadius: scale(6),
   },
   modalScrollView: {
     flex: 1,
     minHeight: 200,
   },
   modalContentContainer: {
-    paddingBottom: 16,
+    paddingBottom: RESPONSIVE_CONSTANTS.SPACING.LG,
   },
   modalOptionItem: {
-    paddingVertical: 16,
-    paddingHorizontal: 16,
+    paddingVertical: RESPONSIVE_CONSTANTS.SPACING.LG,
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.LG,
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",
   },
@@ -892,7 +1011,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#e3f2fd",
   },
   modalOptionText: {
-    fontSize: 16,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.LG,
     color: "#333",
     fontWeight: "500",
   },
@@ -901,9 +1020,9 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   modalOptionSubtext: {
-    fontSize: 14,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
     color: "#666",
-    marginTop: 4,
+    marginTop: RESPONSIVE_CONSTANTS.SPACING.XS,
   },
   modalSelectedOptionSubtext: {
     color: "#003667",
@@ -912,36 +1031,36 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingVertical: 40,
+    paddingVertical: RESPONSIVE_CONSTANTS.SPACING.XXL * 1.5,
   },
   modalLoadingText: {
-    marginTop: 12,
-    fontSize: 16,
+    marginTop: RESPONSIVE_CONSTANTS.SPACING.MD,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.LG,
     color: "#666",
   },
   modalEmptyContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingVertical: 40,
+    paddingVertical: RESPONSIVE_CONSTANTS.SPACING.XXL * 1.5,
   },
   modalEmptyText: {
-    fontSize: 16,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.LG,
     color: "#666",
     fontWeight: "500",
   },
   modalEmptySubtext: {
-    marginTop: 8,
-    fontSize: 14,
+    marginTop: RESPONSIVE_CONSTANTS.SPACING.SM,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
     color: "#999",
     textAlign: "center",
   },
   // Asset selection styles
   assetSelectionContainer: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 8,
-    padding: 16,
-    margin: 16,
+    borderRadius: RESPONSIVE_CONSTANTS.CARD_BORDER_RADIUS,
+    padding: RESPONSIVE_CONSTANTS.SPACING.LG,
+    margin: RESPONSIVE_CONSTANTS.SPACING.LG,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -949,10 +1068,10 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   assetSelectionTitle: {
-    fontSize: 16,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.LG,
     fontWeight: "600",
     color: "#003667",
-    marginBottom: 12,
+    marginBottom: RESPONSIVE_CONSTANTS.SPACING.MD,
   },
   assetSelectionRow: {
     flexDirection: "row",
@@ -960,15 +1079,15 @@ const styles = StyleSheet.create({
   },
   dropdownSearchInput: {
     flex: 1,
-    height: 40,
-    fontSize: 14,
+    height: verticalScale(40),
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
     color: "#333",
-    paddingHorizontal: 12,
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.MD,
     backgroundColor: "transparent",
   },
   clearButton: {
-    padding: 8,
-    marginLeft: 4,
+    padding: RESPONSIVE_CONSTANTS.SPACING.SM,
+    marginLeft: RESPONSIVE_CONSTANTS.SPACING.XS,
   },
   optionItem: {
     paddingVertical: 12,
@@ -996,4 +1115,4 @@ const styles = StyleSheet.create({
   selectedOptionSubtext: {
     color: "#003667",
   },
-}); 
+});

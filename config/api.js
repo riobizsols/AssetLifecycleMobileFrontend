@@ -1,3 +1,5 @@
+import { Platform } from 'react-native';
+
 // API Configuration
 export const API_CONFIG = {
   // Multiple server options for different environments
@@ -9,18 +11,24 @@ export const API_CONFIG = {
     LOCAL_ALT2: 'http://localhost:4000', // iOS simulator
     LOCAL_ALT3: 'http://127.0.0.1:4000', // Localhost
     // Production server (replace with your actual production URL)
-    PRODUCTION: 'https://your-production-server.com',
+    PRODUCTION: 'http://103.27.234.248:5000',
   },
 
-  // Default server to use
-  BASE_URL: 'http://192.168.0.101:4000', // Your computer's IP address
+  // Default server to use - Platform specific
+  BASE_URL: Platform.OS === 'android' 
+    ? 'http://192.168.0.101:4000'  // Use actual IP for Android (works for both emulator and physical device on same network)
+    : 'http://localhost:4000',      // Use localhost for iOS
 
-  // Fallback servers to try if the main one fails
-  FALLBACK_URLS: [
-    'http://10.0.2.2:4000',
-    'http://localhost:4000',
-    'http://127.0.0.1:4000',
-  ],
+  // Fallback servers to try if the main one fails - Platform specific
+  FALLBACK_URLS: Platform.OS === 'android'
+    ? [
+        'http://10.0.2.2:4000',      // Android emulator fallback
+        'http://192.168.0.101:4000', // Local network IP
+      ]
+    : [
+        'http://localhost:4000',
+        'http://127.0.0.1:4000',
+      ],
 
   ACCESS_TOKEN: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJvcmdfaWQiOiJPUkcwMDEiLCJ1c2VyX2lkIjoiVVNSMDAyIiwiZW1haWwiOiJuYXJlbnJpbzc1NkBnbWFpbC5jb20iLCJqb2Jfcm9sZV9pZCI6bnVsbCwiZW1wX2ludF9pZCI6IkVNUF9JTlRfMDAwMiIsImlhdCI6MTc1OTcyODA2NSwiZXhwIjoxNzYwMzMyODY1fQ.BveUrzctoFiVNtT1CrLqaUjpsXg7kXKILjI327_3FSg',
   TIMEOUT: 8000, // 8 seconds
@@ -82,6 +90,7 @@ export const API_ENDPOINTS = {
   GET_LATEST_ASSET_ASSIGNMENT: (assetId) => `/api/asset-assignments/latest/${assetId}`,
   GET_DEPARTMENTS: () => '/api/departments',
   GET_EMPLOYEES_BY_DEPARTMENT: (deptId) => `/api/employees/department/${deptId}`,
+  GET_EMPLOYEES: () => '/api/employees',
   GET_EMPLOYEE: (employeeId) => `/api/employees/${employeeId}`,
   CREATE_ASSET_ASSIGNMENT: () => '/api/asset-assignments',
   GET_EMPLOYEE_ACTIVE_ASSETS: (employeeId) => `/api/asset-assignments/employee/${employeeId}/active`,

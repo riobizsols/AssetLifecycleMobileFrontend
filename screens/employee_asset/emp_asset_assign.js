@@ -7,7 +7,109 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  Platform,
+  StatusBar,
+  Dimensions,
 } from "react-native";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { UI_CONSTANTS } from "../../utils/uiConstants";
+
+const { width, height } = Dimensions.get('window');
+
+// Responsive design breakpoints
+const BREAKPOINTS = {
+  SMALL: 320,   // iPhone SE, small phones
+  MEDIUM: 375,  // iPhone X, standard phones
+  LARGE: 414,   // iPhone Plus, large phones
+  TABLET: 768,  // iPad, tablets
+  DESKTOP: 1024, // Desktop/large tablets
+};
+
+// Device type detection
+const getDeviceType = () => {
+  if (width >= BREAKPOINTS.DESKTOP) return 'desktop';
+  if (width >= BREAKPOINTS.TABLET) return 'tablet';
+  if (width >= BREAKPOINTS.LARGE) return 'large';
+  if (width >= BREAKPOINTS.MEDIUM) return 'medium';
+  return 'small';
+};
+
+const DEVICE_TYPE = getDeviceType();
+
+// Responsive scaling functions
+const scale = (size) => {
+  const scaleFactor = width / BREAKPOINTS.MEDIUM; // Base on iPhone X (375px)
+  return Math.max(size * scaleFactor, size * 0.8); // Minimum 80% of original size
+};
+
+const verticalScale = (size) => {
+  const scaleFactor = height / 812; // Base on iPhone X height
+  return Math.max(size * scaleFactor, size * 0.8);
+};
+
+const moderateScale = (size, factor = 0.5) => {
+  return size + (scale(size) - size) * factor;
+};
+
+// Responsive UI constants for this screen
+const RESPONSIVE_CONSTANTS = {
+  // Responsive spacing
+  SPACING: {
+    XS: scale(4),
+    SM: scale(8),
+    MD: scale(12),
+    LG: scale(16),
+    XL: scale(20),
+    XXL: scale(24),
+    XXXL: scale(32),
+  },
+  
+  // Responsive font sizes
+  FONT_SIZES: {
+    XS: moderateScale(10),
+    SM: moderateScale(12),
+    MD: moderateScale(14),
+    LG: moderateScale(16),
+    XL: moderateScale(18),
+    XXL: moderateScale(20),
+    XXXL: moderateScale(24),
+    TITLE: moderateScale(28),
+  },
+  
+  // Responsive dimensions
+  CARD_PADDING: scale(16),
+  CARD_BORDER_RADIUS: scale(12),
+  INPUT_HEIGHT: verticalScale(45),
+  BUTTON_HEIGHT: verticalScale(40),
+  
+  // Responsive layout
+  getCardWidth: () => {
+    if (DEVICE_TYPE === 'desktop') return Math.min(width * 0.6, 600);
+    if (DEVICE_TYPE === 'tablet') return Math.min(width * 0.8, 500);
+    return width - scale(40); // Mobile: full width minus padding
+  },
+  
+  getCardHeight: () => {
+    if (DEVICE_TYPE === 'desktop') return Math.min(height * 0.5, 400);
+    if (DEVICE_TYPE === 'tablet') return Math.min(height * 0.6, 450);
+    return height * 0.65; // Mobile: 65% of screen height
+  },
+  
+  getButtonSize: () => {
+    if (DEVICE_TYPE === 'desktop' || DEVICE_TYPE === 'tablet') {
+      return {
+        paddingHorizontal: scale(40),
+        paddingVertical: scale(12),
+        minWidth: scale(150),
+      };
+    }
+    return {
+      paddingHorizontal: scale(80),
+      paddingVertical: scale(12),
+      width: '100%',
+    };
+  },
+};
 import { Appbar } from "react-native-paper";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
@@ -20,6 +122,7 @@ export default function EmployeeAssetAssign() {
   const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute();
+  const insets = useSafeAreaInsets();
   const { employeeId, employeeName } = route.params || {};
   const [showCamera, setShowCamera] = useState(false);
   const [barcode, setBarcode] = useState(null);
@@ -85,8 +188,10 @@ export default function EmployeeAssetAssign() {
   const checkSerialNumber = async (serialNumber) => {
     setLoading(true);
     try {
-      console.log(`Checking serial number: ${serialNumber}`);
-      const url = `${API_CONFIG.BASE_URL}${API_ENDPOINTS.CHECK_SERIAL(serialNumber)}`;
+      // Convert serial number to uppercase for case-insensitive search
+      const normalizedSerial = serialNumber.trim().toUpperCase();
+      console.log(`Checking serial number: ${normalizedSerial}`);
+      const url = `${API_CONFIG.BASE_URL}${API_ENDPOINTS.CHECK_SERIAL(normalizedSerial)}`;
       console.log('API URL:', url);
       console.log('API Headers:', getApiHeaders());
       
@@ -338,73 +443,109 @@ export default function EmployeeAssetAssign() {
         <Text style={{ color: "#fff" }}>{t('scanning.pointCameraAtBarcode')}</Text>
       </View>
     </View>
-  ) : (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#EEEEEE" }}>
-      {/* AppBar */}
-      <Appbar.Header style={styles.appbar}>
-        <Appbar.Action
-          icon="arrow-left"
-          color="#FEC200"
-          onPress={() => navigation.goBack()}
-        />
-        <View style={styles.centerTitleContainer}>
-          <Text style={styles.appbarTitle}>{t('assets.employeeAssetAssign')}</Text>
-        </View>
-      </Appbar.Header>
-
-      {/* Main Content */}
-      <View style={styles.container}>
-        {/* Card */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>{t('assets.assignAsset')}</Text>
-          <Text style={styles.cardSubtitle}>
-            {t('assets.selectAssetToAssignToEmployee')}
-          </Text>
-          <View style={styles.iconContainer}>
+   ) : (
+     <View style={[styles.safeAreaContainer, { paddingTop: insets.top }]}>
+       <StatusBar 
+         barStyle="light-content" 
+         backgroundColor="#003667"
+         translucent={Platform.OS === 'android'}
+       />
+       <View style={styles.container}>
+         {/* AppBar */}
+         <View style={styles.appbar}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.7}
+          >
             <MaterialCommunityIcons
-              name="barcode-scan"
-              size={140}
-              color="#222"
+              name="arrow-left"
+              size={UI_CONSTANTS.ICON_SIZES.LG}
+              color={UI_CONSTANTS.COLORS.SECONDARY}
             />
-            <View style={styles.redLine} />
-          </View>
-          {barcode && (
-            <Text style={{ marginTop: 20, color: "#003667", fontWeight: "bold" }}>
-              {t('scanning.barcodeValue')}: {barcode}
+          </TouchableOpacity>
+          <View style={styles.centerTitleContainer}>
+            <Text 
+              style={styles.appbarTitle}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {t('assets.employeeAssetAssign')}
             </Text>
-          )}
-          {loading && (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#003667" />
-              <Text style={styles.loadingText}>{t('assets.processing')}</Text>
-            </View>
-          )}
+          </View>
         </View>
 
-        {/* Scan QR Button */}
-        <TouchableOpacity
-          style={[styles.button, loading && styles.buttonDisabled]}
-          onPress={openCamera}
-          disabled={loading}
-        >
-          <Text style={styles.buttonText}>{t('scanning.scanAsset')}</Text>
-        </TouchableOpacity>
+        {/* Main Content */}
+        <View style={styles.contentContainer}>
+          {/* Card */}
+          <View style={[
+            styles.card,
+            { 
+              width: RESPONSIVE_CONSTANTS.getCardWidth(),
+              height: RESPONSIVE_CONSTANTS.getCardHeight()
+            },
+            DEVICE_TYPE === 'desktop' && styles.cardDesktop,
+            DEVICE_TYPE === 'tablet' && styles.cardTablet
+          ]}>
+            <Text style={styles.cardTitle}>{t('assets.assignAsset')}</Text>
+            <Text style={styles.cardSubtitle}>
+              {t('assets.selectAssetToAssignToEmployee')}
+            </Text>
+            <View style={styles.iconContainer}>
+              <MaterialCommunityIcons
+                name="barcode-scan"
+                size={DEVICE_TYPE === 'desktop' || DEVICE_TYPE === 'tablet' ? 120 : 140}
+                color="#222"
+              />
+              <View style={styles.redLine} />
+            </View>
+            {barcode && (
+              <Text style={styles.barcodeText}>
+                {t('scanning.barcodeValue')}: {barcode}
+              </Text>
+            )}
+            {loading && (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#003667" />
+                <Text style={styles.loadingText}>{t('assets.processing')}</Text>
+              </View>
+            )}
+          </View>
 
-        {/* Assign Button */}
-        <TouchableOpacity
-          style={[styles.button, styles.secondaryButton]}
-          onPress={() => {
-            // Navigate to Select Asset page
-            console.log("Assign asset button pressed");
-            navigation.navigate('EmployeeAssetSelect', {
-              employeeId: employeeId,
-              employeeName: employeeName
-            });
-          }}
-        >
-          <Text style={styles.buttonText}>{t('assets.assignAsset')}</Text>
-        </TouchableOpacity>
-      </View>
+          {/* Buttons Container */}
+          <View style={styles.buttonsContainer}>
+            {/* Scan QR Button */}
+            <TouchableOpacity
+              style={[
+                styles.button,
+                RESPONSIVE_CONSTANTS.getButtonSize(),
+                loading && styles.buttonDisabled
+              ]}
+              onPress={openCamera}
+              disabled={loading}
+            >
+              <Text style={styles.buttonText}>{t('scanning.scanAsset')}</Text>
+            </TouchableOpacity>
+
+            {/* Select Asset Button */}
+            <TouchableOpacity
+              style={[
+                styles.button,
+                styles.secondaryButton,
+                RESPONSIVE_CONSTANTS.getButtonSize()
+              ]}
+              onPress={() => {
+                console.log("Select asset button pressed");
+                navigation.navigate('EmployeeAssetSelect', {
+                  employeeId: employeeId,
+                  employeeName: employeeName
+                });
+              }}
+            >
+              <Text style={styles.secondaryButtonText}>Select Asset</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       
       {/* Custom Alert */}
       <CustomAlert
@@ -419,13 +560,22 @@ export default function EmployeeAssetAssign() {
         showCancel={alertConfig.showCancel}
         onClose={() => setAlertConfig(prev => ({ ...prev, visible: false }))}
       />
-    </SafeAreaView>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  safeAreaContainer: {
+    flex: 1,
+    backgroundColor: UI_CONSTANTS.COLORS.PRIMARY,
+  },
+  container: {
+    flex: 1,
+    backgroundColor: UI_CONSTANTS.COLORS.BACKGROUND,
+  },
   appbar: {
-    backgroundColor: "#003667",
+    backgroundColor: UI_CONSTANTS.COLORS.PRIMARY,
     elevation: 0,
     shadowOpacity: 0,
     height: 60,
@@ -433,6 +583,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "flex-start",
     position: "relative",
+  },
+  backButton: {
+    padding: RESPONSIVE_CONSTANTS.SPACING.MD,
+    marginLeft: RESPONSIVE_CONSTANTS.SPACING.SM,
+    zIndex: 2,
   },
   centerTitleContainer: {
     position: "absolute",
@@ -442,52 +597,59 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   appbarTitle: {
-    color: "#FFFFFF",
+    color: UI_CONSTANTS.COLORS.WHITE,
     fontWeight: "600",
-    fontSize: 16,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.LG,
     alignSelf: "center",
   },
-  container: {
+  contentContainer: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.LG,
   },
   card: {
-    width: "85%",
-    height: "65%",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
+    backgroundColor: UI_CONSTANTS.COLORS.WHITE,
+    borderRadius: RESPONSIVE_CONSTANTS.CARD_BORDER_RADIUS,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
+    shadowColor: UI_CONSTANTS.COLORS.BLACK,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
-    marginBottom: 32,
+    marginBottom: RESPONSIVE_CONSTANTS.SPACING.XXXL,
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.XL,
+    paddingVertical: RESPONSIVE_CONSTANTS.SPACING.XXXL,
+  },
+  cardDesktop: {
+    maxWidth: 600,
+  },
+  cardTablet: {
+    maxWidth: 500,
   },
   cardTitle: {
     fontWeight: "700",
-    fontSize: 16,
-    marginBottom: 8,
-    color: "#616161",
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.LG,
+    marginBottom: RESPONSIVE_CONSTANTS.SPACING.SM,
+    color: UI_CONSTANTS.COLORS.TEXT_SECONDARY,
     textAlign: "center",
   },
   cardSubtitle: {
-    color: "#7A7A7A",
-    fontSize: 14,
+    color: UI_CONSTANTS.COLORS.GRAY_DARK,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
     fontWeight: "500",
-    marginBottom: 24,
+    marginBottom: RESPONSIVE_CONSTANTS.SPACING.XXL,
     textAlign: "center",
-    marginTop: 25,
+    marginTop: RESPONSIVE_CONSTANTS.SPACING.XXL,
   },
   iconContainer: {
-    backgroundColor: "#FFFFFF",
-    width: 140,
-    height: 140,
+    backgroundColor: UI_CONSTANTS.COLORS.WHITE,
+    width: DEVICE_TYPE === 'desktop' || DEVICE_TYPE === 'tablet' ? 120 : 140,
+    height: DEVICE_TYPE === 'desktop' || DEVICE_TYPE === 'tablet' ? 120 : 140,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 75,
+    marginTop: DEVICE_TYPE === 'desktop' || DEVICE_TYPE === 'tablet' ? 40 : 75,
     position: "relative",
   },
   redLine: {
@@ -496,40 +658,55 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 2,
-    backgroundColor: "red",
+    backgroundColor: UI_CONSTANTS.COLORS.ERROR,
     width: "100%",
     alignSelf: "center",
     transform: [{ translateY: -1 }],
   },
+  barcodeText: {
+    marginTop: RESPONSIVE_CONSTANTS.SPACING.XL,
+    color: UI_CONSTANTS.COLORS.PRIMARY,
+    fontWeight: "bold",
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.SM,
+    textAlign: "center",
+  },
+  buttonsContainer: {
+    width: '100%',
+    alignItems: 'center',
+  },
   button: {
-    marginTop: 24,
-    backgroundColor: "#003667",
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 80,
+    backgroundColor: UI_CONSTANTS.COLORS.PRIMARY,
+    borderRadius: RESPONSIVE_CONSTANTS.SPACING.SM,
     alignItems: "center",
     justifyContent: "center",
     elevation: 2,
+    marginBottom: RESPONSIVE_CONSTANTS.SPACING.LG,
   },
   secondaryButton: {
-    marginTop: 16,
-    backgroundColor: "#FEC200",
+    backgroundColor: UI_CONSTANTS.COLORS.SECONDARY,
+    marginBottom: 0,
   },
   buttonDisabled: {
-    backgroundColor: "#cccccc",
+    backgroundColor: UI_CONSTANTS.COLORS.GRAY_DARK,
   },
   buttonText: {
-    color: "#fff",
+    color: UI_CONSTANTS.COLORS.WHITE,
     fontWeight: "500",
-    fontSize: 12,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.SM,
+  },
+  secondaryButtonText: {
+    color: UI_CONSTANTS.COLORS.BLACK,
+    fontWeight: "500",
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.SM,
   },
   loadingContainer: {
-    marginTop: 20,
+    marginTop: RESPONSIVE_CONSTANTS.SPACING.XL,
     alignItems: "center",
   },
   loadingText: {
-    marginTop: 10,
-    color: "#003667",
+    marginTop: RESPONSIVE_CONSTANTS.SPACING.SM,
+    color: UI_CONSTANTS.COLORS.PRIMARY,
     fontWeight: "500",
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.SM,
   },
 });

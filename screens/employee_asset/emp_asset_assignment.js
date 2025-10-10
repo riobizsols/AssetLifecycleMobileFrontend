@@ -1,7 +1,6 @@
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import React, { useState, useEffect } from "react";
-import { Appbar } from "react-native-paper";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import Toast from "react-native-toast-message";
@@ -19,6 +18,7 @@ import {
     ActivityIndicator,
     Dimensions,
 } from "react-native";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from "react-native-vector-icons/MaterialIcons";
 import RNPickerSelect from "react-native-picker-select";
 import { API_CONFIG, getApiHeaders, API_ENDPOINTS } from "../../config/api";
@@ -160,6 +160,7 @@ const RESPONSIVE_CONSTANTS = {
 
 export default function EmployeeAssetAssignment() {
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   
   const departments = [
     { label: t('assets.loading'), value: "" },
@@ -170,9 +171,9 @@ export default function EmployeeAssetAssignment() {
   const navigation = useNavigation();
   const route = useRoute();
   const { assetId, barcode, employeeId, employeeName, assetData } = route.params || {};
-  const [serial] = useState(assetId || "122101");
+  const [serial] = useState(barcode || assetData?.serial_number || "");
   const [department, setDepartment] = useState("");
-  const [employee, setEmployee] = useState("");
+  const [selectedEmployee, setSelectedEmployee] = useState("");
   const [effectiveDate, setEffectiveDate] = useState(new Date());
   const [showEffective, setShowEffective] = useState(false);
   const [departmentsList, setDepartmentsList] = useState(departments);
@@ -309,7 +310,7 @@ export default function EmployeeAssetAssignment() {
       errors.push(t('assets.pleaseSelectDepartment'));
     }
     
-    if (!employee) {
+    if (!selectedEmployee) {
       errors.push(t('assets.pleaseSelectEmployee'));
     }
     
@@ -394,14 +395,14 @@ export default function EmployeeAssetAssignment() {
     }
 
     // Additional validation: Check if employee belongs to selected department
-    const selectedEmployee = employeesList.find(emp => emp.value === employee);
-    if (selectedEmployee) {
-      console.log('Selected employee:', selectedEmployee);
+    const selectedEmployeeData = employeesList.find(emp => emp.value === selectedEmployee);
+    if (selectedEmployeeData) {
+      console.log('Selected employee:', selectedEmployeeData);
       console.log('Selected department:', department);
       
       // Check if employee's department matches selected department
-      if (selectedEmployee.dept_id && selectedEmployee.dept_id !== department) {
-        showToast('error', t('assets.validationError'), `Employee ${selectedEmployee.label} belongs to department ${selectedEmployee.dept_id}, but you selected ${department}. Please select the correct department.`);
+      if (selectedEmployeeData.dept_id && selectedEmployeeData.dept_id !== department) {
+        showToast('error', t('assets.validationError'), `Employee ${selectedEmployeeData.label} belongs to department ${selectedEmployeeData.dept_id}, but you selected ${department}. Please select the correct department.`);
         setLoadingAssignment(false);
         return;
       }
@@ -411,9 +412,9 @@ export default function EmployeeAssetAssignment() {
     
     // Validate employee exists in database (optional - will continue if validation fails)
     try {
-      const employeeExists = await validateEmployeeExists(employee);
+      const employeeExists = await validateEmployeeExists(selectedEmployee);
       if (!employeeExists) {
-        console.warn(`Employee with emp_int_id ${employee} not found in database, but continuing with assignment attempt`);
+        console.warn(`Employee with emp_int_id ${selectedEmployee} not found in database, but continuing with assignment attempt`);
         // Don't block the assignment - let the server handle the validation
       }
     } catch (error) {
@@ -436,7 +437,7 @@ export default function EmployeeAssetAssignment() {
         dept_id: department,
         asset_id: assetId,
         org_id: "ORG001",
-        employee_int_id: employee,
+        employee_int_id: selectedEmployee,
         action: "A", // Assign action
         action_on: new Date().toISOString(),
         action_by: "EMP001",
@@ -444,8 +445,8 @@ export default function EmployeeAssetAssignment() {
       };
       
       console.log('Assignment data:', assignmentData);
-      console.log('Selected employee value (emp_int_id):', employee);
-      console.log('Selected employee details:', selectedEmployee);
+      console.log('Selected employee value (emp_int_id):', selectedEmployee);
+      console.log('Selected employee details:', selectedEmployeeData);
       
       const response = await fetch(url, {
         method: 'POST',
@@ -460,7 +461,7 @@ export default function EmployeeAssetAssignment() {
         // Handle specific foreign key constraint errors
         if (errorData.err && errorData.err.code === "23503") {
           if (errorData.err.constraint === "tbl_Employees_FK") {
-            showToast('error', t('assets.employeeNotFound'), `The employee ID "${employee}" (emp_int_id) does not exist in the database. Please select a different employee or contact your administrator.`);
+            showToast('error', t('assets.employeeNotFound'), `The employee ID "${selectedEmployee}" (emp_int_id) does not exist in the database. Please select a different employee or contact your administrator.`);
           } else if (errorData.err.constraint === "tbl_Departments_FK") {
             showToast('error', t('assets.departmentNotFound'), `The department ID "${department}" does not exist in the database. Please select a different department or contact your administrator.`);
           } else if (errorData.err.constraint === "tbl_Assets_FK") {
@@ -488,43 +489,6 @@ export default function EmployeeAssetAssignment() {
       showToast('error', t('common.error'), t('assets.failedToCreateAssetAssignment'));
     } finally {
       setLoadingAssignment(false);
-    }
-  };
-
-  // Fetch employee details and set defaults
-  const fetchEmployeeDetailsAndSetDefaults = async () => {
-    if (!employeeId) return;
-
-    try {
-      // First try to get employee by emp_int_id (internal ID)
-      const url = `${API_CONFIG.BASE_URL}${API_ENDPOINTS.GET_EMPLOYEE(employeeId)}`;
-      console.log("Fetching employee details for defaults:", url);
-
-      const response = await fetch(url, {
-        method: "GET",
-        headers: getApiHeaders(),
-      });
-
-      if (response.ok) {
-        const employeeData = await response.json();
-        console.log("Employee data for defaults:", employeeData);
-        
-        if (employeeData && employeeData.dept_id) {
-          // Set department as default
-          setDepartment(employeeData.dept_id);
-          // Fetch employees for this department
-          await fetchEmployeesByDepartment(employeeData.dept_id);
-          // Set employee as default
-          setEmployee(employeeId);
-        }
-      } else {
-        // Try to find employee by searching through all departments
-        await searchEmployeeInAllDepartments();
-      }
-    } catch (error) {
-      console.error("Error fetching employee details for defaults:", error);
-      // Try to find employee by searching through all departments
-      await searchEmployeeInAllDepartments();
     }
   };
 
@@ -556,9 +520,9 @@ export default function EmployeeAssetAssignment() {
           if (empResponse.ok) {
             const employees = await empResponse.json();
             
-            // Look for employee by emp_int_id
+            // Look for employee by emp_int_id or employee_id
             const foundEmployee = employees.find(
-              (emp) => emp.emp_int_id === employeeId
+              (emp) => emp.emp_int_id === employeeId || emp.employee_id === employeeId
             );
             if (foundEmployee) {
               console.log("Employee found in department search for defaults:", foundEmployee);
@@ -566,8 +530,10 @@ export default function EmployeeAssetAssignment() {
               setDepartment(foundEmployee.dept_id || dept.dept_id);
               // Fetch employees for this department
               await fetchEmployeesByDepartment(foundEmployee.dept_id || dept.dept_id);
-              // Set employee as default
-              setEmployee(employeeId);
+              // Set employee as default using emp_int_id
+              const empIntId = foundEmployee.emp_int_id || employeeId;
+              console.log("Setting default employee with emp_int_id:", empIntId);
+              setSelectedEmployee(empIntId);
               return;
             }
           }
@@ -582,6 +548,45 @@ export default function EmployeeAssetAssignment() {
     }
   };
 
+  // Fetch employee details and set defaults
+  const fetchEmployeeDetailsAndSetDefaults = useCallback(async () => {
+    if (!employeeId) return;
+
+    try {
+      // First try to get employee by emp_int_id (internal ID)
+      const url = `${API_CONFIG.BASE_URL}${API_ENDPOINTS.GET_EMPLOYEE(employeeId)}`;
+      console.log("Fetching employee details for defaults:", url);
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: getApiHeaders(),
+      });
+
+      if (response.ok) {
+        const employeeData = await response.json();
+        console.log("Employee data for defaults:", employeeData);
+        
+        if (employeeData && employeeData.dept_id) {
+          // Set department as default
+          setDepartment(employeeData.dept_id);
+          // Fetch employees for this department
+          await fetchEmployeesByDepartment(employeeData.dept_id);
+          // Set employee as default using emp_int_id
+          const empIntId = employeeData.emp_int_id || employeeId;
+          console.log("Setting default employee with emp_int_id:", empIntId);
+          setSelectedEmployee(empIntId);
+        }
+      } else {
+        // Try to find employee by searching through all departments
+        await searchEmployeeInAllDepartments();
+      }
+    } catch (error) {
+      console.error("Error fetching employee details for defaults:", error);
+      // Try to find employee by searching through all departments
+      await searchEmployeeInAllDepartments();
+    }
+  }, [employeeId]);
+
   // Fetch departments on component mount
   useEffect(() => {
     fetchDepartments();
@@ -592,7 +597,7 @@ export default function EmployeeAssetAssignment() {
     if (employeeId && departmentsList.length > 1) { // Check if departments are loaded
       fetchEmployeeDetailsAndSetDefaults();
     }
-  }, [employeeId, departmentsList]);
+  }, [employeeId, departmentsList, fetchEmployeeDetailsAndSetDefaults]);
 
   // Custom searchable dropdown component
   const renderSearchableDropdown = (
@@ -631,7 +636,7 @@ export default function EmployeeAssetAssignment() {
   // Handle department selection
   const handleDepartmentChange = (selectedDeptId) => {
     setDepartment(selectedDeptId);
-    setEmployee(""); // Reset employee selection
+    setSelectedEmployee(""); // Reset employee selection
     if (selectedDeptId) {
       fetchEmployeesByDepartment(selectedDeptId);
     } else {
@@ -667,9 +672,9 @@ export default function EmployeeAssetAssignment() {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={[styles.safe, { paddingTop: insets.top }]}>
       {/* AppBar */}
-      <Appbar.Header style={styles.appbar}>
+      <View style={styles.appbar}>
         <TouchableOpacity 
           style={styles.backButton} 
           onPress={() => navigation.goBack()}
@@ -677,8 +682,8 @@ export default function EmployeeAssetAssignment() {
         >
           <MaterialCommunityIcons 
             name="arrow-left" 
-            size={UI_CONSTANTS.ICON_SIZES.LG} 
-            color={UI_CONSTANTS.COLORS.SECONDARY} 
+            size={24} 
+            color="#FEC200" 
           />
         </TouchableOpacity>
         <View style={styles.centerTitleContainer}>
@@ -690,9 +695,10 @@ export default function EmployeeAssetAssignment() {
             {t('navigation.assetAssignment')}
           </Text>
         </View>
-      </Appbar.Header>
+      </View>
       
-      <ScrollView 
+      <View style={styles.container}>
+        <ScrollView 
         contentContainerStyle={[
           styles.scroll,
           DEVICE_TYPE === 'desktop' && styles.scrollDesktop,
@@ -709,13 +715,6 @@ export default function EmployeeAssetAssignment() {
             value={serial || ''}
             editable={false}
           />
-          <TouchableOpacity style={styles.qrButton}>
-            <MaterialCommunityIcons 
-              name="line-scan" 
-              size={UI_CONSTANTS.ICON_SIZES.MD} 
-              color={UI_CONSTANTS.COLORS.SECONDARY} 
-            />
-          </TouchableOpacity>
         </View>
         
         {/* Asset Details Card */}
@@ -824,8 +823,8 @@ export default function EmployeeAssetAssignment() {
                 </View>
               ) : (
                 renderSearchableDropdown(
-                  employee,
-                  setEmployee,
+                  selectedEmployee,
+                  setSelectedEmployee,
                   getFilteredEmployees(),
                   t('assets.selectEmployee'),
                   employeeSearchText,
@@ -972,17 +971,17 @@ export default function EmployeeAssetAssignment() {
                   key={index}
                   style={[
                     styles.optionItem,
-                    option.value === employee && styles.selectedOption
+                    option.value === selectedEmployee && styles.selectedOption
                   ]}
                   onPress={() => {
-                    setEmployee(option.value);
+                    setSelectedEmployee(option.value);
                     setEmployeeSearchText("");
                     setShowEmployeeDropdown(false);
                   }}
                 >
                   <Text style={[
                     styles.optionText,
-                    option.value === employee && styles.selectedOptionText
+                    option.value === selectedEmployee && styles.selectedOptionText
                   ]}>
                     {option.label}
                   </Text>
@@ -1041,6 +1040,7 @@ export default function EmployeeAssetAssignment() {
           </TouchableOpacity>
         </View>
       </View>
+      </View>
       <Toast />
     </SafeAreaView>
   );
@@ -1049,24 +1049,40 @@ export default function EmployeeAssetAssignment() {
 const styles = StyleSheet.create({
   safe: { 
     flex: 1, 
-    backgroundColor: UI_CONSTANTS.COLORS.BACKGROUND 
+    backgroundColor: "#003667"
+  },
+  container: {
+    flex: 1,
+    backgroundColor: "#EEEEEE",
   },
   overlay: {
     flex: 1,
   },
   appbar: {
-    backgroundColor: UI_CONSTANTS.COLORS.PRIMARY,
+    backgroundColor: "#003667",
     elevation: 0,
     shadowOpacity: 0,
-    height: 60,
+    height: 56,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "flex-start",
     position: "relative",
+    ...Platform.select({
+      ios: {
+        // iOS handles safe area automatically
+      },
+      android: {
+        elevation: 4,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+    }),
   },
   backButton: {
-    padding: RESPONSIVE_CONSTANTS.SPACING.MD,
-    marginLeft: RESPONSIVE_CONSTANTS.SPACING.SM,
+    padding: 12,
+    marginLeft: 8,
     zIndex: 2,
   },
   centerTitleContainer: {
@@ -1083,9 +1099,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   appbarTitle: {
-    color: UI_CONSTANTS.COLORS.WHITE,
+    color: "#fff",
     fontWeight: "600",
-    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.LG,
+    fontSize: 16,
     alignSelf: "center",
   },
   header: {
@@ -1136,6 +1152,7 @@ const styles = StyleSheet.create({
     fontWeight: "400",
     textAlignVertical: 'center',
     paddingVertical: 0,
+    width: '100%',
   },
   qrButton: {
     padding: RESPONSIVE_CONSTANTS.SPACING.SM,
@@ -1180,20 +1197,21 @@ const styles = StyleSheet.create({
     fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
   },
   cardBody: {
-    padding: RESPONSIVE_CONSTANTS.CARD_PADDING,
+    padding: DEVICE_TYPE === 'small' ? RESPONSIVE_CONSTANTS.SPACING.MD : RESPONSIVE_CONSTANTS.CARD_PADDING,
   },
   formRow: {
-    flexDirection: "row",
+    flexDirection: "column",
     alignItems: "stretch",
     marginBottom: RESPONSIVE_CONSTANTS.SPACING.MD,
   },
   label: {
-    flex: 1.2,
+    flex: 0,
     fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
     fontWeight: "500",
     color: UI_CONSTANTS.COLORS.TEXT_SECONDARY,
     textAlign: "left",
-    marginRight: RESPONSIVE_CONSTANTS.SPACING.XS,
+    marginRight: 0,
+    marginBottom: RESPONSIVE_CONSTANTS.SPACING.XS,
   },
   colon: {
     width: RESPONSIVE_CONSTANTS.SPACING.MD,
@@ -1201,16 +1219,20 @@ const styles = StyleSheet.create({
     color: UI_CONSTANTS.COLORS.TEXT_PRIMARY,
     fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
     margin: RESPONSIVE_CONSTANTS.SPACING.MD,
+    display: DEVICE_TYPE === 'small' ? 'none' : 'flex',
   },
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
     margin: RESPONSIVE_CONSTANTS.SPACING.MD,
     marginBottom: RESPONSIVE_CONSTANTS.SPACING.MD,
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.LG,
     width: '100%',
+    maxWidth: DEVICE_TYPE === 'desktop' ? 600 : DEVICE_TYPE === 'tablet' ? 500 : '100%',
   },
   input: {
-    flex: 2,
+    flex: 1,
+    width: '100%',
     borderWidth: 1,
     borderColor: UI_CONSTANTS.COLORS.GRAY_MEDIUM,
     borderRadius: RESPONSIVE_CONSTANTS.SPACING.XS,
@@ -1226,7 +1248,8 @@ const styles = StyleSheet.create({
     height: RESPONSIVE_CONSTANTS.INPUT_HEIGHT,
   },
   inputWithIcon: {
-    flex: 2,
+    flex: 1,
+    width: '100%',
     borderWidth: 1,
     borderColor: UI_CONSTANTS.COLORS.GRAY_MEDIUM,
     borderRadius: RESPONSIVE_CONSTANTS.SPACING.XS,
@@ -1239,7 +1262,7 @@ const styles = StyleSheet.create({
   },
   footer: {
     flexDirection: "row",
-    justifyContent: "flex-end",
+    justifyContent: "center",
     alignItems: "center",
     padding: RESPONSIVE_CONSTANTS.CARD_PADDING,
     backgroundColor: UI_CONSTANTS.COLORS.WHITE,
@@ -1253,18 +1276,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.XL,
   },
   buttonContainer: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
+    flexDirection: "column",
+    justifyContent: "center",
+    alignItems: "stretch",
+    width: '100%',
+    gap: RESPONSIVE_CONSTANTS.SPACING.MD,
   },
   cancelBtn: {
     backgroundColor: UI_CONSTANTS.COLORS.SECONDARY,
     borderRadius: RESPONSIVE_CONSTANTS.SPACING.XS,
     paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.XXL,
     paddingVertical: RESPONSIVE_CONSTANTS.SPACING.MD,
-    marginRight: RESPONSIVE_CONSTANTS.SPACING.MD,
+    marginRight: 0,
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: RESPONSIVE_CONSTANTS.BUTTON_HEIGHT,
+    width: '100%',
   },
   assignBtn: {
     backgroundColor: UI_CONSTANTS.COLORS.PRIMARY,
@@ -1274,9 +1301,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: RESPONSIVE_CONSTANTS.BUTTON_HEIGHT,
+    width: '100%',
   },
   cancelBtnText: {
-    color: UI_CONSTANTS.COLORS.WHITE,
+    color: UI_CONSTANTS.COLORS.BLACK,
     fontWeight: "500",
     fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.SM,
   },
@@ -1299,7 +1327,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#cccccc",
   },
   dropdownWrapper: {
-    flex: 2,
+    flex: 1,
+    width: '100%',
     position: "relative",
   },
   dropdownButton: {
@@ -1330,14 +1359,14 @@ const styles = StyleSheet.create({
   },
   dropdownList: {
     position: "absolute",
-    top: DEVICE_TYPE === 'desktop' ? 150 : 200,
-    left: RESPONSIVE_CONSTANTS.SPACING.LG,
-    right: RESPONSIVE_CONSTANTS.SPACING.LG,
+    top: DEVICE_TYPE === 'desktop' ? 150 : DEVICE_TYPE === 'tablet' ? 180 : DEVICE_TYPE === 'small' ? 220 : 200,
+    left: DEVICE_TYPE === 'small' ? RESPONSIVE_CONSTANTS.SPACING.MD : RESPONSIVE_CONSTANTS.SPACING.LG,
+    right: DEVICE_TYPE === 'small' ? RESPONSIVE_CONSTANTS.SPACING.MD : RESPONSIVE_CONSTANTS.SPACING.LG,
     backgroundColor: UI_CONSTANTS.COLORS.WHITE,
     borderWidth: 1,
     borderColor: UI_CONSTANTS.COLORS.GRAY_MEDIUM,
     borderRadius: RESPONSIVE_CONSTANTS.SPACING.SM,
-    height: DEVICE_TYPE === 'desktop' ? 300 : 250,
+    height: DEVICE_TYPE === 'desktop' ? 300 : DEVICE_TYPE === 'small' ? 200 : 250,
     zIndex: 1000,
     elevation: 5,
     shadowColor: UI_CONSTANTS.COLORS.BLACK,
@@ -1366,7 +1395,7 @@ const styles = StyleSheet.create({
     marginLeft: RESPONSIVE_CONSTANTS.SPACING.XS,
   },
   optionsList: {
-    height: DEVICE_TYPE === 'desktop' ? 200 : 150,
+    height: DEVICE_TYPE === 'desktop' ? 200 : DEVICE_TYPE === 'small' ? 120 : 150,
   },
   optionItem: {
     paddingVertical: RESPONSIVE_CONSTANTS.SPACING.MD,

@@ -10,6 +10,9 @@ import {
   ActivityIndicator,
   Platform,
   StatusBar,
+  Dimensions,
+  Modal,
+  ScrollView,
 } from "react-native";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -27,6 +30,70 @@ import SideMenu from "../../components/SideMenu";
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
+
+const { width, height } = Dimensions.get('window');
+
+// Responsive design breakpoints
+const BREAKPOINTS = {
+  SMALL: 320,
+  MEDIUM: 375,
+  LARGE: 414,
+  TABLET: 768,
+  DESKTOP: 1024,
+};
+
+// Device type detection
+const getDeviceType = () => {
+  if (width >= BREAKPOINTS.DESKTOP) return 'desktop';
+  if (width >= BREAKPOINTS.TABLET) return 'tablet';
+  if (width >= BREAKPOINTS.LARGE) return 'large';
+  if (width >= BREAKPOINTS.MEDIUM) return 'medium';
+  return 'small';
+};
+
+const DEVICE_TYPE = getDeviceType();
+
+// Responsive scaling functions
+const scale = (size) => {
+  const scaleFactor = width / BREAKPOINTS.MEDIUM;
+  return Math.max(size * scaleFactor, size * 0.8);
+};
+
+const verticalScale = (size) => {
+  const scaleFactor = height / 812;
+  return Math.max(size * scaleFactor, size * 0.8);
+};
+
+const moderateScale = (size, factor = 0.5) => {
+  return size + (scale(size) - size) * factor;
+};
+
+// Responsive UI constants
+const RESPONSIVE_CONSTANTS = {
+  SPACING: {
+    XS: scale(4),
+    SM: scale(8),
+    MD: scale(12),
+    LG: scale(16),
+    XL: scale(20),
+    XXL: scale(24),
+  },
+  
+  FONT_SIZES: {
+    XS: moderateScale(10),
+    SM: moderateScale(12),
+    MD: moderateScale(14),
+    LG: moderateScale(16),
+    XL: moderateScale(18),
+    XXL: moderateScale(20),
+  },
+  
+  INPUT_HEIGHT: verticalScale(45),
+  VALUE_INPUT_HEIGHT: verticalScale(36),
+  BUTTON_HEIGHT: verticalScale(40),
+  LABEL_WIDTH: scale(150),
+  COLON_WIDTH: scale(10),
+};
 
 export default function DepartmentScreenMain() {
   const { t } = useTranslation();
@@ -54,6 +121,14 @@ export default function DepartmentScreenMain() {
     cancelText: t('common.cancel'),
     showCancel: false,
   });
+
+  // Filter modal states
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const [searchType, setSearchType] = useState(''); // 'id' or 'name'
+  const [allDepartments, setAllDepartments] = useState([]);
+  const [filteredDepartments, setFilteredDepartments] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [loadingDepartments, setLoadingDepartments] = useState(false);
 
   const showAlert = (title, message, type = 'info', onConfirm = () => {}, showCancel = false) => {
     setAlertConfig({
@@ -101,6 +176,97 @@ export default function DepartmentScreenMain() {
 
   const closeMenu = () => {
     setMenuVisible(false);
+  };
+
+  // Fetch all departments using the existing departments data
+  const fetchAllDepartments = async () => {
+    setLoadingDepartments(true);
+    try {
+      // Use the existing departments data that's already fetched
+      const departmentsList = Object.keys(departments).map(deptId => ({
+        department_id: deptId,
+        department_name: departments[deptId],
+      }));
+
+      // Sort by department ID
+      departmentsList.sort((a, b) => {
+        return a.department_id.toString().localeCompare(b.department_id.toString());
+      });
+
+      console.log(`Fetched ${departmentsList.length} departments:`, departmentsList.slice(0, 3));
+      setAllDepartments(departmentsList);
+      setFilteredDepartments(departmentsList);
+    } catch (error) {
+      console.error('Error fetching departments:', error);
+      Alert.alert(
+        t('common.error'), 
+        `Failed to fetch departments: ${error.message}`
+      );
+    } finally {
+      setLoadingDepartments(false);
+    }
+  };
+
+  // Open filter modal
+  const openFilterModal = () => {
+    console.log('Opening filter modal');
+    console.log('Current allDepartments length:', allDepartments.length);
+    console.log('Current loadingDepartments:', loadingDepartments);
+    setFilterModalVisible(true);
+    setSearchType('');
+    setSearchQuery('');
+    if (allDepartments.length === 0) {
+      console.log('Fetching departments because list is empty');
+      fetchAllDepartments();
+    } else {
+      console.log('Using cached departments');
+      setFilteredDepartments(allDepartments);
+    }
+  };
+
+  // Close filter modal
+  const closeFilterModal = () => {
+    setFilterModalVisible(false);
+    setSearchType('');
+    setSearchQuery('');
+    setFilteredDepartments(allDepartments);
+  };
+
+  // Handle search type selection
+  const handleSearchTypeSelection = (type) => {
+    setSearchType(type);
+    setSearchQuery('');
+    setFilteredDepartments(allDepartments);
+  };
+
+  // Filter departments based on search query
+  const handleSearchQueryChange = (query) => {
+    setSearchQuery(query);
+    
+    if (!query.trim()) {
+      setFilteredDepartments(allDepartments);
+      return;
+    }
+
+    const filtered = allDepartments.filter((dept) => {
+      if (searchType === 'id') {
+        return dept.department_id.toString().toUpperCase().includes(query.toUpperCase());
+      } else if (searchType === 'name') {
+        return dept.department_name.toUpperCase().includes(query.toUpperCase());
+      }
+      return true;
+    });
+
+    setFilteredDepartments(filtered);
+  };
+
+  // Handle department selection from filter
+  const handleDepartmentSelection = (department) => {
+    const selectedId = department.department_id;
+    setDepartmentId(selectedId);
+    closeFilterModal();
+    // Automatically fetch department assignments for selected department
+    fetchDepartmentAssignments(selectedId);
   };
 
   // Fetch departments data
@@ -193,8 +359,10 @@ export default function DepartmentScreenMain() {
 
     setLoading(true);
     try {
-      console.log(`Fetching assignments for department: ${deptId}`);
-      const url = `${API_CONFIG.BASE_URL}/api/asset-assignments/department/${deptId}/assignments`;
+      // Convert department ID to uppercase for case-insensitive search
+      const normalizedDeptId = deptId.trim().toUpperCase();
+      console.log(`Fetching assignments for department: ${normalizedDeptId}`);
+      const url = `${API_CONFIG.BASE_URL}/api/asset-assignments/department/${normalizedDeptId}/assignments`;
       console.log("API URL:", url);
 
       const controller = new AbortController();
@@ -421,7 +589,7 @@ export default function DepartmentScreenMain() {
 
   return (
     <SafeAreaProvider>
-      <View style={[{ flex: 1, backgroundColor: "#003667" }, { paddingTop: insets.top }]}>
+      <View style={[styles.safeContainer, { paddingTop: insets.top }]}>
         <StatusBar 
           barStyle="light-content" 
           backgroundColor="#003667"
@@ -442,6 +610,7 @@ export default function DepartmentScreenMain() {
           </View>
         </View>
 
+        <View style={styles.contentContainer}>
         {/* Form */}
         <View style={styles.formContainer}>
           <View style={styles.inputRow}>
@@ -450,9 +619,21 @@ export default function DepartmentScreenMain() {
               placeholder={t('assets.enterDepartmentId')}
               placeholderTextColor="#aaa"
               value={departmentId}
-              onChangeText={setDepartmentId}
+              onChangeText={(text) => setDepartmentId(text.toUpperCase())}
               onSubmitEditing={() => fetchDepartmentAssignments(departmentId)}
+              autoCapitalize="characters"
             />
+            <TouchableOpacity 
+              style={styles.filterButton}
+              onPress={openFilterModal}
+              disabled={loading}
+            >
+              <MaterialCommunityIcons
+                name="filter"
+                size={22}
+                color="#FEC200"
+              />
+            </TouchableOpacity>
             <TouchableOpacity
               style={styles.qrButton}
               onPress={() => fetchDepartmentAssignments(departmentId)}
@@ -582,6 +763,7 @@ export default function DepartmentScreenMain() {
             </View>
           )}
         </View>
+        </View>
       
       {/* Custom Alert */}
       <CustomAlert
@@ -603,15 +785,145 @@ export default function DepartmentScreenMain() {
         onClose={closeMenu}
         onLogout={handleLogout}
       />
+
+      {/* Filter Modal */}
+      <Modal
+        visible={filterModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={closeFilterModal}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            {/* Modal Header */}
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Search Department</Text>
+              <TouchableOpacity onPress={closeFilterModal} style={styles.closeButton}>
+                <MaterialCommunityIcons name="close" size={24} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Search Type Selection */}
+            {!searchType ? (
+              <View style={styles.searchTypeContainer}>
+                <Text style={styles.searchTypeTitle}>Select Search Type:</Text>
+                
+                <TouchableOpacity
+                  style={styles.searchTypeButton}
+                  onPress={() => {
+                    console.log('Selected search type: ID');
+                    handleSearchTypeSelection('id');
+                  }}
+                >
+                  <MaterialCommunityIcons name="card-account-details" size={24} color="#003667" />
+                  <Text style={styles.searchTypeButtonText}>Search by Department ID</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.searchTypeButton}
+                  onPress={() => {
+                    console.log('Selected search type: NAME');
+                    handleSearchTypeSelection('name');
+                  }}
+                >
+                  <MaterialCommunityIcons name="account-search" size={24} color="#003667" />
+                  <Text style={styles.searchTypeButtonText}>Search by Department Name</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
+
+            {/* Department List */}
+            {searchType ? (
+              <View style={styles.employeeListContainer}>
+                
+                {/* Back Button */}
+                <TouchableOpacity
+                  style={styles.backToTypeButton}
+                  onPress={() => {
+                    console.log('Back to search type pressed');
+                    setSearchType('');
+                    setSearchQuery('');
+                    setFilteredDepartments(allDepartments);
+                  }}
+                >
+                  <MaterialCommunityIcons name="arrow-left" size={20} color="#003667" />
+                  <Text style={styles.backToTypeButtonText}>Back to Search Type</Text>
+                </TouchableOpacity>
+
+                {/* Search Input */}
+                <View style={styles.modalSearchContainer}>
+                  <MaterialCommunityIcons name="magnify" size={20} color="#666" />
+                  <TextInput
+                    style={styles.modalSearchInput}
+                    placeholder={searchType === 'id' ? 'Search by Department ID...' : 'Search by Department Name...'}
+                    placeholderTextColor="#999"
+                    value={searchQuery}
+                    onChangeText={handleSearchQueryChange}
+                    autoCapitalize={searchType === 'id' ? 'characters' : 'words'}
+                  />
+                  {searchQuery !== '' && (
+                    <TouchableOpacity onPress={() => handleSearchQueryChange('')}>
+                      <MaterialCommunityIcons name="close-circle" size={20} color="#999" />
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                {/* Department List */}
+                {loadingDepartments ? (
+                  <View style={styles.modalLoadingContainer}>
+                    <ActivityIndicator size="large" color="#003667" />
+                    <Text style={styles.modalLoadingText}>Loading departments...</Text>
+                  </View>
+                ) : filteredDepartments.length > 0 ? (
+                  <FlatList
+                    data={filteredDepartments}
+                    keyExtractor={(item, index) => `${item.department_id}-${index}`}
+                    renderItem={({ item }) => (
+                      <TouchableOpacity
+                        style={styles.employeeItem}
+                        onPress={() => {
+                          console.log('Department selected:', item);
+                          handleDepartmentSelection(item);
+                        }}
+                      >
+                        <View style={styles.employeeItemContent}>
+                          <Text style={styles.employeeItemId}>
+                            {item.department_id}
+                          </Text>
+                          <Text style={styles.employeeItemName}>{item.department_name}</Text>
+                        </View>
+                        <MaterialCommunityIcons name="chevron-right" size={24} color="#003667" />
+                      </TouchableOpacity>
+                    )}
+                  />
+                ) : (
+                  <View style={styles.modalEmptyContainer}>
+                    <MaterialCommunityIcons name="account-off-outline" size={48} color="#999" />
+                    <Text style={styles.modalEmptyText}>No departments found</Text>
+                  </View>
+                )}
+              </View>
+            ) : null}
+          </View>
+        </View>
+      </Modal>
       </View>
     </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
+  safeContainer: {
+    flex: 1,
+    backgroundColor: "#003667",
+  },
+  contentContainer: {
+    flex: 1,
+    backgroundColor: "#EEEEEE",
+  },
   appbarContainer: {
     backgroundColor: "#003667",
-    height: 56,
+    height: verticalScale(56),
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "flex-start",
@@ -635,14 +947,14 @@ const styles = StyleSheet.create({
     backgroundColor: "#003667",
     elevation: 0,
     shadowOpacity: 0,
-    height: 56,
+    height: verticalScale(56),
     flexDirection: "row",
     alignItems: "center",
     position: "relative",
   },
   backButton: {
-    padding: 12,
-    marginLeft: 8,
+    padding: RESPONSIVE_CONSTANTS.SPACING.MD,
+    marginLeft: RESPONSIVE_CONSTANTS.SPACING.SM,
     zIndex: 2,
   },
   centerTitleContainer: {
@@ -655,47 +967,56 @@ const styles = StyleSheet.create({
   appbarTitle: {
     color: "#fff",
     fontWeight: "600",
-    fontSize: 16,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.LG,
     alignSelf: "center",
   },
   formContainer: {
     backgroundColor: "#EEEEEE",
     margin: 0,
-    borderRadius: 8,
-    padding: 16,
+    borderRadius: scale(8),
+    padding: RESPONSIVE_CONSTANTS.SPACING.LG,
     marginBottom: 0,
   },
   inputRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: RESPONSIVE_CONSTANTS.SPACING.LG,
   },
   assetInput: {
     flex: 1,
     backgroundColor: "#fff",
-    borderRadius: 4,
-    paddingHorizontal: 10,
-    height: 45,
+    borderRadius: scale(4),
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.MD,
+    height: RESPONSIVE_CONSTANTS.INPUT_HEIGHT,
     borderWidth: 1,
     borderColor: "#ccc",
-    // textAlign: 'center',
     textAlignVertical: "center",
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
   },
-  qrButton: {
-    marginLeft: 8,
+  filterButton: {
+    marginLeft: RESPONSIVE_CONSTANTS.SPACING.SM,
     backgroundColor: "#003667",
-    height: 45,
-    width: "10%",
-    borderRadius: 6,
+    height: RESPONSIVE_CONSTANTS.INPUT_HEIGHT,
+    width: RESPONSIVE_CONSTANTS.INPUT_HEIGHT,
+    borderRadius: scale(6),
     alignContent: "center",
     alignItems: "center",
     justifyContent: "center",
-    // padding: 6,
+  },
+  qrButton: {
+    marginLeft: RESPONSIVE_CONSTANTS.SPACING.SM,
+    backgroundColor: "#003667",
+    height: RESPONSIVE_CONSTANTS.INPUT_HEIGHT,
+    width: RESPONSIVE_CONSTANTS.INPUT_HEIGHT,
+    borderRadius: scale(6),
+    alignContent: "center",
+    alignItems: "center",
+    justifyContent: "center",
   },
   infoRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: RESPONSIVE_CONSTANTS.SPACING.SM,
   },
   yellowLine: {
     height: 3,
@@ -703,43 +1024,42 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   label: {
-    width: 150,
+    width: RESPONSIVE_CONSTANTS.LABEL_WIDTH,
     color: "#616161",
-    fontSize: 14,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
     fontWeight: "500",
   },
   colon: {
-    width: 10,
+    width: RESPONSIVE_CONSTANTS.COLON_WIDTH,
     color: "#333",
-    fontSize: 14,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
     textAlign: "center",
-    marginHorizontal: 10,
+    marginHorizontal: RESPONSIVE_CONSTANTS.SPACING.MD,
   },
   valueInput: {
     flex: 1,
     backgroundColor: "#fff",
-    borderRadius: 4,
-    paddingHorizontal: 10,
-    height: 36,
-    // marginRight: 60,
+    borderRadius: scale(4),
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.MD,
+    height: RESPONSIVE_CONSTANTS.VALUE_INPUT_HEIGHT,
     textAlignVertical: "center",
     color: "#616161",
-    fontSize: 12,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.SM,
     borderWidth: 1,
     borderColor: "#ccc",
-    fontWeight: 400,
+    fontWeight: "400",
   },
   viewText: {
     color: "#003366",
-    fontSize: 12,
-    fontWeight: 400,
-    marginRight: 18,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.SM,
+    fontWeight: "400",
+    marginRight: RESPONSIVE_CONSTANTS.SPACING.LG + scale(2),
     textDecorationLine: "underline",
-    marginLeft: 10,
+    marginLeft: RESPONSIVE_CONSTANTS.SPACING.MD,
   },
   tableContainer: {
-    margin: 10,
-    borderRadius: 8,
+    margin: RESPONSIVE_CONSTANTS.SPACING.MD,
+    borderRadius: scale(8),
     backgroundColor: "#fff",
     overflow: "hidden",
     flex: 1,
@@ -747,46 +1067,185 @@ const styles = StyleSheet.create({
   tableHeader: {
     flexDirection: "row",
     backgroundColor: "#003366",
-    paddingVertical: 8,
-    paddingHorizontal: 8,
+    paddingVertical: RESPONSIVE_CONSTANTS.SPACING.SM,
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.SM,
   },
   tableHeaderText: {
     color: "#fff",
     fontWeight: "500",
-    fontSize: 13,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.SM,
     textAlign: "center",
   },
   tableRow: {
     flexDirection: "row",
-    paddingVertical: 10,
-    paddingHorizontal: 8,
+    paddingVertical: RESPONSIVE_CONSTANTS.SPACING.MD,
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.SM,
     alignItems: "center",
   },
   tableCell: {
-    fontSize: 12,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.SM,
     fontWeight: "500",
     color: "#333",
     textAlign: "center",
   },
   loadingContainer: {
-    padding: 40,
+    padding: RESPONSIVE_CONSTANTS.SPACING.XXL * 1.5,
     alignItems: "center",
   },
   loadingText: {
-    marginTop: 10,
-    fontSize: 16,
+    marginTop: RESPONSIVE_CONSTANTS.SPACING.MD,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.LG,
     color: "#666",
   },
   emptyContainer: {
-    // padding: 40,
     alignItems: "center",
     justifyContent: "center",
-    // alignContent: "center",
     flex: 1,
   },
   emptyText: {
-    fontSize: 16,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.LG,
     color: "#666",
     textAlign: "center",
   },
+  
+  // Filter Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: scale(12),
+    width: '90%',
+    maxHeight: '85%',
+    minHeight: 400,
+    overflow: 'hidden',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: RESPONSIVE_CONSTANTS.SPACING.LG,
+    backgroundColor: '#003667',
+    borderBottomWidth: 1,
+    borderBottomColor: '#FEC200',
+  },
+  modalTitle: {
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.XL,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  closeButton: {
+    padding: RESPONSIVE_CONSTANTS.SPACING.SM,
+  },
+  searchTypeContainer: {
+    padding: RESPONSIVE_CONSTANTS.SPACING.LG,
+  },
+  searchTypeTitle: {
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.LG,
+    fontWeight: '600',
+    color: '#003667',
+    marginBottom: RESPONSIVE_CONSTANTS.SPACING.LG,
+    textAlign: 'center',
+  },
+  searchTypeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F5F5F5',
+    padding: RESPONSIVE_CONSTANTS.SPACING.LG,
+    borderRadius: scale(8),
+    marginBottom: RESPONSIVE_CONSTANTS.SPACING.MD,
+    borderWidth: 2,
+    borderColor: '#003667',
+  },
+  searchTypeButtonText: {
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
+    fontWeight: '500',
+    color: '#003667',
+    marginLeft: RESPONSIVE_CONSTANTS.SPACING.MD,
+  },
+  employeeListContainer: {
+    flex: 1,
+    padding: RESPONSIVE_CONSTANTS.SPACING.LG,
+    minHeight: 300,
+  },
+  backToTypeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: RESPONSIVE_CONSTANTS.SPACING.MD,
+    paddingVertical: RESPONSIVE_CONSTANTS.SPACING.SM,
+  },
+  backToTypeButtonText: {
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.SM,
+    color: '#003667',
+    marginLeft: RESPONSIVE_CONSTANTS.SPACING.SM,
+    fontWeight: '500',
+  },
+  modalSearchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F5F5F5',
+    borderRadius: scale(8),
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.MD,
+    marginBottom: RESPONSIVE_CONSTANTS.SPACING.MD,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  modalSearchInput: {
+    flex: 1,
+    height: RESPONSIVE_CONSTANTS.INPUT_HEIGHT,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
+    color: '#333',
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.SM,
+  },
+  employeeItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: RESPONSIVE_CONSTANTS.SPACING.MD,
+    backgroundColor: '#F9F9F9',
+    borderRadius: scale(8),
+    marginBottom: RESPONSIVE_CONSTANTS.SPACING.SM,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  employeeItemContent: {
+    flex: 1,
+  },
+  employeeItemId: {
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
+    fontWeight: '600',
+    color: '#003667',
+    marginBottom: RESPONSIVE_CONSTANTS.SPACING.XS,
+  },
+  employeeItemName: {
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.SM,
+    color: '#333',
+    marginBottom: RESPONSIVE_CONSTANTS.SPACING.XS,
+  },
+  modalLoadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: RESPONSIVE_CONSTANTS.SPACING.XXL,
+  },
+  modalLoadingText: {
+    marginTop: RESPONSIVE_CONSTANTS.SPACING.MD,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
+    color: '#666',
+  },
+  modalEmptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: RESPONSIVE_CONSTANTS.SPACING.XXL,
+  },
+  modalEmptyText: {
+    marginTop: RESPONSIVE_CONSTANTS.SPACING.MD,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
+    color: '#999',
+  },
 });
+
