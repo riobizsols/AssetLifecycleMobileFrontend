@@ -3,13 +3,13 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   TouchableOpacity,
-  ScrollView,
   FlatList,
   Dimensions,
+  Platform,
+  StatusBar,
 } from 'react-native';
-import { Appbar } from 'react-native-paper';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
@@ -17,7 +17,6 @@ import CustomAlert from '../../components/CustomAlert';
 import { authUtils } from '../../utils/auth';
 import SideMenu from '../../components/SideMenu';
 import { useNavigation as useNavigationContext } from '../../context/NavigationContext';
-import { UI_CONSTANTS, COMMON_STYLES, UI_UTILS } from '../../utils/uiConstants';
 
 const { width, height } = Dimensions.get('window');
 
@@ -32,10 +31,18 @@ const BREAKPOINTS = {
 
 // Device type detection
 const getDeviceType = () => {
-  if (width >= BREAKPOINTS.DESKTOP) return 'desktop';
-  if (width >= BREAKPOINTS.TABLET) return 'tablet';
-  if (width >= BREAKPOINTS.LARGE) return 'large';
-  if (width >= BREAKPOINTS.MEDIUM) return 'medium';
+  if (width >= BREAKPOINTS.DESKTOP) {
+    return 'desktop';
+  }
+  if (width >= BREAKPOINTS.TABLET) {
+    return 'tablet';
+  }
+  if (width >= BREAKPOINTS.LARGE) {
+    return 'large';
+  }
+  if (width >= BREAKPOINTS.MEDIUM) {
+    return 'medium';
+  }
   return 'small';
 };
 
@@ -68,7 +75,7 @@ const RESPONSIVE_CONSTANTS = {
     XXL: scale(24),
     XXXL: scale(32),
   },
-  
+
   // Responsive font sizes
   FONT_SIZES: {
     XS: moderateScale(10),
@@ -80,19 +87,24 @@ const RESPONSIVE_CONSTANTS = {
     XXXL: moderateScale(24),
     TITLE: moderateScale(28),
   },
-  
+
   // Responsive dimensions
   CARD_PADDING: scale(16),
   CARD_BORDER_RADIUS: scale(12),
+  INPUT_HEIGHT: verticalScale(48),
   BUTTON_HEIGHT: verticalScale(48),
-  
+
   // Responsive layout
   getSectionWidth: () => {
-    if (DEVICE_TYPE === 'desktop') return Math.min(width * 0.9, 1000);
-    if (DEVICE_TYPE === 'tablet') return Math.min(width * 0.95, 800);
+    if (DEVICE_TYPE === 'desktop') {
+      return Math.min(width * 0.8, 900);
+    }
+    if (DEVICE_TYPE === 'tablet') {
+      return Math.min(width * 0.9, 700);
+    }
     return width - scale(32); // Mobile: full width minus padding
   },
-  
+
   getFilterLayout: () => {
     if (DEVICE_TYPE === 'desktop' || DEVICE_TYPE === 'tablet') {
       return {
@@ -107,13 +119,13 @@ const RESPONSIVE_CONSTANTS = {
       gap: scale(12),
     };
   },
-  
+
   getTabLayout: () => {
     if (DEVICE_TYPE === 'desktop' || DEVICE_TYPE === 'tablet') {
       return {
         flexDirection: 'row',
         marginBottom: scale(20),
-        backgroundColor: UI_CONSTANTS.COLORS.GRAY_LIGHT,
+        backgroundColor: '#F5F5F5',
         borderRadius: scale(8),
         padding: scale(4),
       };
@@ -121,12 +133,12 @@ const RESPONSIVE_CONSTANTS = {
     return {
       flexDirection: 'row',
       marginBottom: scale(16),
-      backgroundColor: UI_CONSTANTS.COLORS.GRAY_LIGHT,
+      backgroundColor: '#F5F5F5',
       borderRadius: scale(8),
       padding: scale(4),
     };
   },
-  
+
   getAssetCardLayout: () => {
     if (DEVICE_TYPE === 'desktop' || DEVICE_TYPE === 'tablet') {
       return {
@@ -143,7 +155,7 @@ const RESPONSIVE_CONSTANTS = {
       marginBottom: scale(10),
     };
   },
-  
+
   getDetailRowLayout: () => {
     if (DEVICE_TYPE === 'desktop' || DEVICE_TYPE === 'tablet') {
       return {
@@ -164,6 +176,7 @@ const BreakdownSelectionScreen = () => {
   const { t } = useTranslation();
   const navigation = useNavigation();
   const { hasAccess } = useNavigationContext();
+  const insets = useSafeAreaInsets();
   const [menuVisible, setMenuVisible] = useState(false);
   const [activeTab, setActiveTab] = useState('select'); // 'select' or 'scan'
   const [selectedAssetType, setSelectedAssetType] = useState(t('breakdown.laptop'));
@@ -432,43 +445,45 @@ const BreakdownSelectionScreen = () => {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* AppBar */}
-      <Appbar.Header style={styles.appbar}>
-        <TouchableOpacity 
-          style={styles.menuButton} 
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
-        >
-          <MaterialCommunityIcons 
-            name="arrow-left" 
-            size={UI_CONSTANTS.ICON_SIZES.LG} 
-            color={UI_CONSTANTS.COLORS.SECONDARY} 
-          />
-        </TouchableOpacity>
-        <View style={styles.centerTitleContainer}>
-          <Text 
-            style={styles.appbarTitle}
-            numberOfLines={1}
-            ellipsizeMode="tail"
+    <SafeAreaProvider>
+      <View style={[styles.safeContainer, { paddingTop: insets.top }]}>
+        <StatusBar
+          barStyle="light-content"
+          backgroundColor="#003667"
+          translucent={Platform.OS === 'android'}
+        />
+        {/* AppBar */}
+        <View style={styles.appbarContainer}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.7}
           >
-            {t('breakdown.breakdownSelection')}
-          </Text>
+            <MaterialCommunityIcons
+              name="arrow-left"
+              size={24}
+              color="#FEC200"
+            />
+          </TouchableOpacity>
+          <View style={styles.centerTitleContainer}>
+            <Text
+              style={styles.appbarTitle}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {t('breakdown.breakdownSelection')}
+            </Text>
+          </View>
         </View>
-      </Appbar.Header>
 
-      <View style={[
-        styles.content,
-        DEVICE_TYPE === 'desktop' && styles.contentDesktop,
-        DEVICE_TYPE === 'tablet' && styles.contentTablet
-      ]}>
-        {/* Breakdown Selection Section */}
-        <View style={[
-          styles.selectionSection,
-          { width: RESPONSIVE_CONSTANTS.getSectionWidth() },
-          DEVICE_TYPE === 'desktop' && styles.selectionSectionDesktop,
-          DEVICE_TYPE === 'tablet' && styles.selectionSectionTablet
-        ]}>
+        <View style={styles.content}>
+          {/* Breakdown Selection Section */}
+          <View style={[
+            styles.selectionSection,
+            { width: RESPONSIVE_CONSTANTS.getSectionWidth() },
+            DEVICE_TYPE === 'desktop' && styles.selectionSectionDesktop,
+            DEVICE_TYPE === 'tablet' && styles.selectionSectionTablet,
+          ]}>
           <Text 
             style={styles.sectionTitle}
             numberOfLines={1}
@@ -532,10 +547,10 @@ const BreakdownSelectionScreen = () => {
                 >
                   {selectedAssetType}
                 </Text>
-                <MaterialCommunityIcons 
-                  name={showAssetTypeDropdown ? "chevron-up" : "chevron-down"} 
-                  size={UI_CONSTANTS.ICON_SIZES.MD} 
-                  color={UI_CONSTANTS.COLORS.TEXT_SECONDARY} 
+                <MaterialCommunityIcons
+                  name={showAssetTypeDropdown ? 'chevron-up' : 'chevron-down'}
+                  size={20}
+                  color="#003667"
                 />
               </TouchableOpacity>
               
@@ -581,10 +596,10 @@ const BreakdownSelectionScreen = () => {
               {t('breakdown.availableAssets')}
             </Text>
             <TouchableOpacity style={styles.expandButton}>
-              <MaterialCommunityIcons 
-                name="fullscreen" 
-                size={UI_CONSTANTS.ICON_SIZES.MD} 
-                color={UI_CONSTANTS.COLORS.TEXT_SECONDARY} 
+              <MaterialCommunityIcons
+                name="fullscreen"
+                size={20}
+                color="#003667"
               />
             </TouchableOpacity>
           </View>
@@ -600,36 +615,49 @@ const BreakdownSelectionScreen = () => {
               DEVICE_TYPE === 'tablet' && styles.assetsListTablet
             ]}
           />
+          </View>
         </View>
+
+        <SideMenu
+          visible={menuVisible}
+          onClose={closeMenu}
+          onLogout={handleLogout}
+        />
+
+        <CustomAlert {...alertConfig} />
       </View>
-
-      <SideMenu
-        visible={menuVisible}
-        onClose={closeMenu}
-        onLogout={handleLogout}
-      />
-
-      <CustomAlert {...alertConfig} />
-    </SafeAreaView>
+    </SafeAreaProvider>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  safeContainer: {
     flex: 1,
-    backgroundColor: UI_CONSTANTS.COLORS.BACKGROUND,
+    backgroundColor: '#003667',
   },
-  appbar: {
-    backgroundColor: UI_CONSTANTS.COLORS.PRIMARY,
-    elevation: 0,
-    shadowOpacity: 0,
-    height: 60,
+  appbarContainer: {
+    backgroundColor: '#003667',
+    height: verticalScale(56),
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-start',
     position: 'relative',
+    paddingHorizontal: 0,
+    ...Platform.select({
+      ios: {
+        // iOS handles safe area automatically
+      },
+      android: {
+        // Android needs explicit handling
+        elevation: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+    }),
   },
-  menuButton: {
+  backButton: {
     padding: RESPONSIVE_CONSTANTS.SPACING.MD,
     marginLeft: RESPONSIVE_CONSTANTS.SPACING.SM,
     zIndex: 2,
@@ -642,29 +670,28 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   appbarTitle: {
-    color: UI_CONSTANTS.COLORS.WHITE,
+    color: '#FFFFFF',
     fontWeight: '600',
     fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.LG,
     alignSelf: 'center',
   },
   content: {
     flex: 1,
+    backgroundColor: '#EEEEEE',
     paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.LG,
     paddingTop: RESPONSIVE_CONSTANTS.SPACING.LG,
     alignItems: 'center',
   },
-  contentDesktop: {
-    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.XXL,
-  },
-  contentTablet: {
-    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.XL,
-  },
   selectionSection: {
-    backgroundColor: UI_CONSTANTS.COLORS.WHITE,
+    backgroundColor: '#FFFFFF',
     borderRadius: RESPONSIVE_CONSTANTS.CARD_BORDER_RADIUS,
     padding: RESPONSIVE_CONSTANTS.SPACING.XL,
     marginBottom: RESPONSIVE_CONSTANTS.SPACING.XL,
-    ...UI_CONSTANTS.SHADOW,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   selectionSectionDesktop: {
     padding: RESPONSIVE_CONSTANTS.SPACING.XXL,
@@ -677,13 +704,13 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.XL,
     fontWeight: 'bold',
-    color: UI_CONSTANTS.COLORS.PRIMARY,
+    color: '#003667',
     marginBottom: RESPONSIVE_CONSTANTS.SPACING.LG,
   },
   tabContainer: {
     flexDirection: 'row',
     marginBottom: RESPONSIVE_CONSTANTS.SPACING.XL,
-    backgroundColor: UI_CONSTANTS.COLORS.GRAY_LIGHT,
+    backgroundColor: '#F5F5F5',
     borderRadius: RESPONSIVE_CONSTANTS.SPACING.SM,
     padding: RESPONSIVE_CONSTANTS.SPACING.XS,
   },
@@ -694,16 +721,20 @@ const styles = StyleSheet.create({
     borderRadius: RESPONSIVE_CONSTANTS.SPACING.SM,
   },
   activeTab: {
-    backgroundColor: UI_CONSTANTS.COLORS.WHITE,
-    ...UI_CONSTANTS.SHADOW,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   tabText: {
     fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
     fontWeight: '500',
-    color: UI_CONSTANTS.COLORS.TEXT_SECONDARY,
+    color: '#616161',
   },
   activeTabText: {
-    color: UI_CONSTANTS.COLORS.PRIMARY,
+    color: '#003667',
     fontWeight: '600',
   },
   filterContainer: {
@@ -714,7 +745,7 @@ const styles = StyleSheet.create({
   filterLabel: {
     fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
     fontWeight: '600',
-    color: UI_CONSTANTS.COLORS.TEXT_PRIMARY,
+    color: '#333',
     minWidth: scale(120),
     textAlign: 'left',
   },
@@ -728,47 +759,61 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: UI_CONSTANTS.COLORS.GRAY_MEDIUM,
+    borderColor: '#E0E0E0',
     borderRadius: scale(10),
     paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.LG,
     paddingVertical: RESPONSIVE_CONSTANTS.SPACING.MD,
-    backgroundColor: UI_CONSTANTS.COLORS.WHITE,
-    minHeight: RESPONSIVE_CONSTANTS.BUTTON_HEIGHT,
-    ...UI_CONSTANTS.SHADOW,
+    backgroundColor: '#FFFFFF',
+    minHeight: RESPONSIVE_CONSTANTS.INPUT_HEIGHT,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   dropdownButtonText: {
-    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.LG,
-    color: UI_CONSTANTS.COLORS.TEXT_PRIMARY,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
+    color: '#333',
+    fontWeight: '500',
   },
   dropdownOptions: {
     position: 'absolute',
     top: '100%',
     left: 0,
     right: 0,
-    backgroundColor: UI_CONSTANTS.COLORS.WHITE,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: UI_CONSTANTS.COLORS.GRAY_MEDIUM,
+    borderColor: '#E0E0E0',
     borderRadius: scale(10),
     marginTop: RESPONSIVE_CONSTANTS.SPACING.XS,
     zIndex: 1000,
-    ...UI_CONSTANTS.SHADOW,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 10,
   },
   dropdownOption: {
     paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.LG,
     paddingVertical: RESPONSIVE_CONSTANTS.SPACING.MD,
     borderBottomWidth: 1,
-    borderBottomColor: UI_CONSTANTS.COLORS.GRAY_LIGHT,
+    borderBottomColor: '#F5F5F5',
   },
   dropdownOptionText: {
-    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.LG,
-    color: UI_CONSTANTS.COLORS.TEXT_PRIMARY,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
+    color: '#333',
+    fontWeight: '500',
   },
   assetsSection: {
     flex: 1,
-    backgroundColor: UI_CONSTANTS.COLORS.WHITE,
+    backgroundColor: '#FFFFFF',
     borderRadius: RESPONSIVE_CONSTANTS.CARD_BORDER_RADIUS,
     padding: RESPONSIVE_CONSTANTS.SPACING.XL,
-    ...UI_CONSTANTS.SHADOW,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   assetsSectionDesktop: {
     padding: RESPONSIVE_CONSTANTS.SPACING.XXL,
@@ -795,13 +840,17 @@ const styles = StyleSheet.create({
     paddingBottom: RESPONSIVE_CONSTANTS.SPACING.XL,
   },
   assetCard: {
-    backgroundColor: UI_CONSTANTS.COLORS.WHITE,
+    backgroundColor: '#FFFFFF',
     borderRadius: RESPONSIVE_CONSTANTS.CARD_BORDER_RADIUS,
     padding: RESPONSIVE_CONSTANTS.SPACING.LG,
     marginBottom: RESPONSIVE_CONSTANTS.SPACING.MD,
     borderWidth: 1,
-    borderColor: UI_CONSTANTS.COLORS.GRAY_LIGHT,
-    ...UI_CONSTANTS.SHADOW,
+    borderColor: '#F5F5F5',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   assetCardDesktop: {
     padding: RESPONSIVE_CONSTANTS.SPACING.XL,
@@ -820,18 +869,22 @@ const styles = StyleSheet.create({
   assetId: {
     fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.LG,
     fontWeight: '600',
-    color: UI_CONSTANTS.COLORS.PRIMARY,
+    color: '#003667',
     textDecorationLine: 'underline',
   },
   createBreakdownButton: {
-    backgroundColor: UI_CONSTANTS.COLORS.PRIMARY,
+    backgroundColor: '#003667',
     borderRadius: RESPONSIVE_CONSTANTS.SPACING.SM,
     paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.LG,
     paddingVertical: RESPONSIVE_CONSTANTS.SPACING.SM,
-    ...UI_CONSTANTS.SHADOW,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   createBreakdownButtonText: {
-    color: UI_CONSTANTS.COLORS.WHITE,
+    color: '#FFFFFF',
     fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
     fontWeight: '600',
   },
@@ -845,12 +898,12 @@ const styles = StyleSheet.create({
   },
   detailLabel: {
     fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
-    color: UI_CONSTANTS.COLORS.TEXT_SECONDARY,
+    color: '#616161',
     fontWeight: '500',
   },
   detailValue: {
     fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
-    color: UI_CONSTANTS.COLORS.TEXT_PRIMARY,
+    color: '#333',
     fontWeight: '500',
     flex: 1,
     textAlign: 'right',

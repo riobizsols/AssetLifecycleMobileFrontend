@@ -112,7 +112,7 @@ export default function EmployeeAssetDetailScreen() {
       
       const response = await fetch(url, {
         method: "GET",
-        headers: getApiHeaders(),
+        headers: await getApiHeaders(),
       });
 
       if (!response.ok) {
@@ -152,7 +152,7 @@ export default function EmployeeAssetDetailScreen() {
       
       const response = await fetch(url, {
         method: 'GET',
-        headers: getApiHeaders(),
+        headers: await getApiHeaders(),
         signal: controller.signal,
       });
       
@@ -201,7 +201,7 @@ export default function EmployeeAssetDetailScreen() {
             
             const assetResponse = await fetch(assetUrl, {
               method: 'GET',
-              headers: getApiHeaders(),
+              headers: await getApiHeaders(),
             });
             
             if (assetResponse.ok) {

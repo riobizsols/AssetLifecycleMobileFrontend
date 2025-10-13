@@ -214,7 +214,7 @@ export default function App() {
 
       const response = await fetch(url, {
         method: "GET",
-        headers: getApiHeaders(),
+        headers: await getApiHeaders(),
       });
 
       if (!response.ok) {
@@ -250,7 +250,7 @@ export default function App() {
 
       const response = await fetch(url, {
         method: "GET",
-        headers: getApiHeaders(),
+        headers: await getApiHeaders(),
       });
 
       if (!response.ok) {
@@ -293,7 +293,7 @@ export default function App() {
       }${API_ENDPOINTS.GET_DEPARTMENTS()}`;
       const deptResponse = await fetch(departmentsUrl, {
         method: "GET",
-        headers: getApiHeaders(),
+        headers: await getApiHeaders(),
       });
 
       if (!deptResponse.ok) {
@@ -312,7 +312,7 @@ export default function App() {
           }${API_ENDPOINTS.GET_EMPLOYEES_BY_DEPARTMENT(dept.dept_id)}`;
           const empResponse = await fetch(employeesUrl, {
             method: "GET",
-            headers: getApiHeaders(),
+            headers: await getApiHeaders(),
           });
 
           if (empResponse.ok) {
@@ -410,7 +410,7 @@ export default function App() {
 
       const updateResponse = await fetch(updateUrl, {
         method: "PUT",
-        headers: getApiHeaders(),
+        headers: await getApiHeaders(),
         body: JSON.stringify(updateData),
       });
 
@@ -443,7 +443,7 @@ export default function App() {
 
       const createResponse = await fetch(createUrl, {
         method: "POST",
-        headers: getApiHeaders(),
+        headers: await getApiHeaders(),
         body: JSON.stringify(newAssignmentData),
       });
 
@@ -498,7 +498,7 @@ export default function App() {
 
           const response = await fetch(url, {
             method: "PUT",
-            headers: getApiHeaders(),
+            headers: await getApiHeaders(),
             body: JSON.stringify(updateData),
           });
 

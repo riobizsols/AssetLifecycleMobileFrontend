@@ -4,24 +4,20 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
   Dimensions,
   FlatList,
   ActivityIndicator,
   Platform,
   StatusBar,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Appbar } from 'react-native-paper';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import CustomAlert from '../../components/CustomAlert';
 import { authUtils } from '../../utils/auth';
 import SideMenu from '../../components/SideMenu';
-import { useNavigation as useNavigationContext } from '../../context/NavigationContext';
 import { getServerUrl, getApiHeaders, API_ENDPOINTS } from '../../config/api';
-import { UI_CONSTANTS, COMMON_STYLES, UI_UTILS } from '../../utils/uiConstants';
 
 const { width, height } = Dimensions.get('window');
 
@@ -36,10 +32,18 @@ const BREAKPOINTS = {
 
 // Device type detection
 const getDeviceType = () => {
-  if (width >= BREAKPOINTS.DESKTOP) return 'desktop';
-  if (width >= BREAKPOINTS.TABLET) return 'tablet';
-  if (width >= BREAKPOINTS.LARGE) return 'large';
-  if (width >= BREAKPOINTS.MEDIUM) return 'medium';
+  if (width >= BREAKPOINTS.DESKTOP) {
+    return 'desktop';
+  }
+  if (width >= BREAKPOINTS.TABLET) {
+    return 'tablet';
+  }
+  if (width >= BREAKPOINTS.LARGE) {
+    return 'large';
+  }
+  if (width >= BREAKPOINTS.MEDIUM) {
+    return 'medium';
+  }
   return 'small';
 };
 
@@ -72,7 +76,7 @@ const RESPONSIVE_CONSTANTS = {
     XXL: scale(24),
     XXXL: scale(32),
   },
-  
+
   // Responsive font sizes
   FONT_SIZES: {
     XS: moderateScale(10),
@@ -84,19 +88,26 @@ const RESPONSIVE_CONSTANTS = {
     XXXL: moderateScale(24),
     TITLE: moderateScale(28),
   },
-  
+
   // Responsive dimensions
+  INPUT_HEIGHT: verticalScale(45),
+  VALUE_INPUT_HEIGHT: verticalScale(36),
+  BUTTON_HEIGHT: verticalScale(48),
   CARD_PADDING: scale(16),
   CARD_BORDER_RADIUS: scale(12),
-  BUTTON_HEIGHT: verticalScale(48),
-  
+  LABEL_WIDTH: scale(150),
+  COLON_WIDTH: scale(10),
+
   // Responsive layout
   getTableContainerWidth: () => {
-    if (DEVICE_TYPE === 'desktop') return Math.min(width * 0.9, 1000);
-    if (DEVICE_TYPE === 'tablet') return Math.min(width * 0.95, 800);
+    if (DEVICE_TYPE === 'desktop') {
+      return Math.min(width * 0.9, 1000);
+    }
+    if (DEVICE_TYPE === 'tablet') {
+      return Math.min(width * 0.95, 800);
+    }
     return width - scale(32); // Mobile: full width minus padding
   },
-  
   getActionBarLayout: () => {
     if (DEVICE_TYPE === 'desktop' || DEVICE_TYPE === 'tablet') {
       return {
@@ -115,7 +126,7 @@ const RESPONSIVE_CONSTANTS = {
       gap: scale(8),
     };
   },
-  
+
   getTableRowLayout: () => {
     if (DEVICE_TYPE === 'desktop' || DEVICE_TYPE === 'tablet') {
       return {
@@ -128,7 +139,7 @@ const RESPONSIVE_CONSTANTS = {
       flexDirection: 'column',
     };
   },
-  
+
   getCellLayout: () => {
     if (DEVICE_TYPE === 'desktop') {
       return {
@@ -152,7 +163,6 @@ const RESPONSIVE_CONSTANTS = {
 const ReportBreakdownScreen = () => {
   const { t } = useTranslation();
   const navigation = useNavigation();
-  const { hasAccess } = useNavigationContext();
   const [menuVisible, setMenuVisible] = useState(false);
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
@@ -187,7 +197,7 @@ const ReportBreakdownScreen = () => {
 
       const response = await fetch(url, {
         method: 'GET',
-        headers: getApiHeaders(),
+        headers: await getApiHeaders(),
       });
 
       if (!response.ok) {
@@ -198,7 +208,7 @@ const ReportBreakdownScreen = () => {
 
       const data = await response.json();
       console.log('Breakdown reports fetched successfully:', data.data?.length || 0, 'items');
-      
+
       // Handle different response structures
       if (data.success && data.data) {
         setBreakdownData(data.data);
@@ -227,6 +237,7 @@ const ReportBreakdownScreen = () => {
   // Load data on component mount
   useEffect(() => {
     fetchBreakdownReports();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const showAlert = (title, message, type = 'info', onConfirm = () => {}, showCancel = false) => {
@@ -269,16 +280,8 @@ const ReportBreakdownScreen = () => {
     );
   };
 
-  const toggleMenu = () => {
-    setMenuVisible(!menuVisible);
-  };
-
   const closeMenu = () => {
     setMenuVisible(false);
-  };
-
-  const handleFilter = () => {
-    showAlert(t('breakdown.filter'), t('breakdown.filterFunctionalityWillBeImplemented'), 'info');
   };
 
   const handleRefresh = () => {
@@ -287,6 +290,10 @@ const ReportBreakdownScreen = () => {
 
   const handleAddBreakdown = () => {
     navigation.navigate('BREAKDOWNSELECTION');
+  };
+
+  const handleDelete = () => {
+    showAlert(t('breakdown.delete'), t('breakdown.deleteFunctionalityWillBeImplemented'), 'info');
   };
 
   const handleRowPress = (item) => {
@@ -322,261 +329,210 @@ const ReportBreakdownScreen = () => {
 
   const renderBreakdownItem = ({ item }) => (
     <TouchableOpacity
-      style={[
-        styles.tableRow,
-        DEVICE_TYPE === 'desktop' && styles.tableRowDesktop,
-        DEVICE_TYPE === 'tablet' && styles.tableRowTablet
-      ]}
+      style={styles.cardContainer}
       onPress={() => handleRowPress(item)}
       activeOpacity={0.7}
     >
-      <View style={[
-        styles.cellContainer,
-        RESPONSIVE_CONSTANTS.getTableRowLayout()
-      ]}>
-        <View style={[
-          styles.cell,
-          RESPONSIVE_CONSTANTS.getCellLayout()
-        ]}>
-          <Text style={styles.cellLabel}>{t('breakdown.breakdownId')}</Text>
-          <Text 
-            style={styles.cellValue}
-            numberOfLines={1}
-            ellipsizeMode="tail"
-          >
-            {item.abr_id}
-          </Text>
+      {/* Header Section with ID and Status */}
+      <View style={styles.cardHeader}>
+        <View style={styles.cardHeaderLeft}>
+          <MaterialCommunityIcons name="clipboard-alert" size={20} color="#003667" />
+          <Text style={styles.cardId}>{item.abr_id}</Text>
         </View>
-        <View style={[
-          styles.cell,
-          RESPONSIVE_CONSTANTS.getCellLayout()
-        ]}>
-          <Text style={styles.cellLabel}>{t('breakdown.assetId')}</Text>
-          <Text 
-            style={styles.cellValue}
-            numberOfLines={1}
-            ellipsizeMode="tail"
-          >
-            {item.asset_id}
-          </Text>
+        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
+          <Text style={styles.statusText}>{getStatusText(item.status)}</Text>
         </View>
-        <View style={[
-          styles.cell,
-          RESPONSIVE_CONSTANTS.getCellLayout()
-        ]}>
-          <Text style={styles.cellLabel}>{t('breakdown.breakdownCode')}</Text>
-          <Text 
-            style={styles.cellValue}
-            numberOfLines={1}
-            ellipsizeMode="tail"
-          >
-            {item.atbrrc_id}
-          </Text>
-        </View>
-        <View style={[
-          styles.cell,
-          RESPONSIVE_CONSTANTS.getCellLayout()
-        ]}>
-          <Text style={styles.cellLabel}>{t('breakdown.reportedBy')}</Text>
-          <Text 
-            style={styles.cellValue}
-            numberOfLines={1}
-            ellipsizeMode="tail"
-          >
-            {item.reported_by}
-          </Text>
-        </View>
-        <View style={[
-          styles.cell,
-          RESPONSIVE_CONSTANTS.getCellLayout()
-        ]}>
-          <Text style={styles.cellLabel}>{t('breakdown.status')}</Text>
-          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
-            <Text style={styles.statusText}>{getStatusText(item.status)}</Text>
+      </View>
+
+      {/* Divider */}
+      <View style={styles.cardDivider} />
+
+      {/* Main Content Section */}
+      <View style={styles.cardBody}>
+        {/* Asset & Breakdown Info Row */}
+        <View style={styles.cardRow}>
+          <View style={styles.cardInfoBlock}>
+            <Text style={styles.cardLabel}>{t('breakdown.assetId')}</Text>
+            <Text style={styles.cardValue} numberOfLines={1}>{item.asset_id}</Text>
+          </View>
+          <View style={styles.cardInfoBlock}>
+            <Text style={styles.cardLabel}>{t('breakdown.breakdownCode')}</Text>
+            <Text style={styles.cardValue} numberOfLines={1}>{item.atbrrc_id}</Text>
           </View>
         </View>
-        <View style={[
-          styles.cell,
-          RESPONSIVE_CONSTANTS.getCellLayout()
-        ]}>
-          <Text style={styles.cellLabel}>{t('breakdown.description')}</Text>
-          <Text 
-            style={styles.cellValue} 
-            numberOfLines={DEVICE_TYPE === 'desktop' || DEVICE_TYPE === 'tablet' ? 3 : 2}
+
+        {/* Reported By & Date Row */}
+        <View style={styles.cardRow}>
+          <View style={styles.cardInfoBlock}>
+            <Text style={styles.cardLabel}>{t('breakdown.reportedBy')}</Text>
+            <Text style={styles.cardValue} numberOfLines={1}>{item.reported_by}</Text>
+          </View>
+          <View style={styles.cardInfoBlock}>
+            <Text style={styles.cardLabel}>{t('breakdown.createdOn')}</Text>
+            <Text style={styles.cardValue} numberOfLines={1}>
+              {new Date(item.created_on).toLocaleDateString()}
+            </Text>
+          </View>
+        </View>
+
+        {/* Description Section */}
+        <View style={styles.cardDescriptionContainer}>
+          <Text style={styles.cardLabel}>{t('breakdown.description')}</Text>
+          <Text
+            style={styles.cardDescription}
+            numberOfLines={2}
             ellipsizeMode="tail"
           >
             {item.description}
           </Text>
         </View>
-        <View style={[
-          styles.cell,
-          RESPONSIVE_CONSTANTS.getCellLayout()
-        ]}>
-          <Text style={styles.cellLabel}>{t('breakdown.orgId')}</Text>
-          <Text 
-            style={styles.cellValue}
-            numberOfLines={1}
-            ellipsizeMode="tail"
-          >
-            {item.org_id}
-          </Text>
+
+        {/* Additional Info Row */}
+        <View style={styles.cardRow}>
+          <View style={styles.cardInfoBlock}>
+            <Text style={styles.cardLabel}>{t('breakdown.orgId')}</Text>
+            <Text style={styles.cardValue} numberOfLines={1}>{item.org_id}</Text>
+          </View>
+          <View style={styles.cardInfoBlock}>
+            <Text style={styles.cardLabel}>{t('breakdown.decisionCode')}</Text>
+            <Text style={styles.cardValue} numberOfLines={1}>{item.decision_code}</Text>
+          </View>
         </View>
-        <View style={[
-          styles.cell,
-          RESPONSIVE_CONSTANTS.getCellLayout()
-        ]}>
-          <Text style={styles.cellLabel}>{t('breakdown.decisionCode')}</Text>
-          <Text 
-            style={styles.cellValue}
-            numberOfLines={1}
-            ellipsizeMode="tail"
-          >
-            {item.decision_code}
-          </Text>
-        </View>
-        <View style={[
-          styles.cell,
-          RESPONSIVE_CONSTANTS.getCellLayout()
-        ]}>
-          <Text style={styles.cellLabel}>{t('breakdown.createdOn')}</Text>
-          <Text 
-            style={styles.cellValue}
-            numberOfLines={1}
-            ellipsizeMode="tail"
-          >
-            {new Date(item.created_on).toLocaleDateString()}
-          </Text>
-        </View>
+      </View>
+
+      {/* Footer with chevron */}
+      <View style={styles.cardFooter}>
+        <Text style={styles.cardFooterText}>Tap to view details</Text>
+        <MaterialCommunityIcons name="chevron-right" size={20} color="#003667" />
       </View>
     </TouchableOpacity>
   );
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar 
-        barStyle="light-content" 
-        backgroundColor={UI_CONSTANTS.COLORS.PRIMARY}
-        translucent={Platform.OS === 'android'}
-      />
-      {/* AppBar */}
-      <View style={styles.appbarContainer}>
-        <TouchableOpacity 
-          style={styles.menuButton} 
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
-        >
-          <MaterialCommunityIcons 
-            name="arrow-left" 
-            size={UI_CONSTANTS.ICON_SIZES.LG} 
-            color={UI_CONSTANTS.COLORS.SECONDARY} 
-          />
-        </TouchableOpacity>
-        <View style={styles.centerTitleContainer}>
-          <Text 
-            style={styles.appbarTitle}
-            numberOfLines={1}
-            ellipsizeMode="tail"
+    <SafeAreaProvider>
+      <View style={[styles.safeContainer, { paddingTop: insets.top }]}>
+        <StatusBar
+          barStyle="light-content"
+          backgroundColor="#003667"
+          translucent={Platform.OS === 'android'}
+        />
+        {/* AppBar */}
+        <View style={styles.appbarContainer}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.7}
           >
-            {t('breakdown.reportBreakdown')}
-          </Text>
-        </View>
-      </View>
-
-      <View style={[
-        styles.content,
-        DEVICE_TYPE === 'desktop' && styles.contentDesktop,
-        DEVICE_TYPE === 'tablet' && styles.contentTablet
-      ]}>
-        <View style={[
-          styles.actionBar,
-          RESPONSIVE_CONSTANTS.getActionBarLayout()
-        ]}>
-          <TouchableOpacity style={styles.actionButton} onPress={handleFilter}>
-            <MaterialCommunityIcons 
-              name="filter-variant" 
-              size={UI_CONSTANTS.ICON_SIZES.LG} 
-              color={UI_CONSTANTS.COLORS.SECONDARY} 
+            <MaterialCommunityIcons
+              name="arrow-left"
+              size={24}
+              color="#FEC200"
             />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton} onPress={handleAddBreakdown}>
-            <MaterialCommunityIcons 
-              name="plus" 
-              size={UI_CONSTANTS.ICON_SIZES.LG} 
-              color={UI_CONSTANTS.COLORS.WHITE} 
-            />
-          </TouchableOpacity>
-        </View>
-
-        <View style={[
-          styles.tableContainer,
-          { width: RESPONSIVE_CONSTANTS.getTableContainerWidth() },
-          DEVICE_TYPE === 'desktop' && styles.tableContainerDesktop,
-          DEVICE_TYPE === 'tablet' && styles.tableContainerTablet
-        ]}>
-          <View style={styles.tableHeader}>
-            <Text 
-              style={styles.headerText}
+          <View style={styles.centerTitleContainer}>
+            <Text
+              style={styles.appbarTitle}
               numberOfLines={1}
               ellipsizeMode="tail"
             >
-              {t('breakdown.breakdownReports')}
+              {t('breakdown.reportBreakdown')}
             </Text>
           </View>
-          
-          {loading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={UI_CONSTANTS.COLORS.PRIMARY} />
-              <Text style={styles.loadingText}>{t('breakdown.loadingBreakdownReports')}</Text>
-            </View>
-          ) : breakdownData.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <MaterialCommunityIcons 
-                name="alert-circle-outline" 
-                size={UI_CONSTANTS.ICON_SIZES.XXL * 2} 
-                color={UI_CONSTANTS.COLORS.GRAY_DARK} 
-              />
-              <Text style={styles.emptyText}>{t('breakdown.noBreakdownReportsFound')}</Text>
-              <TouchableOpacity style={styles.refreshButton} onPress={handleRefresh}>
-                <Text style={styles.refreshButtonText}>{t('breakdown.refresh')}</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <FlatList
-              data={breakdownData}
-              renderItem={renderBreakdownItem}
-              keyExtractor={(item) => item.abr_id}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={[
-                styles.listContainer,
-                DEVICE_TYPE === 'desktop' && styles.listContainerDesktop,
-                DEVICE_TYPE === 'tablet' && styles.listContainerTablet
-              ]}
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
-            />
-          )}
         </View>
+
+        <View style={styles.contentContainer}>
+          <View style={styles.actionBar}>
+            <TouchableOpacity style={styles.actionButton} onPress={handleAddBreakdown}>
+              <MaterialCommunityIcons
+                name="plus"
+                size={24}
+                color="#FFFFFF"
+              />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionButton} onPress={handleDelete}>
+              <MaterialCommunityIcons
+                name="delete"
+                size={24}
+                color="#FFFFFF"
+              />
+            </TouchableOpacity>
+          </View>
+
+          <View style={[
+            styles.tableContainer,
+            { width: RESPONSIVE_CONSTANTS.getTableContainerWidth() },
+            DEVICE_TYPE === 'desktop' && styles.tableContainerDesktop,
+            DEVICE_TYPE === 'tablet' && styles.tableContainerTablet,
+          ]}>
+            <View style={styles.tableHeader}>
+              <Text
+                style={styles.headerText}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {t('breakdown.breakdownReports')}
+              </Text>
+            </View>
+
+            {loading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#003667" />
+                <Text style={styles.loadingText}>{t('breakdown.loadingBreakdownReports')}</Text>
+              </View>
+            ) : breakdownData.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <MaterialCommunityIcons
+                  name="alert-circle-outline"
+                  size={48}
+                  color="#666"
+                />
+                <Text style={styles.emptyText}>{t('breakdown.noBreakdownReportsFound')}</Text>
+                <TouchableOpacity style={styles.refreshButton} onPress={handleRefresh}>
+                  <Text style={styles.refreshButtonText}>{t('breakdown.refresh')}</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <FlatList
+                data={breakdownData}
+                renderItem={renderBreakdownItem}
+                keyExtractor={(item) => item.abr_id}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={[
+                  styles.listContainer,
+                  DEVICE_TYPE === 'desktop' && styles.listContainerDesktop,
+                  DEVICE_TYPE === 'tablet' && styles.listContainerTablet,
+                ]}
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+              />
+            )}
+          </View>
+        </View>
+
+        <SideMenu
+          visible={menuVisible}
+          onClose={closeMenu}
+          onLogout={handleLogout}
+        />
+
+        <CustomAlert {...alertConfig} />
       </View>
-
-      <SideMenu
-        visible={menuVisible}
-        onClose={closeMenu}
-        onLogout={handleLogout}
-      />
-
-      <CustomAlert {...alertConfig} />
-    </View>
+    </SafeAreaProvider>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  safeContainer: {
     flex: 1,
-    backgroundColor: UI_CONSTANTS.COLORS.PRIMARY,
+    backgroundColor: '#003667',
+  },
+  contentContainer: {
+    flex: 1,
+    backgroundColor: '#EEEEEE',
   },
   appbarContainer: {
-    backgroundColor: UI_CONSTANTS.COLORS.PRIMARY,
-    height: 56,
+    backgroundColor: '#003667',
+    height: verticalScale(56),
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-start',
@@ -596,17 +552,7 @@ const styles = StyleSheet.create({
       },
     }),
   },
-  appbar: {
-    backgroundColor: UI_CONSTANTS.COLORS.PRIMARY,
-    elevation: 0,
-    shadowOpacity: 0,
-    height: 56,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    position: 'relative',
-  },
-  menuButton: {
+  backButton: {
     padding: RESPONSIVE_CONSTANTS.SPACING.MD,
     marginLeft: RESPONSIVE_CONSTANTS.SPACING.SM,
     zIndex: 2,
@@ -619,27 +565,16 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   appbarTitle: {
-    color: UI_CONSTANTS.COLORS.WHITE,
+    color: '#FFFFFF',
     fontWeight: '600',
     fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.LG,
     alignSelf: 'center',
   },
-  content: {
-    flex: 1,
-    backgroundColor: UI_CONSTANTS.COLORS.BACKGROUND,
-    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.LG,
-    paddingTop: RESPONSIVE_CONSTANTS.SPACING.LG,
-    alignItems: 'center',
-  },
-  contentDesktop: {
-    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.XXL,
-  },
-  contentTablet: {
-    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.XL,
-  },
   actionBar: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.LG,
+    paddingTop: RESPONSIVE_CONSTANTS.SPACING.LG,
     marginBottom: RESPONSIVE_CONSTANTS.SPACING.XL,
     gap: RESPONSIVE_CONSTANTS.SPACING.MD,
     width: '100%',
@@ -647,26 +582,27 @@ const styles = StyleSheet.create({
   actionButton: {
     width: RESPONSIVE_CONSTANTS.BUTTON_HEIGHT,
     height: RESPONSIVE_CONSTANTS.BUTTON_HEIGHT,
-    backgroundColor: UI_CONSTANTS.COLORS.PRIMARY,
+    backgroundColor: '#003667',
     borderRadius: RESPONSIVE_CONSTANTS.CARD_BORDER_RADIUS,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: UI_CONSTANTS.COLORS.BLACK,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
   tableContainer: {
-    backgroundColor: UI_CONSTANTS.COLORS.WHITE,
+    backgroundColor: '#FFFFFF',
     borderRadius: RESPONSIVE_CONSTANTS.SPACING.LG,
-    shadowColor: UI_CONSTANTS.COLORS.BLACK,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
     flex: 1,
     width: '100%',
+    marginHorizontal: RESPONSIVE_CONSTANTS.SPACING.LG,
   },
   tableContainerDesktop: {
     maxWidth: 1000,
@@ -677,13 +613,13 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   tableHeader: {
-    backgroundColor: UI_CONSTANTS.COLORS.PRIMARY,
+    backgroundColor: '#003366',
     padding: RESPONSIVE_CONSTANTS.SPACING.XL,
     borderTopLeftRadius: RESPONSIVE_CONSTANTS.SPACING.LG,
     borderTopRightRadius: RESPONSIVE_CONSTANTS.SPACING.LG,
   },
   headerText: {
-    color: UI_CONSTANTS.COLORS.WHITE,
+    color: '#FFFFFF',
     fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.XL,
     fontWeight: 'bold',
   },
@@ -696,51 +632,113 @@ const styles = StyleSheet.create({
   listContainerTablet: {
     padding: RESPONSIVE_CONSTANTS.SPACING.XL,
   },
-  tableRow: {
-    backgroundColor: UI_CONSTANTS.COLORS.WHITE,
-    marginBottom: RESPONSIVE_CONSTANTS.SPACING.MD,
-    borderRadius: RESPONSIVE_CONSTANTS.CARD_BORDER_RADIUS,
-    shadowColor: UI_CONSTANTS.COLORS.BLACK,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: UI_CONSTANTS.COLORS.GRAY_LIGHT,
-  },
-  tableRowDesktop: {
+  // Card Container
+  cardContainer: {
+    backgroundColor: '#FFFFFF',
     marginBottom: RESPONSIVE_CONSTANTS.SPACING.LG,
+    borderRadius: scale(12),
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 4,
+    borderLeftWidth: 4,
+    borderLeftColor: '#003667',
+    overflow: 'hidden',
   },
-  tableRowTablet: {
-    marginBottom: RESPONSIVE_CONSTANTS.SPACING.MD,
+  // Card Header
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: RESPONSIVE_CONSTANTS.SPACING.LG,
+    backgroundColor: '#F5F8FA',
   },
-  cellContainer: {
+  cardHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: RESPONSIVE_CONSTANTS.SPACING.SM,
+  },
+  cardId: {
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.LG,
+    fontWeight: 'bold',
+    color: '#003667',
+  },
+  // Card Divider
+  cardDivider: {
+    height: 1,
+    backgroundColor: '#E0E0E0',
+  },
+  // Card Body
+  cardBody: {
     padding: RESPONSIVE_CONSTANTS.SPACING.LG,
   },
-  cell: {
+  cardRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     marginBottom: RESPONSIVE_CONSTANTS.SPACING.MD,
+    gap: RESPONSIVE_CONSTANTS.SPACING.MD,
   },
-  cellLabel: {
-    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.SM,
-    color: UI_CONSTANTS.COLORS.TEXT_SECONDARY,
+  cardInfoBlock: {
+    flex: 1,
+  },
+  cardLabel: {
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.XS,
+    color: '#616161',
     fontWeight: '600',
     marginBottom: RESPONSIVE_CONSTANTS.SPACING.XS,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  cellValue: {
+  cardValue: {
     fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
-    color: UI_CONSTANTS.COLORS.TEXT_PRIMARY,
-    fontWeight: '500',
+    color: '#333',
+    fontWeight: '600',
   },
+  cardDescriptionContainer: {
+    marginBottom: RESPONSIVE_CONSTANTS.SPACING.MD,
+    backgroundColor: '#F9FAFB',
+    padding: RESPONSIVE_CONSTANTS.SPACING.MD,
+    borderRadius: scale(8),
+    borderLeftWidth: 3,
+    borderLeftColor: '#FEC200',
+  },
+  cardDescription: {
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.SM,
+    color: '#555',
+    lineHeight: RESPONSIVE_CONSTANTS.FONT_SIZES.SM * 1.5,
+    fontStyle: 'italic',
+  },
+  // Card Footer
+  cardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.LG,
+    paddingVertical: RESPONSIVE_CONSTANTS.SPACING.SM,
+    backgroundColor: '#F5F8FA',
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
+  },
+  cardFooterText: {
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.XS,
+    color: '#003667',
+    fontWeight: '500',
+    fontStyle: 'italic',
+  },
+  // Status Badge
   statusBadge: {
     paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.MD,
     paddingVertical: RESPONSIVE_CONSTANTS.SPACING.XS,
-    borderRadius: RESPONSIVE_CONSTANTS.SPACING.LG,
+    borderRadius: scale(16),
     alignSelf: 'flex-start',
   },
   statusText: {
-    color: UI_CONSTANTS.COLORS.WHITE,
-    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.SM,
+    color: '#FFFFFF',
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.XS,
     fontWeight: 'bold',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   loadingContainer: {
     flex: 1,
@@ -751,7 +749,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: RESPONSIVE_CONSTANTS.SPACING.LG,
     fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.LG,
-    color: UI_CONSTANTS.COLORS.TEXT_SECONDARY,
+    color: '#666',
     fontWeight: '500',
   },
   emptyContainer: {
@@ -763,19 +761,19 @@ const styles = StyleSheet.create({
   emptyText: {
     marginTop: RESPONSIVE_CONSTANTS.SPACING.LG,
     fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.LG,
-    color: UI_CONSTANTS.COLORS.TEXT_SECONDARY,
+    color: '#666',
     fontWeight: '500',
     textAlign: 'center',
   },
   refreshButton: {
     marginTop: RESPONSIVE_CONSTANTS.SPACING.XL,
-    backgroundColor: UI_CONSTANTS.COLORS.PRIMARY,
+    backgroundColor: '#003667',
     paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.XXL,
     paddingVertical: RESPONSIVE_CONSTANTS.SPACING.MD,
     borderRadius: RESPONSIVE_CONSTANTS.SPACING.SM,
   },
   refreshButtonText: {
-    color: UI_CONSTANTS.COLORS.WHITE,
+    color: '#FFFFFF',
     fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
     fontWeight: '600',
   },

@@ -138,7 +138,7 @@ export default function EmployeeAssetHistory() {
       
       const response = await fetch(url, {
         method: "GET",
-        headers: getApiHeaders(),
+        headers: await getApiHeaders(),
       });
 
       if (!response.ok) {
@@ -167,7 +167,7 @@ export default function EmployeeAssetHistory() {
       const deptUrl = `${API_CONFIG.BASE_URL}${API_ENDPOINTS.GET_DEPARTMENTS()}`;
       const deptResponse = await fetch(deptUrl, {
         method: "GET",
-        headers: getApiHeaders(),
+        headers: await getApiHeaders(),
       });
 
       if (!deptResponse.ok) {
@@ -184,7 +184,7 @@ export default function EmployeeAssetHistory() {
           const empUrl = `${API_CONFIG.BASE_URL}${API_ENDPOINTS.GET_EMPLOYEES_BY_DEPARTMENT(dept.dept_id)}`;
           const empResponse = await fetch(empUrl, {
             method: "GET",
-            headers: getApiHeaders(),
+            headers: await getApiHeaders(),
           });
 
           if (empResponse.ok) {
@@ -227,7 +227,7 @@ export default function EmployeeAssetHistory() {
 
       const response = await fetch(url, {
         method: "GET",
-        headers: getApiHeaders(),
+        headers: await getApiHeaders(),
         signal: controller.signal,
       });
 

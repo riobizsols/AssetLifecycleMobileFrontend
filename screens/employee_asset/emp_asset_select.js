@@ -129,7 +129,7 @@ export default function EmployeeAssetSelect() {
       
       const response = await fetch(url, {
         method: 'GET',
-        headers: getApiHeaders(),
+        headers: await getApiHeaders(),
       });
 
       if (!response.ok) {
@@ -208,7 +208,7 @@ export default function EmployeeAssetSelect() {
       
       const response = await fetch(url, {
         method: 'GET',
-        headers: getApiHeaders(),
+        headers: await getApiHeaders(),
       });
 
       if (response.ok) {

@@ -277,7 +277,7 @@ export default function DepartmentScreenMain() {
 
       const response = await fetch(url, {
         method: "GET",
-        headers: getApiHeaders(),
+        headers: await getApiHeaders(),
       });
 
       if (!response.ok) {
@@ -308,7 +308,7 @@ export default function DepartmentScreenMain() {
       }${API_ENDPOINTS.GET_DEPARTMENTS()}`;
       const deptResponse = await fetch(deptUrl, {
         method: "GET",
-        headers: getApiHeaders(),
+        headers: await getApiHeaders(),
       });
 
       if (!deptResponse.ok) {
@@ -326,7 +326,7 @@ export default function DepartmentScreenMain() {
           }${API_ENDPOINTS.GET_EMPLOYEES_BY_DEPARTMENT(dept.dept_id)}`;
           const empResponse = await fetch(empUrl, {
             method: "GET",
-            headers: getApiHeaders(),
+            headers: await getApiHeaders(),
           });
 
           if (empResponse.ok) {
@@ -373,7 +373,7 @@ export default function DepartmentScreenMain() {
 
       const response = await fetch(url, {
         method: "GET",
-        headers: getApiHeaders(),
+        headers: await getApiHeaders(),
         signal: controller.signal,
       });
 
@@ -446,7 +446,7 @@ export default function DepartmentScreenMain() {
               const employeeAssetUrl = `${API_CONFIG.BASE_URL}/api/asset-assignments/employee/${employeeId}/active`;
               const employeeResponse = await fetch(employeeAssetUrl, {
                 method: "GET",
-                headers: getApiHeaders(),
+                headers: await getApiHeaders(),
               });
 
               let assetCount = 0;

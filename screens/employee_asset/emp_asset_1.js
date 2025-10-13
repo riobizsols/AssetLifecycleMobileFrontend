@@ -213,7 +213,7 @@ export default function Asset_1() {
       
       const response = await fetch(url, {
         method: 'GET',
-        headers: getApiHeaders(),
+        headers: await getApiHeaders(),
         signal: controller.signal,
       });
 
@@ -362,7 +362,7 @@ export default function Asset_1() {
       
       const response = await fetch(url, {
         method: 'GET',
-        headers: getApiHeaders(),
+        headers: await getApiHeaders(),
         signal: controller.signal,
       });
       
@@ -437,7 +437,7 @@ export default function Asset_1() {
       
       const response = await fetch(url, {
         method: 'GET',
-        headers: getApiHeaders(),
+        headers: await getApiHeaders(),
         signal: controller.signal,
       });
       
@@ -475,7 +475,7 @@ export default function Asset_1() {
             const assetUrl = `${API_CONFIG.BASE_URL}${API_ENDPOINTS.GET_ASSET_DETAILS(assignment.asset_id)}`;
             const assetResponse = await fetch(assetUrl, {
               method: 'GET',
-              headers: getApiHeaders(),
+              headers: await getApiHeaders(),
             });
             
             if (assetResponse.ok) {

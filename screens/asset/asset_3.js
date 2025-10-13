@@ -224,7 +224,7 @@ export default function App() {
 
       const response = await fetch(url, {
         method: 'GET',
-        headers: getApiHeaders(),
+        headers: await getApiHeaders(),
       });
 
       if (!response.ok) {
@@ -263,7 +263,7 @@ export default function App() {
 
       const response = await fetch(url, {
         method: 'GET',
-        headers: getApiHeaders(),
+        headers: await getApiHeaders(),
       });
 
       if (!response.ok) {
@@ -339,7 +339,7 @@ export default function App() {
 
       const response = await fetch(url, {
         method: 'GET',
-        headers: getApiHeaders(),
+        headers: await getApiHeaders(),
       });
 
       if (!response.ok) {
@@ -365,7 +365,7 @@ export default function App() {
 
       const response = await fetch(url, {
         method: 'GET',
-        headers: getApiHeaders(),
+        headers: await getApiHeaders(),
       });
 
       if (response.ok) {
@@ -384,7 +384,7 @@ export default function App() {
 
             await fetch(updateUrl, {
               method: 'PUT',
-              headers: getApiHeaders(),
+              headers: await getApiHeaders(),
               body: JSON.stringify(updateData),
             });
             console.log(`Updated assignment ${assignment.asset_assign_id} latest_assignment_flag to false`);
@@ -462,7 +462,7 @@ export default function App() {
 
       const response = await fetch(url, {
         method: 'POST',
-        headers: getApiHeaders(),
+        headers: await getApiHeaders(),
         body: JSON.stringify(assignmentData),
       });
 

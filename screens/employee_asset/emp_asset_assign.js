@@ -200,7 +200,7 @@ export default function EmployeeAssetAssign() {
       
       const response = await fetch(url, {
         method: 'GET',
-        headers: getApiHeaders(),
+        headers: await getApiHeaders(),
         signal: controller.signal,
       });
       
@@ -277,7 +277,7 @@ export default function EmployeeAssetAssign() {
       
       const response = await fetch(url, {
         method: 'GET',
-        headers: getApiHeaders(),
+        headers: await getApiHeaders(),
         signal: controller.signal,
       });
       

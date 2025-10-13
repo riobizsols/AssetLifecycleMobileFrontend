@@ -73,12 +73,18 @@ export const findWorkingServer = async () => {
   throw new Error('No working server found');
 };
 
-// API Headers
-export const getApiHeaders = () => ({
-  'Content-Type': 'application/json',
-  'Authorization': `Bearer ${API_CONFIG.ACCESS_TOKEN}`,
-  'Accept': 'application/json',
-});
+// API Headers - Now retrieves token from AsyncStorage
+export const getApiHeaders = async () => {
+  // Import authUtils dynamically to avoid circular dependencies
+  const { authUtils } = await import('../utils/auth');
+  const token = await authUtils.getToken();
+  
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': token ? `Bearer ${token}` : `Bearer ${API_CONFIG.ACCESS_TOKEN}`,
+    'Accept': 'application/json',
+  };
+};
 
 // API Endpoints
 export const API_ENDPOINTS = {

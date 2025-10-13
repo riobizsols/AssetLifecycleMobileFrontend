@@ -96,7 +96,7 @@ export default function AssetDetailsScreen() {
         const url = `${API_CONFIG.BASE_URL}/api/assets/${assetId}`;
         const response = await fetch(url, {
           method: 'GET',
-          headers: getApiHeaders(),
+          headers: await getApiHeaders(),
         });
 
         if (response.ok) {
@@ -139,7 +139,7 @@ export default function AssetDetailsScreen() {
         const url = `${API_CONFIG.BASE_URL}${API_ENDPOINTS.GET_ASSET_ASSIGNMENT(assetId)}`;
         const response = await fetch(url, {
           method: 'GET',
-          headers: getApiHeaders(),
+          headers: await getApiHeaders(),
         });
 
         if (response.ok) {

@@ -118,7 +118,7 @@ export default function AssetDetailsScreen() {
       
       const response = await fetch(url, {
         method: 'GET',
-        headers: getApiHeaders(),
+        headers: await getApiHeaders(),
       });
       
       if (!response.ok) {
@@ -159,7 +159,7 @@ export default function AssetDetailsScreen() {
       
       const response = await fetch(assignmentUrl, {
         method: 'GET',
-        headers: getApiHeaders(),
+        headers: await getApiHeaders(),
       });
       
       if (response.ok) {
@@ -210,7 +210,7 @@ export default function AssetDetailsScreen() {
 
               const updateResponse = await fetch(updateUrl, {
                 method: "PUT",
-                headers: getApiHeaders(),
+                headers: await getApiHeaders(),
                 body: JSON.stringify(updateData),
               });
 
@@ -242,7 +242,7 @@ export default function AssetDetailsScreen() {
 
               const createResponse = await fetch(createUrl, {
                 method: "POST",
-                headers: getApiHeaders(),
+                headers: await getApiHeaders(),
                 body: JSON.stringify(newAssignmentData),
               });
 

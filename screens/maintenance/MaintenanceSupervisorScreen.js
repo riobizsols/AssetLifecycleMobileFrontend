@@ -55,7 +55,7 @@ const MaintenanceSupervisorScreen = ({ navigation }) => {
 
       const response = await fetch(url, {
         method: 'GET',
-        headers: getApiHeaders(),
+        headers: await getApiHeaders(),
       });
 
       if (!response.ok) {

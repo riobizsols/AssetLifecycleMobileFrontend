@@ -222,7 +222,7 @@ export default function EmployeeAssetAssignment() {
       
       const response = await fetch(url, {
         method: 'GET',
-        headers: getApiHeaders(),
+        headers: await getApiHeaders(),
       });
 
       if (!response.ok) {
@@ -261,7 +261,7 @@ export default function EmployeeAssetAssignment() {
       
       const response = await fetch(url, {
         method: 'GET',
-        headers: getApiHeaders(),
+        headers: await getApiHeaders(),
       });
 
       if (!response.ok) {
@@ -329,7 +329,7 @@ export default function EmployeeAssetAssignment() {
       
       const response = await fetch(url, {
         method: 'GET',
-        headers: getApiHeaders(),
+        headers: await getApiHeaders(),
       });
 
       if (!response.ok) {
@@ -353,7 +353,7 @@ export default function EmployeeAssetAssignment() {
       
       const response = await fetch(url, {
         method: 'GET',
-        headers: getApiHeaders(),
+        headers: await getApiHeaders(),
       });
 
       if (response.ok) {
@@ -372,7 +372,7 @@ export default function EmployeeAssetAssignment() {
             
             await fetch(updateUrl, {
               method: 'PUT',
-              headers: getApiHeaders(),
+              headers: await getApiHeaders(),
               body: JSON.stringify(updateData),
             });
             console.log(`Updated assignment ${assignment.asset_assign_id} latest_assignment_flag to false`);
@@ -450,7 +450,7 @@ export default function EmployeeAssetAssignment() {
       
       const response = await fetch(url, {
         method: 'POST',
-        headers: getApiHeaders(),
+        headers: await getApiHeaders(),
         body: JSON.stringify(assignmentData),
       });
 
@@ -498,7 +498,7 @@ export default function EmployeeAssetAssignment() {
       const departmentsUrl = `${API_CONFIG.BASE_URL}${API_ENDPOINTS.GET_DEPARTMENTS()}`;
       const deptResponse = await fetch(departmentsUrl, {
         method: "GET",
-        headers: getApiHeaders(),
+        headers: await getApiHeaders(),
       });
 
       if (!deptResponse.ok) {
@@ -514,7 +514,7 @@ export default function EmployeeAssetAssignment() {
           const employeesUrl = `${API_CONFIG.BASE_URL}${API_ENDPOINTS.GET_EMPLOYEES_BY_DEPARTMENT(dept.dept_id)}`;
           const empResponse = await fetch(employeesUrl, {
             method: "GET",
-            headers: getApiHeaders(),
+            headers: await getApiHeaders(),
           });
 
           if (empResponse.ok) {
@@ -559,7 +559,7 @@ export default function EmployeeAssetAssignment() {
 
       const response = await fetch(url, {
         method: "GET",
-        headers: getApiHeaders(),
+        headers: await getApiHeaders(),
       });
 
       if (response.ok) {

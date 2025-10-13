@@ -3,23 +3,22 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   TouchableOpacity,
   ScrollView,
   TextInput,
   ActivityIndicator,
   Dimensions,
+  Platform,
+  StatusBar,
 } from 'react-native';
-import { Appbar } from 'react-native-paper';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import CustomAlert from '../../components/CustomAlert';
 import { authUtils } from '../../utils/auth';
 import SideMenu from '../../components/SideMenu';
-import { useNavigation as useNavigationContext } from '../../context/NavigationContext';
 import { getServerUrl, getApiHeaders, API_ENDPOINTS } from '../../config/api';
-import { UI_CONSTANTS, COMMON_STYLES, UI_UTILS } from '../../utils/uiConstants';
 
 const { width, height } = Dimensions.get('window');
 
@@ -34,10 +33,18 @@ const BREAKPOINTS = {
 
 // Device type detection
 const getDeviceType = () => {
-  if (width >= BREAKPOINTS.DESKTOP) return 'desktop';
-  if (width >= BREAKPOINTS.TABLET) return 'tablet';
-  if (width >= BREAKPOINTS.LARGE) return 'large';
-  if (width >= BREAKPOINTS.MEDIUM) return 'medium';
+  if (width >= BREAKPOINTS.DESKTOP) {
+    return 'desktop';
+  }
+  if (width >= BREAKPOINTS.TABLET) {
+    return 'tablet';
+  }
+  if (width >= BREAKPOINTS.LARGE) {
+    return 'large';
+  }
+  if (width >= BREAKPOINTS.MEDIUM) {
+    return 'medium';
+  }
   return 'small';
 };
 
@@ -70,7 +77,7 @@ const RESPONSIVE_CONSTANTS = {
     XXL: scale(24),
     XXXL: scale(32),
   },
-  
+
   // Responsive font sizes
   FONT_SIZES: {
     XS: moderateScale(10),
@@ -82,20 +89,24 @@ const RESPONSIVE_CONSTANTS = {
     XXXL: moderateScale(24),
     TITLE: moderateScale(28),
   },
-  
+
   // Responsive dimensions
   CARD_PADDING: scale(16),
   CARD_BORDER_RADIUS: scale(12),
   INPUT_HEIGHT: verticalScale(48),
   BUTTON_HEIGHT: verticalScale(48),
-  
+
   // Responsive layout
   getSectionWidth: () => {
-    if (DEVICE_TYPE === 'desktop') return Math.min(width * 0.8, 800);
-    if (DEVICE_TYPE === 'tablet') return Math.min(width * 0.9, 700);
+    if (DEVICE_TYPE === 'desktop') {
+      return Math.min(width * 0.8, 800);
+    }
+    if (DEVICE_TYPE === 'tablet') {
+      return Math.min(width * 0.9, 700);
+    }
     return width - scale(32); // Mobile: full width minus padding
   },
-  
+
   getActionButtonsLayout: () => {
     if (DEVICE_TYPE === 'desktop' || DEVICE_TYPE === 'tablet') {
       return {
@@ -109,7 +120,7 @@ const RESPONSIVE_CONSTANTS = {
       gap: scale(12),
     };
   },
-  
+
   getButtonSize: () => {
     if (DEVICE_TYPE === 'desktop' || DEVICE_TYPE === 'tablet') {
       return {
@@ -130,7 +141,7 @@ const UpdateBreakdownScreen = () => {
   const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute();
-  const { hasAccess } = useNavigationContext();
+  const insets = useSafeAreaInsets();
   const [menuVisible, setMenuVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [alertConfig, setAlertConfig] = useState({
@@ -157,10 +168,25 @@ const UpdateBreakdownScreen = () => {
 
   // State for API data
   const [breakdownCodes, setBreakdownCodes] = useState([]);
-  const [decisionCodes] = useState(['BF01', 'BF02', 'BF03', 'BF04', 'BF05']);
+  const [decisionCodes] = useState([
+    {
+      code: 'BF01',
+      title: 'Maintenance Request & Breakdown Fix',
+      description: 'Create maintenance request along with breakdown fix',
+    },
+    {
+      code: 'BF02',
+      title: 'Create Breakdown fix only',
+      description: 'Create Breakdown fix only',
+    },
+    {
+      code: 'BF03',
+      title: 'Postpone fix to next maintenance',
+      description: 'Postpone breakdown fix until next maintenance',
+    },
+  ]);
 
   const [showBreakdownCodeDropdown, setShowBreakdownCodeDropdown] = useState(false);
-  const [showDecisionCodeDropdown, setShowDecisionCodeDropdown] = useState(false);
   const [showDecisionCodeDropdownUpward, setShowDecisionCodeDropdownUpward] = useState(false);
 
   // Fetch breakdown reason codes on component mount
@@ -179,7 +205,7 @@ const UpdateBreakdownScreen = () => {
 
       const response = await fetch(url, {
         method: 'GET',
-        headers: getApiHeaders(),
+        headers: await getApiHeaders(),
       });
 
       if (!response.ok) {
@@ -190,7 +216,7 @@ const UpdateBreakdownScreen = () => {
 
       const data = await response.json();
       console.log('Breakdown reason codes fetched successfully:', data);
-      
+
       // Handle the actual API response format: { data: [{ id, text, asset_type_id }] }
       if (data.data && Array.isArray(data.data)) {
         setBreakdownCodes(data.data);
@@ -249,10 +275,6 @@ const UpdateBreakdownScreen = () => {
     );
   };
 
-  const toggleMenu = () => {
-    setMenuVisible(!menuVisible);
-  };
-
   const closeMenu = () => {
     setMenuVisible(false);
   };
@@ -260,7 +282,6 @@ const UpdateBreakdownScreen = () => {
   const handleCancel = () => {
     // Close all dropdowns before navigating
     setShowBreakdownCodeDropdown(false);
-    setShowDecisionCodeDropdown(false);
     setShowDecisionCodeDropdownUpward(false);
     navigation.goBack();
   };
@@ -306,7 +327,7 @@ const UpdateBreakdownScreen = () => {
 
       const response = await fetch(url, {
         method: 'PUT',
-        headers: getApiHeaders(),
+        headers: await getApiHeaders(),
         body: JSON.stringify(requestBody),
       });
 
@@ -340,289 +361,318 @@ const UpdateBreakdownScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* AppBar */}
-      <Appbar.Header style={styles.appbar}>
-        <TouchableOpacity 
-          style={styles.menuButton} 
-          onPress={handleCancel}
-          activeOpacity={0.7}
-        >
-          <MaterialCommunityIcons 
-            name="arrow-left" 
-            size={UI_CONSTANTS.ICON_SIZES.LG} 
-            color={UI_CONSTANTS.COLORS.SECONDARY} 
-          />
-        </TouchableOpacity>
-        <View style={styles.centerTitleContainer}>
-          <Text 
-            style={styles.appbarTitle}
-            numberOfLines={1}
-            ellipsizeMode="tail"
-          >
-            {t('breakdown.updateBreakdown')}
-          </Text>
-        </View>
-      </Appbar.Header>
-
-      <ScrollView 
-        style={[
-          styles.content,
-          DEVICE_TYPE === 'desktop' && styles.contentDesktop,
-          DEVICE_TYPE === 'tablet' && styles.contentTablet
-        ]} 
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={[
-          styles.scrollContent,
-          { alignItems: 'center' }
-        ]}
-      >
-        {/* Breakdown Details Section */}
-        <View style={[
-          styles.section,
-          { width: RESPONSIVE_CONSTANTS.getSectionWidth() },
-          DEVICE_TYPE === 'desktop' && styles.sectionDesktop,
-          DEVICE_TYPE === 'tablet' && styles.sectionTablet
-        ]}>
-          <View style={styles.sectionHeader}>
-            <Text 
-              style={styles.sectionTitle}
-              numberOfLines={1}
-              ellipsizeMode="tail"
-            >
-              {t('breakdown.breakdownDetails')}
-            </Text>
-            <Text 
-              style={styles.breakdownId}
-              numberOfLines={1}
-              ellipsizeMode="tail"
-            >
-              ID: {breakdownData.abr_id}
-            </Text>
-          </View>
-          
-          <View style={styles.fieldContainer}>
-            <Text style={styles.fieldLabel}>{t('breakdown.assetId')}</Text>
-            <View style={styles.readOnlyField}>
-              <Text 
-                style={styles.readOnlyText}
-                numberOfLines={1}
-                ellipsizeMode="tail"
-              >
-                {breakdownData.asset_id}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Update Information Section */}
-        <View style={[
-          styles.section,
-          { width: RESPONSIVE_CONSTANTS.getSectionWidth() },
-          DEVICE_TYPE === 'desktop' && styles.sectionDesktop,
-          DEVICE_TYPE === 'tablet' && styles.sectionTablet
-        ]}>
-          <Text 
-            style={styles.sectionTitle}
-            numberOfLines={1}
-            ellipsizeMode="tail"
-          >
-            {t('breakdown.updateInformation')}
-          </Text>
-          
-          <View style={styles.fieldContainer}>
-            <Text style={styles.fieldLabel}>{t('breakdown.breakdownCodeAtbrrcId')}</Text>
-            <View style={styles.dropdownContainer}>
-              <TouchableOpacity
-                style={styles.dropdownButton}
-                onPress={() => setShowBreakdownCodeDropdown(!showBreakdownCodeDropdown)}
-              >
-                <Text style={[
-                  styles.dropdownButtonText,
-                  !formData.atbrrc_id && styles.placeholderText
-                ]}>
-                  {formData.atbrrc_id || t('breakdown.selectCode')}
-                </Text>
-                <MaterialCommunityIcons 
-                  name={showBreakdownCodeDropdown ? "chevron-up" : "chevron-down"} 
-                  size={UI_CONSTANTS.ICON_SIZES.MD} 
-                  color={UI_CONSTANTS.COLORS.TEXT_SECONDARY} 
-                />
-              </TouchableOpacity>
-              
-              {showBreakdownCodeDropdown && (
-                <View style={styles.dropdownOptions}>
-                  <ScrollView 
-                    style={styles.dropdownScrollView}
-                    showsVerticalScrollIndicator={true}
-                    nestedScrollEnabled={true}
-                  >
-                    {breakdownCodes.length > 0 ? (
-                      breakdownCodes.map((item) => {
-                        const code = typeof item === 'string' ? item : item.id;
-                        const displayText = typeof item === 'string' ? item : `${item.id} - ${item.text}`;
-                        return (
-                          <TouchableOpacity
-                            key={code}
-                            style={styles.dropdownOption}
-                            onPress={() => {
-                              updateFormData('atbrrc_id', code);
-                              setShowBreakdownCodeDropdown(false);
-                            }}
-                          >
-                            <Text style={styles.dropdownOptionText}>{displayText}</Text>
-                          </TouchableOpacity>
-                        );
-                      })
-                    ) : (
-                      <View style={styles.dropdownOption}>
-                        <Text style={[styles.dropdownOptionText, { color: UI_CONSTANTS.COLORS.GRAY_DARK }]}>
-                          {t('breakdown.noCodesAvailable')}
-                        </Text>
-                      </View>
-                    )}
-                  </ScrollView>
-                </View>
-              )}
-            </View>
-          </View>
-
-          <View style={styles.fieldContainer}>
-            <Text style={styles.fieldLabel}>{t('breakdown.description')}</Text>
-            <TextInput
-              style={styles.textArea}
-              placeholder={t('breakdown.describeIssuePlaceholder')}
-              placeholderTextColor={UI_CONSTANTS.COLORS.GRAY_DARK}
-              multiline
-              numberOfLines={DEVICE_TYPE === 'desktop' || DEVICE_TYPE === 'tablet' ? 5 : 4}
-              textAlignVertical="top"
-              value={formData.description}
-              onChangeText={(text) => updateFormData('description', text)}
-            />
-          </View>
-
-          <View style={styles.fieldContainer}>
-            <Text style={styles.fieldLabel}>{t('breakdown.decisionCode')}</Text>
-            <View style={styles.dropdownContainer}>
-              <TouchableOpacity
-                style={styles.dropdownButton}
-                onPress={() => {
-                  // For decision code dropdown, always show upward to avoid button overlap
-                  setShowDecisionCodeDropdown(false);
-                  setShowDecisionCodeDropdownUpward(!showDecisionCodeDropdownUpward);
-                }}
-              >
-                <Text style={[
-                  styles.dropdownButtonText,
-                  !formData.decision_code && styles.placeholderText
-                ]}>
-                  {formData.decision_code || t('breakdown.selectDecisionCode')}
-                </Text>
-                <MaterialCommunityIcons 
-                  name={showDecisionCodeDropdownUpward ? "chevron-down" : "chevron-up"} 
-                  size={UI_CONSTANTS.ICON_SIZES.MD} 
-                  color={UI_CONSTANTS.COLORS.TEXT_SECONDARY} 
-                />
-              </TouchableOpacity>
-              
-              {showDecisionCodeDropdownUpward && (
-                <View style={styles.dropdownOptionsUpward}>
-                  <ScrollView 
-                    style={styles.dropdownScrollView}
-                    showsVerticalScrollIndicator={true}
-                    nestedScrollEnabled={true}
-                  >
-                    {decisionCodes.map((code) => (
-                      <TouchableOpacity
-                        key={code}
-                        style={styles.dropdownOption}
-                        onPress={() => {
-                          updateFormData('decision_code', code);
-                          setShowDecisionCodeDropdownUpward(false);
-                        }}
-                      >
-                        <Text style={styles.dropdownOptionText}>{code}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                </View>
-              )}
-            </View>
-          </View>
-        </View>
-
-        {/* Action Buttons */}
-        <View style={[
-          styles.actionButtons,
-          RESPONSIVE_CONSTANTS.getActionButtonsLayout()
-        ]}>
-          <TouchableOpacity 
-            style={[
-              styles.cancelButton,
-              RESPONSIVE_CONSTANTS.getButtonSize()
-            ]} 
+    <SafeAreaProvider>
+      <View style={[styles.safeContainer, { paddingTop: insets.top }]}>
+        <StatusBar
+          barStyle="light-content"
+          backgroundColor="#003667"
+          translucent={Platform.OS === 'android'}
+        />
+        {/* AppBar */}
+        <View style={styles.appbarContainer}>
+          <TouchableOpacity
+            style={styles.backButton}
             onPress={handleCancel}
+            activeOpacity={0.7}
           >
-            <Text 
-              style={styles.cancelButtonText}
+            <MaterialCommunityIcons
+              name="arrow-left"
+              size={24}
+              color="#FEC200"
+            />
+          </TouchableOpacity>
+          <View style={styles.centerTitleContainer}>
+            <Text
+              style={styles.appbarTitle}
               numberOfLines={1}
               ellipsizeMode="tail"
             >
-              {t('common.cancel')}
+              {t('breakdown.updateBreakdown')}
             </Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[
-              styles.updateButton, 
-              RESPONSIVE_CONSTANTS.getButtonSize(),
-              loading && styles.disabledButton
-            ]} 
-            onPress={handleUpdateBreakdown}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator size="small" color={UI_CONSTANTS.COLORS.WHITE} />
-            ) : (
-              <Text 
-                style={styles.updateButtonText}
-                numberOfLines={1}
-                ellipsizeMode="tail"
-              >
-                {t('breakdown.updateBreakdown')}
-              </Text>
-            )}
-          </TouchableOpacity>
+          </View>
         </View>
-      </ScrollView>
 
-      <SideMenu
-        visible={menuVisible}
-        onClose={closeMenu}
-        onLogout={handleLogout}
-      />
+        <ScrollView
+          style={styles.content}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          {/* Header Card with Breakdown ID */}
+          <View style={styles.headerCard}>
+            <View style={styles.headerCardContent}>
+              <View style={styles.headerIconContainer}>
+                <MaterialCommunityIcons name="file-document-edit" size={32} color="#FEC200" />
+              </View>
+              <View style={styles.headerTextContainer}>
+                <Text style={styles.headerLabel}>Breakdown ID</Text>
+                <Text style={styles.headerValue}>{breakdownData.abr_id}</Text>
+              </View>
+            </View>
+            <View style={styles.headerDivider} />
+            <View style={styles.assetInfoRow}>
+              <MaterialCommunityIcons name="package-variant" size={20} color="#003667" />
+              <Text style={styles.assetIdLabel}>Asset ID:</Text>
+              <Text style={styles.assetIdValue}>{breakdownData.asset_id}</Text>
+            </View>
+          </View>
 
-      <CustomAlert {...alertConfig} />
-    </SafeAreaView>
+          {/* Update Form Card */}
+          <View style={styles.formCard}>
+            <View style={styles.formCardHeader}>
+              <MaterialCommunityIcons name="pencil-box" size={24} color="#003667" />
+              <Text style={styles.formCardTitle}>{t('breakdown.updateInformation')}</Text>
+            </View>
+
+            {/* Breakdown Code Field */}
+            <View style={styles.inputGroup}>
+              <View style={styles.inputLabelRow}>
+                <MaterialCommunityIcons name="code-tags" size={18} color="#003667" />
+                <Text style={styles.inputLabel}>{t('breakdown.breakdownCodeAtbrrcId')}</Text>
+              </View>
+              <View style={styles.dropdownContainer}>
+                <TouchableOpacity
+                  style={styles.modernDropdownButton}
+                  onPress={() => setShowBreakdownCodeDropdown(!showBreakdownCodeDropdown)}
+                >
+                  <Text style={[
+                    styles.dropdownButtonText,
+                    !formData.atbrrc_id && styles.placeholderText,
+                  ]}>
+                    {formData.atbrrc_id || t('breakdown.selectCode')}
+                  </Text>
+                  <MaterialCommunityIcons
+                    name={showBreakdownCodeDropdown ? 'chevron-up' : 'chevron-down'}
+                    size={22}
+                    color="#003667"
+                  />
+                </TouchableOpacity>
+
+                {showBreakdownCodeDropdown && (
+                  <View style={styles.dropdownOptions}>
+                    <ScrollView
+                      style={styles.dropdownScrollView}
+                      showsVerticalScrollIndicator={true}
+                      nestedScrollEnabled={true}
+                    >
+                      {breakdownCodes.length > 0 ? (
+                        breakdownCodes.map((item) => {
+                          const code = typeof item === 'string' ? item : item.id;
+                          const displayText = typeof item === 'string' ? item : `${item.id} - ${item.text}`;
+                          return (
+                            <TouchableOpacity
+                              key={code}
+                              style={styles.modernDropdownOption}
+                              onPress={() => {
+                                updateFormData('atbrrc_id', code);
+                                setShowBreakdownCodeDropdown(false);
+                              }}
+                            >
+                              <MaterialCommunityIcons name="check-circle" size={18} color="#FEC200" />
+                              <Text style={styles.dropdownOptionText}>{displayText}</Text>
+                            </TouchableOpacity>
+                          );
+                        })
+                      ) : (
+                        <View style={styles.modernDropdownOption}>
+                          <MaterialCommunityIcons name="alert-circle" size={18} color="#999" />
+                          <Text style={[styles.dropdownOptionText, { color: '#999' }]}>
+                            {t('breakdown.noCodesAvailable')}
+                          </Text>
+                        </View>
+                      )}
+                    </ScrollView>
+                  </View>
+                )}
+              </View>
+            </View>
+
+            {/* Description Field */}
+            <View style={styles.inputGroup}>
+              <View style={styles.inputLabelRow}>
+                <MaterialCommunityIcons name="text-box" size={18} color="#003667" />
+                <Text style={styles.inputLabel}>{t('breakdown.description')}</Text>
+              </View>
+              <View style={styles.textAreaContainer}>
+                <TextInput
+                  style={styles.modernTextArea}
+                  placeholder={t('breakdown.describeIssuePlaceholder')}
+                  placeholderTextColor="#999"
+                  multiline
+                  numberOfLines={DEVICE_TYPE === 'desktop' || DEVICE_TYPE === 'tablet' ? 5 : 4}
+                  textAlignVertical="top"
+                  value={formData.description}
+                  onChangeText={(text) => updateFormData('description', text)}
+                />
+                <View style={styles.charCountContainer}>
+                  <Text style={styles.charCount}>{formData.description.length} characters</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Decision Code Field */}
+            <View style={styles.inputGroup}>
+              <View style={styles.inputLabelRow}>
+                <MaterialCommunityIcons name="checkbox-marked-circle" size={18} color="#003667" />
+                <Text style={styles.inputLabel}>{t('breakdown.decisionCode')}</Text>
+              </View>
+              <View style={styles.dropdownContainer}>
+                <TouchableOpacity
+                  style={styles.modernDropdownButton}
+                  onPress={() => {
+                    setShowDecisionCodeDropdownUpward(!showDecisionCodeDropdownUpward);
+                  }}
+                >
+                  <Text style={[
+                    styles.dropdownButtonText,
+                    !formData.decision_code && styles.placeholderText,
+                  ]}>
+                    {formData.decision_code
+                      ? (() => {
+                          const selectedItem = decisionCodes.find(item => item.code === formData.decision_code);
+                          return selectedItem ? `${selectedItem.code} - ${selectedItem.title}` : formData.decision_code;
+                        })()
+                      : t('breakdown.selectDecisionCode')
+                    }
+                  </Text>
+                  <MaterialCommunityIcons
+                    name={showDecisionCodeDropdownUpward ? 'chevron-down' : 'chevron-up'}
+                    size={22}
+                    color="#003667"
+                  />
+                </TouchableOpacity>
+
+                {showDecisionCodeDropdownUpward && (
+                  <View style={styles.dropdownOptionsUpward}>
+                    <ScrollView
+                      style={styles.dropdownScrollView}
+                      showsVerticalScrollIndicator={true}
+                      nestedScrollEnabled={true}
+                    >
+                      {decisionCodes.map((item) => (
+                        <TouchableOpacity
+                          key={item.code}
+                          style={[
+                            styles.modernDropdownOption,
+                            formData.decision_code === item.code && styles.selectedDropdownOption,
+                          ]}
+                          onPress={() => {
+                            updateFormData('decision_code', item.code);
+                            setShowDecisionCodeDropdownUpward(false);
+                          }}
+                        >
+                          <View style={styles.dropdownOptionContent}>
+                            <View style={styles.dropdownOptionHeader}>
+                              <MaterialCommunityIcons
+                                name={formData.decision_code === item.code ? 'check-circle' : 'circle-outline'}
+                                size={18}
+                                color={formData.decision_code === item.code ? '#FEC200' : '#999'}
+                              />
+                              <Text style={[
+                                styles.dropdownOptionCode,
+                                formData.decision_code === item.code && styles.selectedDropdownText,
+                              ]}>
+                                {item.code}
+                              </Text>
+                              <Text style={[
+                                styles.dropdownOptionTitle,
+                                formData.decision_code === item.code && styles.selectedDropdownText,
+                              ]}>
+                                {item.title}
+                              </Text>
+                            </View>
+                            <Text style={[
+                              styles.dropdownOptionDescription,
+                              formData.decision_code === item.code && styles.selectedDropdownDescription,
+                            ]}>
+                              {item.description}
+                            </Text>
+                          </View>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  </View>
+                )}
+              </View>
+            </View>
+          </View>
+
+          {/* Action Buttons */}
+          <View style={styles.actionButtonsContainer}>
+            <TouchableOpacity
+              style={styles.modernCancelButton}
+              onPress={handleCancel}
+            >
+              <MaterialCommunityIcons name="close-circle" size={20} color="#616161" />
+              <Text style={styles.modernCancelButtonText}>
+                {t('common.cancel')}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.modernUpdateButton,
+                loading && styles.disabledButton,
+              ]}
+              onPress={handleUpdateBreakdown}
+              disabled={loading}
+            >
+              {loading ? (
+                <>
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <Text style={styles.modernUpdateButtonText}>Updating...</Text>
+                </>
+              ) : (
+                <>
+                  <MaterialCommunityIcons name="check-circle" size={20} color="#FFFFFF" />
+                  <Text style={styles.modernUpdateButtonText}>
+                    {t('breakdown.updateBreakdown')}
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+
+        <SideMenu
+          visible={menuVisible}
+          onClose={closeMenu}
+          onLogout={handleLogout}
+        />
+
+        <CustomAlert {...alertConfig} />
+      </View>
+    </SafeAreaProvider>
   );
 };
 
 
 const styles = StyleSheet.create({
-  container: {
+  safeContainer: {
     flex: 1,
-    backgroundColor: UI_CONSTANTS.COLORS.BACKGROUND,
+    backgroundColor: '#003667',
   },
-  appbar: {
-    backgroundColor: UI_CONSTANTS.COLORS.PRIMARY,
-    elevation: 0,
-    shadowOpacity: 0,
-    height: 60,
+  appbarContainer: {
+    backgroundColor: '#003667',
+    height: verticalScale(56),
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-start',
     position: 'relative',
+    paddingHorizontal: 0,
+    ...Platform.select({
+      ios: {
+        // iOS handles safe area automatically
+      },
+      android: {
+        // Android needs explicit handling
+        elevation: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+    }),
   },
-  menuButton: {
+  backButton: {
     padding: RESPONSIVE_CONSTANTS.SPACING.MD,
     marginLeft: RESPONSIVE_CONSTANTS.SPACING.SM,
     zIndex: 2,
@@ -635,131 +685,166 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   appbarTitle: {
-    color: UI_CONSTANTS.COLORS.WHITE,
+    color: '#FFFFFF',
     fontWeight: '600',
     fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.LG,
     alignSelf: 'center',
   },
   content: {
     flex: 1,
-    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.LG,
-    paddingTop: RESPONSIVE_CONSTANTS.SPACING.LG,
-    paddingBottom: RESPONSIVE_CONSTANTS.SPACING.XXXL,
-  },
-  contentDesktop: {
-    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.XXL,
-  },
-  contentTablet: {
-    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.XL,
+    backgroundColor: '#EEEEEE',
   },
   scrollContent: {
-    alignItems: 'center',
+    padding: RESPONSIVE_CONSTANTS.SPACING.LG,
     paddingBottom: RESPONSIVE_CONSTANTS.SPACING.XXXL,
   },
-  section: {
-    backgroundColor: UI_CONSTANTS.COLORS.WHITE,
-    borderRadius: RESPONSIVE_CONSTANTS.SPACING.LG,
+  // Header Card Styles
+  headerCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: scale(16),
+    marginBottom: RESPONSIVE_CONSTANTS.SPACING.LG,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+    borderLeftWidth: 6,
+    borderLeftColor: '#FEC200',
+    overflow: 'hidden',
+  },
+  headerCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
     padding: RESPONSIVE_CONSTANTS.SPACING.XL,
-    marginBottom: RESPONSIVE_CONSTANTS.SPACING.XL,
-    shadowColor: UI_CONSTANTS.COLORS.BLACK,
+    backgroundColor: '#F8F9FA',
+  },
+  headerIconContainer: {
+    width: scale(60),
+    height: scale(60),
+    borderRadius: scale(30),
+    backgroundColor: '#003667',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: RESPONSIVE_CONSTANTS.SPACING.LG,
+  },
+  headerTextContainer: {
+    flex: 1,
+  },
+  headerLabel: {
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.SM,
+    color: '#616161',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: RESPONSIVE_CONSTANTS.SPACING.XS,
+  },
+  headerValue: {
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.XXL,
+    fontWeight: 'bold',
+    color: '#003667',
+  },
+  headerDivider: {
+    height: 1,
+    backgroundColor: '#E0E0E0',
+  },
+  assetInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: RESPONSIVE_CONSTANTS.SPACING.LG,
+    gap: RESPONSIVE_CONSTANTS.SPACING.SM,
+  },
+  assetIdLabel: {
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
+    color: '#616161',
+    fontWeight: '600',
+    marginLeft: RESPONSIVE_CONSTANTS.SPACING.XS,
+  },
+  assetIdValue: {
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
+    color: '#003667',
+    fontWeight: 'bold',
+  },
+  // Form Card Styles
+  formCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: scale(16),
+    marginBottom: RESPONSIVE_CONSTANTS.SPACING.LG,
+    padding: RESPONSIVE_CONSTANTS.SPACING.XL,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
-    width: '100%',
   },
-  sectionDesktop: {
-    maxWidth: 800,
-    alignSelf: 'center',
-  },
-  sectionTablet: {
-    maxWidth: 700,
-    alignSelf: 'center',
-  },
-  sectionHeader: {
+  formCardHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: RESPONSIVE_CONSTANTS.SPACING.LG,
+    marginBottom: RESPONSIVE_CONSTANTS.SPACING.XL,
+    paddingBottom: RESPONSIVE_CONSTANTS.SPACING.MD,
+    borderBottomWidth: 2,
+    borderBottomColor: '#FEC200',
+    gap: RESPONSIVE_CONSTANTS.SPACING.MD,
   },
-  sectionTitle: {
+  formCardTitle: {
     fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.XL,
     fontWeight: 'bold',
-    color: UI_CONSTANTS.COLORS.PRIMARY,
+    color: '#003667',
   },
-  breakdownId: {
-    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
-    fontWeight: '600',
-    color: UI_CONSTANTS.COLORS.TEXT_SECONDARY,
-  },
-  fieldContainer: {
+  inputGroup: {
     marginBottom: RESPONSIVE_CONSTANTS.SPACING.XL,
   },
-  fieldLabel: {
+  inputLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: RESPONSIVE_CONSTANTS.SPACING.SM,
+    gap: RESPONSIVE_CONSTANTS.SPACING.SM,
+  },
+  inputLabel: {
     fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
     fontWeight: '600',
-    color: UI_CONSTANTS.COLORS.TEXT_PRIMARY,
-    marginBottom: RESPONSIVE_CONSTANTS.SPACING.SM,
-  },
-  readOnlyField: {
-    borderWidth: 1,
-    borderColor: UI_CONSTANTS.COLORS.GRAY_MEDIUM,
-    borderRadius: RESPONSIVE_CONSTANTS.SPACING.MD,
-    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.LG,
-    paddingVertical: RESPONSIVE_CONSTANTS.SPACING.MD,
-    backgroundColor: UI_CONSTANTS.COLORS.GRAY_LIGHT,
-    minHeight: RESPONSIVE_CONSTANTS.INPUT_HEIGHT,
-    justifyContent: 'center',
-  },
-  readOnlyText: {
-    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.LG,
-    color: UI_CONSTANTS.COLORS.TEXT_PRIMARY,
-    fontWeight: '500',
+    color: '#003667',
   },
   dropdownContainer: {
     position: 'relative',
   },
-  dropdownButton: {
+  modernDropdownButton: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: UI_CONSTANTS.COLORS.GRAY_MEDIUM,
-    borderRadius: RESPONSIVE_CONSTANTS.SPACING.MD,
+    borderWidth: 2,
+    borderColor: '#E0E0E0',
+    borderRadius: scale(12),
     paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.LG,
     paddingVertical: RESPONSIVE_CONSTANTS.SPACING.MD,
-    backgroundColor: UI_CONSTANTS.COLORS.WHITE,
-    shadowColor: UI_CONSTANTS.COLORS.BLACK,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    backgroundColor: '#F8F9FA',
     minHeight: RESPONSIVE_CONSTANTS.INPUT_HEIGHT,
   },
   dropdownButtonText: {
-    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.LG,
-    color: UI_CONSTANTS.COLORS.TEXT_PRIMARY,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
+    color: '#333',
+    fontWeight: '500',
   },
   placeholderText: {
-    color: UI_CONSTANTS.COLORS.GRAY_DARK,
+    color: '#999',
+    fontStyle: 'italic',
   },
   dropdownOptions: {
     position: 'absolute',
     top: '100%',
     left: 0,
     right: 0,
-    backgroundColor: UI_CONSTANTS.COLORS.WHITE,
-    borderWidth: 1,
-    borderColor: UI_CONSTANTS.COLORS.GRAY_MEDIUM,
-    borderRadius: RESPONSIVE_CONSTANTS.SPACING.MD,
-    marginTop: RESPONSIVE_CONSTANTS.SPACING.XS,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: '#E0E0E0',
+    borderRadius: scale(12),
+    marginTop: RESPONSIVE_CONSTANTS.SPACING.SM,
     zIndex: 9999,
-    shadowColor: UI_CONSTANTS.COLORS.BLACK,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 10,
-    maxHeight: 150, // Reduced height to prevent overlap
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 12,
+    maxHeight: 200,
     overflow: 'hidden',
   },
   dropdownOptionsUpward: {
@@ -767,94 +852,152 @@ const styles = StyleSheet.create({
     bottom: '100%',
     left: 0,
     right: 0,
-    backgroundColor: UI_CONSTANTS.COLORS.WHITE,
-    borderWidth: 1,
-    borderColor: UI_CONSTANTS.COLORS.GRAY_MEDIUM,
-    borderRadius: RESPONSIVE_CONSTANTS.SPACING.MD,
-    marginBottom: RESPONSIVE_CONSTANTS.SPACING.XS,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: '#E0E0E0',
+    borderRadius: scale(12),
+    marginBottom: RESPONSIVE_CONSTANTS.SPACING.SM,
     zIndex: 9999,
-    shadowColor: UI_CONSTANTS.COLORS.BLACK,
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 10,
-    maxHeight: 150, // Reduced height to prevent overlap
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 12,
+    maxHeight: 200,
     overflow: 'hidden',
   },
-  dropdownOption: {
+  modernDropdownOption: {
     paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.LG,
     paddingVertical: RESPONSIVE_CONSTANTS.SPACING.MD,
     borderBottomWidth: 1,
-    borderBottomColor: UI_CONSTANTS.COLORS.GRAY_LIGHT,
+    borderBottomColor: '#F0F0F0',
+  },
+  selectedDropdownOption: {
+    backgroundColor: '#F0F8FF',
+  },
+  dropdownOptionContent: {
+    flex: 1,
+  },
+  dropdownOptionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: RESPONSIVE_CONSTANTS.SPACING.XS,
+    gap: RESPONSIVE_CONSTANTS.SPACING.SM,
+  },
+  dropdownOptionCode: {
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
+    color: '#003667',
+    fontWeight: 'bold',
+    minWidth: 40,
+  },
+  dropdownOptionTitle: {
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
+    color: '#333',
+    fontWeight: '600',
+    flex: 1,
+  },
+  dropdownOptionDescription: {
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.SM,
+    color: '#666',
+    fontStyle: 'italic',
+    marginLeft: scale(36), // Align with title text
+  },
+  selectedDropdownText: {
+    color: '#003667',
+  },
+  selectedDropdownDescription: {
+    color: '#003667',
+    fontStyle: 'normal',
   },
   dropdownOptionText: {
-    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.LG,
-    color: UI_CONSTANTS.COLORS.TEXT_PRIMARY,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
+    color: '#333',
+    fontWeight: '500',
   },
   dropdownScrollView: {
-    maxHeight: 150,
+    maxHeight: 200,
   },
-  textArea: {
-    borderWidth: 1,
-    borderColor: UI_CONSTANTS.COLORS.GRAY_MEDIUM,
-    borderRadius: RESPONSIVE_CONSTANTS.SPACING.MD,
+  textAreaContainer: {
+    borderWidth: 2,
+    borderColor: '#E0E0E0',
+    borderRadius: scale(12),
+    backgroundColor: '#F8F9FA',
+    overflow: 'hidden',
+  },
+  modernTextArea: {
     paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.LG,
     paddingVertical: RESPONSIVE_CONSTANTS.SPACING.MD,
-    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.LG,
-    backgroundColor: UI_CONSTANTS.COLORS.WHITE,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
     minHeight: DEVICE_TYPE === 'desktop' || DEVICE_TYPE === 'tablet' ? 120 : 100,
     textAlignVertical: 'top',
-    shadowColor: UI_CONSTANTS.COLORS.BLACK,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    color: '#333',
   },
-  actionButtons: {
+  charCountContainer: {
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.LG,
+    paddingVertical: RESPONSIVE_CONSTANTS.SPACING.SM,
+    backgroundColor: '#EEEEEE',
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
+  },
+  charCount: {
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.XS,
+    color: '#999',
+    fontStyle: 'italic',
+    textAlign: 'right',
+  },
+  // Action Buttons
+  actionButtonsContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     gap: RESPONSIVE_CONSTANTS.SPACING.MD,
-    marginTop: RESPONSIVE_CONSTANTS.SPACING.XL,
-    marginBottom: RESPONSIVE_CONSTANTS.SPACING.XXXL,
-    width: '100%',
+    marginTop: RESPONSIVE_CONSTANTS.SPACING.LG,
+    marginBottom: RESPONSIVE_CONSTANTS.SPACING.XL,
   },
-  cancelButton: {
-    backgroundColor: UI_CONSTANTS.COLORS.GRAY_LIGHT,
-    borderWidth: 1,
-    borderColor: UI_CONSTANTS.COLORS.GRAY_MEDIUM,
-    borderRadius: RESPONSIVE_CONSTANTS.SPACING.MD,
-    paddingVertical: RESPONSIVE_CONSTANTS.SPACING.LG,
+  modernCancelButton: {
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: UI_CONSTANTS.COLORS.BLACK,
+    justifyContent: 'center',
+    backgroundColor: '#F5F5F5',
+    borderWidth: 2,
+    borderColor: '#E0E0E0',
+    borderRadius: scale(12),
+    paddingVertical: RESPONSIVE_CONSTANTS.SPACING.LG,
+    gap: RESPONSIVE_CONSTANTS.SPACING.SM,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
   },
-  cancelButtonText: {
-    color: UI_CONSTANTS.COLORS.TEXT_SECONDARY,
-    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.LG,
-    fontWeight: '600',
+  modernCancelButtonText: {
+    color: '#616161',
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
+    fontWeight: '700',
   },
-  updateButton: {
-    backgroundColor: UI_CONSTANTS.COLORS.PRIMARY,
-    borderRadius: RESPONSIVE_CONSTANTS.SPACING.MD,
-    paddingVertical: RESPONSIVE_CONSTANTS.SPACING.LG,
+  modernUpdateButton: {
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: UI_CONSTANTS.COLORS.BLACK,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
+    justifyContent: 'center',
+    backgroundColor: '#003667',
+    borderRadius: scale(12),
+    paddingVertical: RESPONSIVE_CONSTANTS.SPACING.LG,
+    gap: RESPONSIVE_CONSTANTS.SPACING.SM,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 5,
   },
-  updateButtonText: {
-    color: UI_CONSTANTS.COLORS.WHITE,
-    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.LG,
-    fontWeight: '600',
+  modernUpdateButtonText: {
+    color: '#FFFFFF',
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
+    fontWeight: '700',
   },
   disabledButton: {
-    backgroundColor: UI_CONSTANTS.COLORS.GRAY_DARK,
+    backgroundColor: '#999',
     shadowOpacity: 0.1,
+    elevation: 2,
   },
 });
 
