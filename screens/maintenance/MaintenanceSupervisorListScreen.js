@@ -10,6 +10,7 @@ import {
   StatusBar,
   ActivityIndicator,
   RefreshControl,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Appbar } from 'react-native-paper';
@@ -28,6 +29,7 @@ const MaintenanceSupervisorListScreen = () => {
   const { hasAccess } = useNavigationContext();
   const [menuVisible, setMenuVisible] = useState(false);
   const insets = useSafeAreaInsets();
+  const { width, height } = useWindowDimensions();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [alertConfig, setAlertConfig] = useState({
@@ -269,6 +271,37 @@ const MaintenanceSupervisorListScreen = () => {
     );
   };
 
+  // Responsive scaling based on device dimensions, preserving design proportions
+  const baseWidth = 375;
+  const baseHeight = 812;
+  const scale = Math.min(width / baseWidth, 1.4);
+  const vScale = Math.min(height / baseHeight, 1.4);
+  const moderateScale = (size, factor = 0.5) => size + (scale * size - size) * factor;
+  const rs = (n) => Math.round(moderateScale(n));
+
+  const responsiveStyles = React.useMemo(() => ({
+    appbarContainer: { height: rs(56) },
+    appbar: { height: rs(56) },
+    content: { paddingHorizontal: rs(16), paddingTop: rs(16) },
+    actionButton: { width: rs(48), height: rs(48), borderRadius: rs(12) },
+    tableContainer: { borderRadius: rs(16) },
+    tableHeader: { padding: rs(20), borderTopLeftRadius: rs(16), borderTopRightRadius: rs(16) },
+    headerText: { fontSize: rs(18) },
+    listContainer: { padding: rs(16) },
+    tableRow: { marginBottom: rs(12), borderRadius: rs(12) },
+    cellContainer: { padding: rs(16) },
+    cell: { marginBottom: rs(12) },
+    cellLabel: { fontSize: rs(12), marginBottom: rs(4) },
+    cellValue: { fontSize: rs(14) },
+    statusBadge: { paddingHorizontal: rs(10), paddingVertical: rs(6), borderRadius: rs(16) },
+    loadingContainer: { padding: rs(32) },
+    loadingText: { fontSize: rs(16), marginTop: rs(16) },
+    emptyContainer: { padding: rs(32) },
+    emptyText: { fontSize: rs(16), marginTop: rs(16) },
+    iconSize: rs(24),
+    iconSizeLarge: rs(64),
+  }), [width, height]);
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <StatusBar 
@@ -277,40 +310,40 @@ const MaintenanceSupervisorListScreen = () => {
         translucent={Platform.OS === 'android'}
       />
       {/* AppBar */}
-      <View style={styles.appbarContainer}>
+      <View style={[styles.appbarContainer, responsiveStyles.appbarContainer]}>
         <TouchableOpacity 
           style={styles.menuButton} 
           onPress={() => navigation.goBack()}
           activeOpacity={0.7}
         >
-          <MaterialCommunityIcons name="arrow-left" size={24} color="#FEC200" />
+          <MaterialCommunityIcons name="arrow-left" size={responsiveStyles.iconSize} color="#FEC200" />
         </TouchableOpacity>
         <View style={styles.centerTitleContainer}>
           <Text style={styles.appbarTitle}>{t('maintenance.maintenanceSupervisor')}</Text>
         </View>
       </View>
 
-      <View style={styles.content}>
+      <View style={[styles.content, responsiveStyles.content]}>
         <View style={styles.actionBar}>
-          <TouchableOpacity style={styles.actionButton} onPress={handleFilter}>
-            <MaterialCommunityIcons name="filter-variant" size={24} color="#FFD700" />
+          <TouchableOpacity style={[styles.actionButton, responsiveStyles.actionButton]} onPress={handleFilter}>
+            <MaterialCommunityIcons name="filter-variant" size={responsiveStyles.iconSize} color="#FFD700" />
           </TouchableOpacity>
         </View>
 
-        <View style={styles.tableContainer}>
-          <View style={styles.tableHeader}>
-            <Text style={styles.headerText}>{t('maintenance.maintenanceRecords')}</Text>
+        <View style={[styles.tableContainer, responsiveStyles.tableContainer]}>
+          <View style={[styles.tableHeader, responsiveStyles.tableHeader]}>
+            <Text style={[styles.headerText, responsiveStyles.headerText]}>{t('maintenance.maintenanceRecords')}</Text>
           </View>
           
           {loading ? (
-            <View style={styles.loadingContainer}>
+            <View style={[styles.loadingContainer, responsiveStyles.loadingContainer]}>
               <ActivityIndicator size="large" color="#003667" />
-              <Text style={styles.loadingText}>{t('common.loading') || 'Loading...'}</Text>
+              <Text style={[styles.loadingText, responsiveStyles.loadingText]}>{t('common.loading') || 'Loading...'}</Text>
             </View>
           ) : maintenanceData.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <MaterialCommunityIcons name="toolbox-outline" size={64} color="#ccc" />
-              <Text style={styles.emptyText}>{t('maintenance.noMaintenanceRecords') || 'No maintenance records found'}</Text>
+            <View style={[styles.emptyContainer, responsiveStyles.emptyContainer]}>
+              <MaterialCommunityIcons name="toolbox-outline" size={responsiveStyles.iconSizeLarge} color="#ccc" />
+              <Text style={[styles.emptyText, responsiveStyles.emptyText]}>{t('maintenance.noMaintenanceRecords') || 'No maintenance records found'}</Text>
             </View>
           ) : (
             <FlatList
@@ -318,7 +351,7 @@ const MaintenanceSupervisorListScreen = () => {
               renderItem={renderMaintenanceItem}
               keyExtractor={(item) => item.id || item._id || Math.random().toString()}
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.listContainer}
+              contentContainerStyle={[styles.listContainer, responsiveStyles.listContainer]}
               refreshControl={
                 <RefreshControl
                   refreshing={refreshing}

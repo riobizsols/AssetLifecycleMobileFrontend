@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,11 +6,12 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  SafeAreaView,
   StatusBar,
   Alert,
   ActivityIndicator,
+  useWindowDimensions,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { Appbar } from 'react-native-paper';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -19,6 +20,16 @@ import { API_CONFIG, getApiHeaders, API_ENDPOINTS, getServerUrl } from '../../co
 
 const MaintenanceSupervisorScreen = ({ navigation }) => {
   const { t } = useTranslation();
+  const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+
+  // Responsive scaling based on device dimensions, preserving design proportions
+  const baseWidth = 375;
+  const baseHeight = 812;
+  const scale = Math.min(width / baseWidth, 1.4);
+  const vScale = Math.min(height / baseHeight, 1.4);
+  const moderateScale = (size, factor = 0.5) => size + (scale * size - size) * factor;
+  const rs = (n) => Math.round(moderateScale(n));
   const [formData, setFormData] = useState({
     name: 'Rahul',
     phone: '9876543210',
@@ -34,6 +45,61 @@ const MaintenanceSupervisorScreen = ({ navigation }) => {
   const [loadingChecklist, setLoadingChecklist] = useState(false);
   const [showChecklist, setShowChecklist] = useState(false);
   const statusOptions = [t('maintenance.pending'), t('maintenance.inProgress'), t('maintenance.completed'), t('maintenance.cancelled')];
+
+  const normalizeStatus = (s) => (s || '').toString().toLowerCase().trim();
+  const isCompleted =
+    normalizeStatus(formData.status) === normalizeStatus(t('maintenance.completed')) ||
+    normalizeStatus(formData.status) === 'completed';
+
+  useEffect(() => {
+    if (isCompleted) {
+      setShowStatusDropdown(false);
+    }
+  }, [isCompleted]);
+
+  // Memoized responsive overrides to avoid layout thrash
+  const responsiveStyles = React.useMemo(() => ({
+    appbar: { height: rs(60) },
+    content: { paddingHorizontal: rs(16), paddingTop: rs(16) },
+    headerCard: { borderRadius: rs(16), padding: rs(20), marginBottom: rs(20) },
+    headerIconContainer: { width: rs(56), height: rs(56), borderRadius: rs(28), marginRight: rs(16) },
+    headerTitle: { fontSize: rs(20) },
+    headerSubtitle: { fontSize: rs(14) },
+    quickActionsContainer: { marginBottom: rs(20), gap: rs(12) },
+    quickActionCard: { borderRadius: rs(12), padding: rs(16) },
+    quickActionIcon: { width: rs(48), height: rs(48), borderRadius: rs(24), marginBottom: rs(8) },
+    quickActionText: { fontSize: rs(12) },
+    formSection: { borderRadius: rs(16), padding: rs(20) },
+    formHeader: { marginBottom: rs(24), paddingBottom: rs(16) },
+    formTitle: { fontSize: rs(18), marginLeft: rs(12) },
+    inputGroup: { marginBottom: rs(20) },
+    inputLabel: { fontSize: rs(14), marginBottom: rs(10) },
+    textInput: { borderRadius: rs(10), paddingHorizontal: rs(16), paddingVertical: rs(14), fontSize: rs(16) },
+    notesInput: { height: rs(100), paddingTop: rs(14) },
+    dropdownButton: { borderRadius: rs(10), paddingHorizontal: rs(16), paddingVertical: rs(14) },
+    dropdownButtonText: { fontSize: rs(16) },
+    dropdownOptions: { borderRadius: rs(10), marginTop: rs(4) },
+    dropdownOption: { paddingHorizontal: rs(16), paddingVertical: rs(14) },
+    dropdownOptionText: { fontSize: rs(16) },
+    buttonContainer: { marginTop: rs(32), gap: rs(12) },
+    cancelButton: { borderRadius: rs(10), paddingVertical: rs(16) },
+    cancelButtonText: { fontSize: rs(16), marginLeft: rs(8) },
+    submitButton: { borderRadius: rs(10), paddingVertical: rs(16) },
+    submitButtonText: { fontSize: rs(16), marginLeft: rs(8) },
+    checklistSection: { borderRadius: rs(16), padding: rs(20), marginBottom: rs(20) },
+    checklistHeader: { marginBottom: rs(16), paddingBottom: rs(12) },
+    checklistTitle: { fontSize: rs(18), marginLeft: rs(12) },
+    checklistItem: { borderRadius: rs(12), padding: rs(16), marginBottom: rs(12), borderLeftWidth: Math.max(2, Math.round(rs(4))) },
+    checklistItemTitle: { fontSize: rs(16) },
+    checklistItemDescription: { fontSize: rs(14), lineHeight: rs(20), marginBottom: rs(8) },
+    checklistItemInstructions: { fontSize: rs(13), lineHeight: rs(18) },
+    emptyChecklist: { padding: rs(32) },
+    emptyChecklistText: { fontSize: rs(16), marginTop: rs(16) },
+    iconSize: rs(24),
+    iconSizeLarge: rs(32),
+    iconSizeSmall: rs(20),
+    iconSizeMedium: rs(48),
+  }), [width, height]);
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
@@ -118,53 +184,58 @@ const MaintenanceSupervisorScreen = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#f8f9fa" />
-      
-      {/* AppBar */}
-      <Appbar.Header style={styles.appbar}>
-        <TouchableOpacity 
-          style={styles.backButton} 
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
-        >
-          <MaterialCommunityIcons name="arrow-left" size={24} color="#FEC200" />
-        </TouchableOpacity>
-        <View style={styles.centerTitleContainer}>
-          <Text style={styles.appbarTitle}>{t('maintenance.maintenanceSupervisor')}</Text>
-        </View>
-      </Appbar.Header>
+    <SafeAreaView style={styles.rootSafeArea} edges={["top", "left", "right", "bottom"]}>
+      <StatusBar barStyle="light-content" backgroundColor="#003667" />
+      <View style={styles.container}>
+        {/* AppBar inside safe area */}
+        <Appbar.Header style={[styles.appbar, responsiveStyles.appbar]} statusBarHeight={0}>
+          <TouchableOpacity 
+            style={styles.backButton} 
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.7}
+          >
+            <MaterialCommunityIcons name="arrow-left" size={responsiveStyles.iconSize} color="#FEC200" />
+          </TouchableOpacity>
+          <View style={styles.centerTitleContainer}>
+            <Text style={styles.appbarTitle}>{t('maintenance.maintenanceSupervisor')}</Text>
+          </View>
+        </Appbar.Header>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          style={[styles.content, responsiveStyles.content]}
+          contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, rs(16)) }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
         {/* Header Card */}
-        <View style={styles.headerCard}>
+        <View style={[styles.headerCard, responsiveStyles.headerCard]}>
           <View style={styles.headerContent}>
-            <View style={styles.headerIconContainer}>
-              <MaterialCommunityIcons name="wrench" size={32} color="#fff" />
+            <View style={[styles.headerIconContainer, responsiveStyles.headerIconContainer]}>
+              <MaterialCommunityIcons name="wrench" size={responsiveStyles.iconSizeLarge} color="#fff" />
             </View>
             <View style={styles.headerTextContainer}>
-              <Text style={styles.headerTitle}>{t('maintenance.maintenanceSupervisor')}</Text>
-              <Text style={styles.headerSubtitle}>{t('maintenance.scheduleManagement')}</Text>
+              <Text style={[styles.headerTitle, responsiveStyles.headerTitle]}>{t('maintenance.maintenanceSupervisor')}</Text>
+              <Text style={[styles.headerSubtitle, responsiveStyles.headerSubtitle]}>{t('maintenance.scheduleManagement')}</Text>
             </View>
           </View>
         </View>
 
         {/* Quick Actions */}
-        <View style={styles.quickActionsContainer}>
+        <View style={[styles.quickActionsContainer, responsiveStyles.quickActionsContainer]}>
           <TouchableOpacity 
-            style={styles.quickActionCard} 
+            style={[styles.quickActionCard, responsiveStyles.quickActionCard]} 
             activeOpacity={0.8}
             onPress={handleViewChecklist}
             disabled={loadingChecklist}
           >
-            <View style={styles.quickActionIcon}>
+            <View style={[styles.quickActionIcon, responsiveStyles.quickActionIcon]}>
               {loadingChecklist ? (
                 <ActivityIndicator size="small" color="#003667" />
               ) : (
-                <MaterialCommunityIcons name="clipboard-check-outline" size={24} color="#003667" />
+                <MaterialCommunityIcons name="clipboard-check-outline" size={responsiveStyles.iconSize} color="#003667" />
               )}
             </View>
-            <Text style={styles.quickActionText}>
+            <Text style={[styles.quickActionText, responsiveStyles.quickActionText]}>
               {loadingChecklist ? t('common.loading') || 'Loading...' : t('maintenance.viewChecklist')}
             </Text>
           </TouchableOpacity>
@@ -172,34 +243,34 @@ const MaintenanceSupervisorScreen = ({ navigation }) => {
 
         {/* Checklist Section */}
         {showChecklist && (
-          <View style={styles.checklistSection}>
-            <View style={styles.checklistHeader}>
-              <MaterialCommunityIcons name="clipboard-list" size={24} color="#003667" />
-              <Text style={styles.checklistTitle}>{t('maintenance.checklist') || 'Checklist'}</Text>
+          <View style={[styles.checklistSection, responsiveStyles.checklistSection]}>
+            <View style={[styles.checklistHeader, responsiveStyles.checklistHeader]}>
+              <MaterialCommunityIcons name="clipboard-list" size={responsiveStyles.iconSize} color="#003667" />
+              <Text style={[styles.checklistTitle, responsiveStyles.checklistTitle]}>{t('maintenance.checklist') || 'Checklist'}</Text>
               <TouchableOpacity 
                 onPress={() => setShowChecklist(false)}
                 style={styles.closeButton}
               >
-                <MaterialCommunityIcons name="close" size={20} color="#666" />
+                <MaterialCommunityIcons name="close" size={responsiveStyles.iconSizeSmall} color="#666" />
               </TouchableOpacity>
             </View>
             
             {checklistData.length > 0 ? (
               <View style={styles.checklistContent}>
                 {checklistData.map((item, index) => (
-                  <View key={index} style={styles.checklistItem}>
+                  <View key={index} style={[styles.checklistItem, responsiveStyles.checklistItem]}>
                     <View style={styles.checklistItemHeader}>
-                      <Text style={styles.checklistItemTitle}>
+                      <Text style={[styles.checklistItemTitle, responsiveStyles.checklistItemTitle]}>
                         {item.item || item.title || item.name || item.checklist_item || `Item ${index + 1}`}
                       </Text>
                     </View>
                     {item.description && (
-                      <Text style={styles.checklistItemDescription}>
+                      <Text style={[styles.checklistItemDescription, responsiveStyles.checklistItemDescription]}>
                         {item.description}
                       </Text>
                     )}
                     {item.instructions && (
-                      <Text style={styles.checklistItemInstructions}>
+                      <Text style={[styles.checklistItemInstructions, responsiveStyles.checklistItemInstructions]}>
                         Instructions: {item.instructions}
                       </Text>
                     )}
@@ -207,16 +278,16 @@ const MaintenanceSupervisorScreen = ({ navigation }) => {
                 ))}
               </View>
             ) : (
-              <View style={styles.emptyChecklist}>
+              <View style={[styles.emptyChecklist, responsiveStyles.emptyChecklist]}>
                 <MaterialCommunityIcons name="clipboard-outline" size={48} color="#ccc" />
-                <Text style={styles.emptyChecklistText}>
+                <Text style={[styles.emptyChecklistText, responsiveStyles.emptyChecklistText]}>
                   {t('maintenance.noChecklistItems') || 'No checklist items found'}
                 </Text>
                 {/* Debug info - remove this after fixing */}
-                <Text style={[styles.emptyChecklistText, { fontSize: 12, marginTop: 8 }]}>
+                <Text style={[styles.emptyChecklistText, { fontSize: rs(12), marginTop: rs(8) }]}>
                   Debug: API called with assetTypeId=AT010
                 </Text>
-                <Text style={[styles.emptyChecklistText, { fontSize: 12 }]}>
+                <Text style={[styles.emptyChecklistText, { fontSize: rs(12) }]}>
                   Check console logs for API response details
                 </Text>
               </View>
@@ -225,63 +296,66 @@ const MaintenanceSupervisorScreen = ({ navigation }) => {
         )}
 
         {/* Form Section */}
-        <View style={styles.formSection}>
-          <View style={styles.formHeader}>
-            <MaterialCommunityIcons name="file-document-edit-outline" size={24} color="#003667" />
-            <Text style={styles.formTitle}>{t('maintenance.updateSchedule')}</Text>
+        <View style={[styles.formSection, responsiveStyles.formSection]}>
+          <View style={[styles.formHeader, responsiveStyles.formHeader]}>
+            <MaterialCommunityIcons name="file-document-edit-outline" size={responsiveStyles.iconSize} color="#003667" />
+            <Text style={[styles.formTitle, responsiveStyles.formTitle]}>{t('maintenance.updateSchedule')}</Text>
           </View>
           
           <View style={styles.form}>
             {/* Name Field */}
-            <View style={styles.inputGroup}>
+            <View style={[styles.inputGroup, responsiveStyles.inputGroup]}>
               <Text style={styles.inputLabel}>{t('maintenance.name')}</Text>
               <TextInput
-                style={styles.textInput}
+                style={[styles.textInput, responsiveStyles.textInput, isCompleted && styles.disabledInput]}
                 value={formData.name}
                 onChangeText={(value) => handleInputChange('name', value)}
                 placeholder={t('maintenance.enterName')}
+                editable={!isCompleted}
               />
             </View>
 
             {/* Phone Field */}
-            <View style={styles.inputGroup}>
+            <View style={[styles.inputGroup, responsiveStyles.inputGroup]}>
               <Text style={styles.inputLabel}>{t('maintenance.phone')}</Text>
               <TextInput
-                style={styles.textInput}
+                style={[styles.textInput, responsiveStyles.textInput, isCompleted && styles.disabledInput]}
                 value={formData.phone}
                 onChangeText={(value) => handleInputChange('phone', value)}
                 placeholder={t('maintenance.enterPhoneNumber')}
                 keyboardType="phone-pad"
+                editable={!isCompleted}
               />
             </View>
 
             {/* Status Field */}
-            <View style={styles.inputGroup}>
+            <View style={[styles.inputGroup, responsiveStyles.inputGroup]}>
               <Text style={styles.inputLabel}>{t('maintenance.status')}</Text>
               <TouchableOpacity
-                style={styles.dropdownButton}
+                style={[styles.dropdownButton, responsiveStyles.dropdownButton, isCompleted && styles.disabledInput]}
                 onPress={() => setShowStatusDropdown(!showStatusDropdown)}
+                disabled={isCompleted}
               >
-                <Text style={styles.dropdownButtonText}>{formData.status}</Text>
+                <Text style={[styles.dropdownButtonText, responsiveStyles.dropdownButtonText]}>{formData.status}</Text>
                 <Ionicons 
                   name={showStatusDropdown ? "chevron-up" : "chevron-down"} 
-                  size={20} 
+                  size={responsiveStyles.iconSizeSmall} 
                   color="#666" 
                 />
               </TouchableOpacity>
               
               {showStatusDropdown && (
-                <View style={styles.dropdownOptions}>
+                <View style={[styles.dropdownOptions, responsiveStyles.dropdownOptions]}>
                   {statusOptions.map((option) => (
                     <TouchableOpacity
                       key={option}
-                      style={styles.dropdownOption}
+                      style={[styles.dropdownOption, responsiveStyles.dropdownOption]}
                       onPress={() => {
                         handleInputChange('status', option);
                         setShowStatusDropdown(false);
                       }}
                     >
-                      <Text style={styles.dropdownOptionText}>{option}</Text>
+                      <Text style={[styles.dropdownOptionText, responsiveStyles.dropdownOptionText]}>{option}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -289,73 +363,82 @@ const MaintenanceSupervisorScreen = ({ navigation }) => {
             </View>
 
             {/* PO Number Field */}
-            <View style={styles.inputGroup}>
+            <View style={[styles.inputGroup, responsiveStyles.inputGroup]}>
               <Text style={styles.inputLabel}>{t('maintenance.poNumber')}</Text>
               <TextInput
-                style={styles.textInput}
+                style={[styles.textInput, responsiveStyles.textInput, isCompleted && styles.disabledInput]}
                 value={formData.poNumber}
                 onChangeText={(value) => handleInputChange('poNumber', value)}
                 placeholder={t('maintenance.enterPoNumber')}
+                editable={!isCompleted}
               />
             </View>
 
             {/* Invoice Field */}
-            <View style={styles.inputGroup}>
+            <View style={[styles.inputGroup, responsiveStyles.inputGroup]}>
               <Text style={styles.inputLabel}>{t('maintenance.invoice')}</Text>
               <TextInput
-                style={styles.textInput}
+                style={[styles.textInput, responsiveStyles.textInput, isCompleted && styles.disabledInput]}
                 value={formData.invoice}
                 onChangeText={(value) => handleInputChange('invoice', value)}
                 placeholder={t('maintenance.enterInvoiceNumber')}
+                editable={!isCompleted}
               />
             </View>
 
             {/* Email Field */}
-            <View style={styles.inputGroup}>
+            <View style={[styles.inputGroup, responsiveStyles.inputGroup]}>
               <Text style={styles.inputLabel}>{t('maintenance.email')}</Text>
               <TextInput
-                style={styles.textInput}
+                style={[styles.textInput, responsiveStyles.textInput, isCompleted && styles.disabledInput]}
                 value={formData.email}
                 onChangeText={(value) => handleInputChange('email', value)}
                 placeholder={t('maintenance.enterEmail')}
                 keyboardType="email-address"
                 autoCapitalize="none"
+                editable={!isCompleted}
               />
             </View>
 
             {/* Notes Field */}
-            <View style={styles.inputGroup}>
+            <View style={[styles.inputGroup, responsiveStyles.inputGroup]}>
               <Text style={styles.inputLabel}>{t('maintenance.notes')}</Text>
               <TextInput
-                style={[styles.textInput, styles.notesInput]}
+                style={[styles.textInput, responsiveStyles.textInput, styles.notesInput, responsiveStyles.notesInput, isCompleted && styles.disabledInput]}
                 value={formData.notes}
                 onChangeText={(value) => handleInputChange('notes', value)}
                 placeholder={t('maintenance.enterNotes')}
                 multiline
                 numberOfLines={4}
                 textAlignVertical="top"
+                editable={!isCompleted}
               />
             </View>
 
             {/* Action Buttons */}
-            <View style={styles.buttonContainer}>
+            <View style={[styles.buttonContainer, responsiveStyles.buttonContainer]}>
               <TouchableOpacity style={styles.cancelButton} onPress={handleCancel} activeOpacity={0.8}>
                 <MaterialCommunityIcons name="close" size={20} color="#666" />
-                <Text style={styles.cancelButtonText}>{t('maintenance.cancel')}</Text>
+                <Text style={[styles.cancelButtonText, responsiveStyles.cancelButtonText]}>{t('maintenance.cancel')}</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.submitButton} onPress={handleSubmit} activeOpacity={0.8}>
-                <MaterialCommunityIcons name="check" size={20} color="#fff" />
-                <Text style={styles.submitButtonText}>{t('maintenance.submit')}</Text>
+              <TouchableOpacity style={[styles.submitButton, responsiveStyles.submitButton, isCompleted && styles.submitButtonDisabled]} onPress={handleSubmit} activeOpacity={0.8} disabled={isCompleted}>
+                <MaterialCommunityIcons name="check" size={responsiveStyles.iconSizeSmall} color="#fff" />
+                <Text style={[styles.submitButtonText, responsiveStyles.submitButtonText]}>{t('maintenance.submit')}</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
-      </ScrollView>
+        </ScrollView>
+      </View>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  rootSafeArea: {
+    flex: 1,
+    backgroundColor: '#003667',
+  },
   container: {
     flex: 1,
     backgroundColor: '#EEEEEE',
@@ -513,6 +596,10 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 1,
   },
+  disabledInput: {
+    backgroundColor: '#F5F5F5',
+    color: '#999',
+  },
   notesInput: {
     height: 100,
     paddingTop: 14,
@@ -605,6 +692,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 3,
+  },
+  submitButtonDisabled: {
+    backgroundColor: '#7A90A8',
   },
   submitButtonText: {
     color: '#fff',

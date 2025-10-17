@@ -1,22 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   FlatList,
+  ScrollView,
   Dimensions,
   Platform,
   StatusBar,
+  ActivityIndicator,
+  Modal,
+  TouchableWithoutFeedback,
+  Alert,
 } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
+import { Camera, useCameraPermission, useCameraDevice, useCodeScanner } from 'react-native-vision-camera';
 import CustomAlert from '../../components/CustomAlert';
 import { authUtils } from '../../utils/auth';
 import SideMenu from '../../components/SideMenu';
-import { useNavigation as useNavigationContext } from '../../context/NavigationContext';
+import { getServerUrl, getApiHeaders, API_ENDPOINTS } from '../../config/api';
 
 const { width, height } = Dimensions.get('window');
 
@@ -175,12 +181,30 @@ const RESPONSIVE_CONSTANTS = {
 const BreakdownSelectionScreen = () => {
   const { t } = useTranslation();
   const navigation = useNavigation();
-  const { hasAccess } = useNavigationContext();
   const insets = useSafeAreaInsets();
   const [menuVisible, setMenuVisible] = useState(false);
   const [activeTab, setActiveTab] = useState('select'); // 'select' or 'scan'
-  const [selectedAssetType, setSelectedAssetType] = useState(t('breakdown.laptop'));
+  const [assetTypes, setAssetTypes] = useState([]);
+  const [selectedAssetType, setSelectedAssetType] = useState(null);
   const [showAssetTypeDropdown, setShowAssetTypeDropdown] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadingAssets, setLoadingAssets] = useState(false);
+  const [availableAssets, setAvailableAssets] = useState([]);
+  const [showCamera, setShowCamera] = useState(false);
+  const [barcode, setBarcode] = useState(null);
+  const [scanLoading, setScanLoading] = useState(false);
+  const { hasPermission, requestPermission } = useCameraPermission();
+  const device = useCameraDevice('back');
+
+  const codeScanner = useCodeScanner({
+    codeTypes: ['qr', 'ean-13', 'code-128', 'code-39', 'ean-8', 'upc-e'],
+    onCodeScanned: (codes) => {
+      if (codes.length > 0 && !scanLoading) {
+        handleBarcodeScanned({ data: codes[0].value });
+      }
+    },
+  });
+
   const [alertConfig, setAlertConfig] = useState({
     visible: false,
     title: '',
@@ -193,61 +217,8 @@ const BreakdownSelectionScreen = () => {
     showCancel: false,
   });
 
-  // Mock data for asset types
-  const assetTypes = [
-    t('breakdown.laptop'), 
-    t('breakdown.desktop'), 
-    t('breakdown.monitor'), 
-    t('breakdown.printer'), 
-    t('breakdown.scanner'), 
-    t('breakdown.networkDevice')
-  ];
 
-  // Mock data for available assets
-  const [availableAssets, setAvailableAssets] = useState([
-    {
-      id: 'ASS001',
-      assetTypeId: 'AT001',
-      assetTypeName: t('breakdown.appleLaptop'),
-      assetName: t('breakdown.macBookPro'),
-      serviceVendorId: 'V002',
-      productServiceId: 'PS001',
-    },
-    {
-      id: 'ASS005',
-      assetTypeId: 'AT001',
-      assetTypeName: t('breakdown.laptop'),
-      assetName: t('breakdown.dellPowerEdge'),
-      serviceVendorId: 'V004',
-      productServiceId: 'V004',
-    },
-    {
-      id: 'ASS002',
-      assetTypeId: 'AT001',
-      assetTypeName: t('breakdown.dellXps13'),
-      assetName: null,
-      serviceVendorId: 'V002',
-      productServiceId: 'PS001',
-    },
-    {
-      id: 'ASS003',
-      assetTypeId: 'AT001',
-      assetTypeName: t('breakdown.hpEliteBook840'),
-      assetName: null,
-      serviceVendorId: 'V002',
-      productServiceId: 'PS001',
-    },
-    {
-      id: 'ASS004',
-      assetTypeId: 'AT001',
-      assetTypeName: t('breakdown.laptop'),
-      assetName: t('breakdown.lenevoThinkPad'),
-      serviceVendorId: 'V005',
-      productServiceId: 'V005',
-    },
-  ]);
-
-  const showAlert = (title, message, type = 'info', onConfirm = () => {}, showCancel = false) => {
+  const showAlert = useCallback((title, message, type = 'info', onConfirm = () => {}, showCancel = false) => {
     setAlertConfig({
       visible: true,
       title,
@@ -264,7 +235,177 @@ const BreakdownSelectionScreen = () => {
       cancelText: t('common.cancel'),
       showCancel,
     });
-  };
+  }, [t]);
+
+  const fetchAssetsByType = useCallback(async (assetTypeId) => {
+    try {
+      setLoadingAssets(true);
+      const serverUrl = getServerUrl();
+      const headers = await getApiHeaders();
+      const fullUrl = `${serverUrl}${API_ENDPOINTS.GET_ASSETS_BY_TYPE(assetTypeId)}`;
+
+      console.log('=== Fetching Assets by Type ===');
+      console.log('Asset Type ID:', assetTypeId);
+      console.log('Full URL:', fullUrl);
+
+      const response = await fetch(fullUrl, {
+        method: 'GET',
+        headers,
+        timeout: 10000,
+      });
+
+      console.log('Assets response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Error fetching assets:', errorText);
+        throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      console.log('Assets response:', JSON.stringify(data, null, 2));
+
+      // Handle different response structures
+      let assetsData = null;
+
+      if (Array.isArray(data)) {
+        assetsData = data;
+      } else if (data && data.data && Array.isArray(data.data)) {
+        assetsData = data.data;
+      } else if (data && data.assets && Array.isArray(data.assets)) {
+        assetsData = data.assets;
+      } else if (data && data.results && Array.isArray(data.results)) {
+        assetsData = data.results;
+      }
+
+      if (assetsData && assetsData.length > 0) {
+        console.log('Found assets:', assetsData.length);
+        setAvailableAssets(assetsData);
+      } else {
+        console.warn('No assets found for this asset type');
+        setAvailableAssets([]);
+      }
+    } catch (error) {
+      console.error('=== Fetch Assets Error ===');
+      console.error('Error message:', error.message);
+
+      let errorMessage = 'Failed to load assets. Please try again.';
+
+      if (error.message.includes('Network request failed')) {
+        errorMessage = 'Network connection failed. Please check your internet connection.';
+      } else if (error.message.includes('timeout')) {
+        errorMessage = 'Request timed out. Please try again.';
+      } else if (error.message.includes('HTTP')) {
+        errorMessage = `Server error: ${error.message}`;
+      }
+
+      showAlert(
+        t('breakdown.error'),
+        errorMessage,
+        'error'
+      );
+      setAvailableAssets([]);
+    } finally {
+      setLoadingAssets(false);
+    }
+  }, [t, showAlert]);
+
+  const fetchAssetTypes = useCallback(async () => {
+    try {
+      setLoading(true);
+      const serverUrl = getServerUrl();
+      const headers = await getApiHeaders();
+      const fullUrl = `${serverUrl}${API_ENDPOINTS.GET_ASSET_TYPES_MAINT_REQUIRED()}`;
+
+      console.log('=== Asset Types API Debug ===');
+      console.log('Server URL:', serverUrl);
+      console.log('Full URL:', fullUrl);
+      console.log('Headers:', headers);
+      console.log('Platform:', Platform.OS);
+
+      const response = await fetch(fullUrl, {
+        method: 'GET',
+        headers,
+        timeout: 10000, // 10 second timeout
+      });
+
+      console.log('Response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Error response body:', errorText);
+        throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      console.log('Asset types response:', JSON.stringify(data, null, 2));
+
+      // Handle different response structures
+      let assetTypesData = null;
+
+      // Check if response is directly an array
+      if (Array.isArray(data)) {
+        assetTypesData = data;
+      }
+      // Check if response has a 'data' property
+      else if (data && data.data && Array.isArray(data.data)) {
+        assetTypesData = data.data;
+      }
+      // Check if response has an 'assetTypes' property
+      else if (data && data.assetTypes && Array.isArray(data.assetTypes)) {
+        assetTypesData = data.assetTypes;
+      }
+      // Check if response has a 'results' property
+      else if (data && data.results && Array.isArray(data.results)) {
+        assetTypesData = data.results;
+      }
+
+      // Set asset types from API response
+      if (assetTypesData && assetTypesData.length > 0) {
+        console.log('Found asset types:', assetTypesData.length);
+        setAssetTypes(assetTypesData);
+        // Set first asset type as default selection and fetch its assets
+        setSelectedAssetType(assetTypesData[0]);
+        // Fetch assets for the first asset type
+        fetchAssetsByType(assetTypesData[0].asset_type_id);
+      } else {
+        console.warn('No asset types found in response. Response structure:', typeof data, Object.keys(data || {}));
+        setAssetTypes([]);
+        setAvailableAssets([]);
+      }
+    } catch (error) {
+      console.error('=== Asset Types API Error ===');
+      console.error('Error type:', error.constructor.name);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+
+      let errorMessage = 'Failed to load asset types. Please try again.';
+
+      if (error.message.includes('Network request failed')) {
+        errorMessage = 'Network connection failed. Please check your internet connection and server status.';
+      } else if (error.message.includes('timeout')) {
+        errorMessage = 'Request timed out. Please try again.';
+      } else if (error.message.includes('HTTP')) {
+        errorMessage = `Server error: ${error.message}`;
+      }
+
+      showAlert(
+        t('breakdown.error'),
+        errorMessage,
+        'error'
+      );
+      // Set empty array on error
+      setAssetTypes([]);
+      setAvailableAssets([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [t, showAlert, fetchAssetsByType]);
+
+  // Fetch asset types from API on component mount
+  useEffect(() => {
+    fetchAssetTypes();
+  }, [fetchAssetTypes]);
 
   const handleLogout = async () => {
     showAlert(
@@ -287,10 +428,6 @@ const BreakdownSelectionScreen = () => {
     );
   };
 
-  const toggleMenu = () => {
-    setMenuVisible(!menuVisible);
-  };
-
   const closeMenu = () => {
     setMenuVisible(false);
   };
@@ -298,43 +435,169 @@ const BreakdownSelectionScreen = () => {
   const handleCreateBreakdown = (asset) => {
     // Prepare asset data for the breakdown report screen
     const assetData = {
-      id: asset.id,
-      assetType: asset.assetTypeName,
-      assetName: asset.assetName || t('breakdown.null'),
+      id: asset.asset_id || asset.id,
+      assetType: asset.asset_type_name || asset.assetTypeName || selectedAssetType?.text,
+      assetName: asset.text || asset.asset_name || asset.assetName || t('breakdown.null'),
       status: t('breakdown.breakdownReported'),
+      assetTypeId: asset.asset_type_id || asset.assetTypeId || selectedAssetType?.asset_type_id,
     };
-    
+
     navigation.navigate('BREAKDOWNREPORT', { assetData });
   };
 
+  const openCamera = async () => {
+    if (!hasPermission) {
+      await requestPermission();
+    }
+    setShowCamera(true);
+    setBarcode(null); // reset previous barcode
+  };
+
+  const handleBarcodeScanned = async (barcodeData) => {
+    setShowCamera(false);
+    setBarcode(barcodeData.data);
+
+    // Call API to check serial number and get asset_id
+    await checkSerialNumber(barcodeData.data);
+  };
+
+  const checkSerialNumber = async (serialNumber) => {
+    setScanLoading(true);
+    try {
+      // Convert serial number to uppercase for case-insensitive search
+      const normalizedSerial = serialNumber.trim().toUpperCase();
+      console.log(`Checking serial number: ${normalizedSerial}`);
+      const serverUrl = getServerUrl();
+      const url = `${serverUrl}${API_ENDPOINTS.CHECK_SERIAL(normalizedSerial)}`;
+      console.log('API URL:', url);
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: await getApiHeaders(),
+        timeout: 10000,
+      });
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          Alert.alert(
+            t('assets.assetNotFound'),
+            t('assets.noAssetFoundWithSerial'),
+            [{ text: t('common.ok') }]
+          );
+          return;
+        }
+        if (response.status === 401) {
+          Alert.alert(
+            t('assets.authenticationError'),
+            t('assets.checkAuthorizationToken'),
+            [{ text: t('common.ok') }]
+          );
+          return;
+        }
+        if (response.status === 500) {
+          const errorData = await response.json().catch(() => ({}));
+          console.error('Server error details:', errorData);
+          Alert.alert(
+            t('assets.serverError'),
+            t('assets.serverEncounteredError'),
+            [{ text: t('common.ok') }]
+          );
+          return;
+        }
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('Asset data received:', data);
+
+      // Check if data is an array or object
+      let assetId = null;
+      let assetData = null;
+      if (Array.isArray(data) && data.length > 0) {
+        assetId = data[0].asset_id;
+        assetData = data[0];
+        console.log('Asset ID from array:', assetId);
+      } else if (data && typeof data === 'object') {
+        assetId = data.asset_id || data.id || data.assetId;
+        assetData = data;
+        console.log('Asset ID from object:', assetId);
+      }
+
+      if (assetId && assetData) {
+        // Navigate to breakdown report with scanned asset data
+        const breakdownAssetData = {
+          id: assetId,
+          assetType: assetData.asset_type_name || assetData.assetTypeName || 'N/A',
+          assetName: assetData.text || assetData.asset_name || assetData.assetName || t('breakdown.null'),
+          status: t('breakdown.breakdownReported'),
+          assetTypeId: assetData.asset_type_id || assetData.assetTypeId || 'N/A',
+          barcode: barcode,
+        };
+
+        navigation.navigate('BREAKDOWNREPORT', { assetData: breakdownAssetData });
+      } else {
+        Alert.alert(
+          t('assets.assetNotFound'),
+          t('assets.noAssetFoundWithSerial'),
+          [{ text: t('common.ok') }]
+        );
+      }
+    } catch (error) {
+      console.error('Error checking serial number:', error);
+
+      // Provide more specific error messages
+      let errorMessage = t('assets.failedToCheckSerialNumber');
+
+      if (error.message.includes('Network request failed')) {
+        errorMessage = t('assets.networkConnectionFailed');
+      } else if (error.message.includes('timeout')) {
+        errorMessage = t('assets.requestTimedOut');
+      } else if (error.message.includes('fetch')) {
+        errorMessage = t('assets.unableToConnectToServer');
+      }
+
+      Alert.alert(
+        t('assets.networkError'),
+        errorMessage,
+        [{ text: t('common.ok') }]
+      );
+    } finally {
+      setScanLoading(false);
+    }
+  };
+
   const handleAssetPress = (asset) => {
-    showAlert(t('breakdown.assetDetails'), `${t('breakdown.assetId')}: ${asset.id}\n${t('breakdown.assetTypeName')}: ${asset.assetTypeName}`, 'info');
+    showAlert(
+      t('breakdown.assetDetails'),
+      `${t('breakdown.assetId')}: ${asset.id}\n${t('breakdown.assetType')}: ${asset.assetTypeName}`,
+      'info',
+    );
   };
 
   const renderAssetItem = ({ item }) => (
     <View style={[
       styles.assetCard,
       DEVICE_TYPE === 'desktop' && styles.assetCardDesktop,
-      DEVICE_TYPE === 'tablet' && styles.assetCardTablet
+      DEVICE_TYPE === 'tablet' && styles.assetCardTablet,
     ]}>
       <View style={[
         styles.assetHeader,
-        RESPONSIVE_CONSTANTS.getAssetCardLayout()
+        RESPONSIVE_CONSTANTS.getAssetCardLayout(),
       ]}>
         <TouchableOpacity onPress={() => handleAssetPress(item)}>
-          <Text 
+          <Text
             style={styles.assetId}
             numberOfLines={1}
             ellipsizeMode="tail"
           >
-            {item.id}
+            {item.asset_id || item.id}
           </Text>
         </TouchableOpacity>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.createBreakdownButton}
           onPress={() => handleCreateBreakdown(item)}
         >
-          <Text 
+          <Text
             style={styles.createBreakdownButtonText}
             numberOfLines={1}
             ellipsizeMode="tail"
@@ -343,108 +606,165 @@ const BreakdownSelectionScreen = () => {
           </Text>
         </TouchableOpacity>
       </View>
-      
+
       <View style={styles.assetDetails}>
         <View style={[
           styles.detailRow,
-          RESPONSIVE_CONSTANTS.getDetailRowLayout()
+          RESPONSIVE_CONSTANTS.getDetailRowLayout(),
         ]}>
-          <Text 
+          <Text
             style={styles.detailLabel}
             numberOfLines={1}
             ellipsizeMode="tail"
           >
             {t('breakdown.assetTypeId')}:
           </Text>
-          <Text 
+          <Text
             style={styles.detailValue}
             numberOfLines={1}
             ellipsizeMode="tail"
           >
-            {item.assetTypeId}
+            {item.asset_type_id || item.assetTypeId}
           </Text>
         </View>
         <View style={[
           styles.detailRow,
-          RESPONSIVE_CONSTANTS.getDetailRowLayout()
+          RESPONSIVE_CONSTANTS.getDetailRowLayout(),
         ]}>
-          <Text 
+          <Text
             style={styles.detailLabel}
             numberOfLines={1}
             ellipsizeMode="tail"
           >
-            {t('breakdown.assetTypeName')}:
+            {t('breakdown.assetType')}:
           </Text>
-          <Text 
+          <Text
             style={styles.detailValue}
             numberOfLines={1}
             ellipsizeMode="tail"
           >
-            {item.assetTypeName}
+            {item.asset_type_name || item.assetTypeName || selectedAssetType?.text || 'N/A'}
           </Text>
         </View>
         <View style={[
           styles.detailRow,
-          RESPONSIVE_CONSTANTS.getDetailRowLayout()
+          RESPONSIVE_CONSTANTS.getDetailRowLayout(),
         ]}>
-          <Text 
+          <Text
             style={styles.detailLabel}
             numberOfLines={1}
             ellipsizeMode="tail"
           >
             {t('breakdown.assetName')}:
           </Text>
-          <Text 
+          <Text
             style={styles.detailValue}
             numberOfLines={1}
             ellipsizeMode="tail"
           >
-            {item.assetName || t('breakdown.null')}
+            {item.text || item.asset_name || item.assetName || 'N/A'}
           </Text>
         </View>
         <View style={[
           styles.detailRow,
-          RESPONSIVE_CONSTANTS.getDetailRowLayout()
+          RESPONSIVE_CONSTANTS.getDetailRowLayout(),
         ]}>
-          <Text 
+          <Text
             style={styles.detailLabel}
             numberOfLines={1}
             ellipsizeMode="tail"
           >
             {t('breakdown.serviceVendorId')}:
           </Text>
-          <Text 
+          <Text
             style={styles.detailValue}
             numberOfLines={1}
             ellipsizeMode="tail"
           >
-            {item.serviceVendorId}
+            {item.service_vendor_id || item.serviceVendorId || 'N/A'}
           </Text>
         </View>
         <View style={[
           styles.detailRow,
-          RESPONSIVE_CONSTANTS.getDetailRowLayout()
+          RESPONSIVE_CONSTANTS.getDetailRowLayout(),
         ]}>
-          <Text 
+          <Text
             style={styles.detailLabel}
             numberOfLines={1}
             ellipsizeMode="tail"
           >
             {t('breakdown.productServiceId')}:
           </Text>
-          <Text 
+          <Text
             style={styles.detailValue}
             numberOfLines={1}
             ellipsizeMode="tail"
           >
-            {item.productServiceId}
+            {item.prod_serv_id || item.product_service_id || item.productServiceId || 'N/A'}
           </Text>
         </View>
       </View>
     </View>
   );
 
-  return (
+  return showCamera ? (
+    <View style={{ flex: 1 }}>
+      <View style={{ position: 'absolute', top: 40, right: 20, zIndex: 2 }}>
+        <TouchableOpacity
+          onPress={() => setShowCamera(false)}
+          style={{
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            borderRadius: 20,
+            padding: 8,
+          }}
+        >
+          <MaterialCommunityIcons name="close" size={28} color="#fff" />
+        </TouchableOpacity>
+      </View>
+      {device != null && hasPermission && (
+        <Camera
+          style={StyleSheet.absoluteFill}
+          device={device}
+          isActive={showCamera}
+          codeScanner={codeScanner}
+        />
+      )}
+      {!hasPermission && (
+        <View style={{ flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }}>
+          <Text style={{ color: '#fff', fontSize: 18, textAlign: 'center' }}>
+            {t('scanning.cameraPermissionRequired')}
+          </Text>
+        </View>
+      )}
+      <View
+        style={{
+          position: 'absolute',
+          bottom: 40,
+          alignSelf: 'center',
+          backgroundColor: '#003667',
+          padding: 12,
+          borderRadius: 40,
+        }}
+      >
+        <Text style={{ color: '#fff' }}>{t('scanning.pointCameraAtBarcode')}</Text>
+      </View>
+      {scanLoading && (
+        <View style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: [{ translateX: -50 }, { translateY: -50 }],
+          backgroundColor: 'rgba(0,0,0,0.7)',
+          padding: 20,
+          borderRadius: 10,
+          alignItems: 'center',
+        }}>
+          <ActivityIndicator size="large" color="#fff" />
+          <Text style={{ color: '#fff', marginTop: 10 }}>{t('assets.processing')}</Text>
+        </View>
+      )}
+    </View>
+  ) : (
     <SafeAreaProvider>
       <View style={[styles.safeContainer, { paddingTop: insets.top }]}>
         <StatusBar
@@ -477,31 +797,39 @@ const BreakdownSelectionScreen = () => {
         </View>
 
         <View style={styles.content}>
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#003667" />
+              <Text style={styles.loadingText}>{t('common.loading') || 'Loading...'}</Text>
+            </View>
+          ) : (
+            <>
           {/* Breakdown Selection Section */}
           <View style={[
             styles.selectionSection,
             { width: RESPONSIVE_CONSTANTS.getSectionWidth() },
             DEVICE_TYPE === 'desktop' && styles.selectionSectionDesktop,
             DEVICE_TYPE === 'tablet' && styles.selectionSectionTablet,
+            showAssetTypeDropdown && styles.selectionSectionWithDropdown,
           ]}>
-          <Text 
+          <Text
             style={styles.sectionTitle}
             numberOfLines={1}
             ellipsizeMode="tail"
           >
             {t('breakdown.breakdownSelection')}
           </Text>
-          
+
           {/* Tabs */}
           <View style={[
             styles.tabContainer,
-            RESPONSIVE_CONSTANTS.getTabLayout()
+            RESPONSIVE_CONSTANTS.getTabLayout(),
           ]}>
             <TouchableOpacity
               style={[styles.tab, activeTab === 'select' && styles.activeTab]}
               onPress={() => setActiveTab('select')}
             >
-              <Text 
+              <Text
                 style={[styles.tabText, activeTab === 'select' && styles.activeTabText]}
                 numberOfLines={1}
                 ellipsizeMode="tail"
@@ -511,9 +839,12 @@ const BreakdownSelectionScreen = () => {
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.tab, activeTab === 'scan' && styles.activeTab]}
-              onPress={() => setActiveTab('scan')}
+              onPress={() => {
+                setActiveTab('scan');
+                openCamera();
+              }}
             >
-              <Text 
+              <Text
                 style={[styles.tabText, activeTab === 'scan' && styles.activeTabText]}
                 numberOfLines={1}
                 ellipsizeMode="tail"
@@ -526,26 +857,34 @@ const BreakdownSelectionScreen = () => {
           {/* Asset Type Filter */}
           <View style={[
             styles.filterContainer,
-            RESPONSIVE_CONSTANTS.getFilterLayout()
+            RESPONSIVE_CONSTANTS.getFilterLayout(),
           ]}>
-            <Text 
+            <Text
               style={styles.filterLabel}
               numberOfLines={1}
               ellipsizeMode="tail"
             >
-              {t('breakdown.assetTypeName')}
+              {t('breakdown.assetType')}
             </Text>
             <View style={styles.dropdownContainer}>
               <TouchableOpacity
-                style={styles.dropdownButton}
-                onPress={() => setShowAssetTypeDropdown(!showAssetTypeDropdown)}
+                style={[
+                  styles.dropdownButton,
+                  assetTypes.length === 0 && styles.dropdownButtonDisabled,
+                ]}
+                onPress={() => {
+                  if (assetTypes.length > 0) {
+                    setShowAssetTypeDropdown(!showAssetTypeDropdown);
+                  }
+                }}
+                disabled={assetTypes.length === 0}
               >
-                <Text 
+                <Text
                   style={styles.dropdownButtonText}
                   numberOfLines={1}
                   ellipsizeMode="tail"
                 >
-                  {selectedAssetType}
+                  {selectedAssetType?.text || t('breakdown.selectAssetType') || 'Select Asset Type'}
                 </Text>
                 <MaterialCommunityIcons
                   name={showAssetTypeDropdown ? 'chevron-up' : 'chevron-down'}
@@ -553,29 +892,54 @@ const BreakdownSelectionScreen = () => {
                   color="#003667"
                 />
               </TouchableOpacity>
-              
-              {showAssetTypeDropdown && (
-                <View style={styles.dropdownOptions}>
-                  {assetTypes.map((type) => (
-                    <TouchableOpacity
-                      key={type}
-                      style={styles.dropdownOption}
-                      onPress={() => {
-                        setSelectedAssetType(type);
-                        setShowAssetTypeDropdown(false);
-                      }}
-                    >
-                      <Text 
-                        style={styles.dropdownOptionText}
-                        numberOfLines={1}
-                        ellipsizeMode="tail"
-                      >
-                        {type}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )}
+
+              <Modal
+                visible={showAssetTypeDropdown}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setShowAssetTypeDropdown(false)}
+              >
+                <TouchableWithoutFeedback onPress={() => setShowAssetTypeDropdown(false)}>
+                  <View style={styles.modalOverlay}>
+                    <TouchableWithoutFeedback>
+                      <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                          <Text style={styles.modalTitle}>{t('breakdown.selectAssetType') || 'Select Asset Type'}</Text>
+                          <TouchableOpacity onPress={() => setShowAssetTypeDropdown(false)}>
+                            <MaterialCommunityIcons name="close" size={24} color="#003667" />
+                          </TouchableOpacity>
+                        </View>
+                        <ScrollView style={styles.modalScrollView}>
+                          {assetTypes.map((type) => (
+                            <TouchableOpacity
+                              key={type.asset_type_id}
+                              style={styles.modalOption}
+                              onPress={() => {
+                                setSelectedAssetType(type);
+                                setShowAssetTypeDropdown(false);
+                                // Fetch assets for the selected asset type
+                                fetchAssetsByType(type.asset_type_id);
+                              }}
+                              activeOpacity={0.7}
+                            >
+                              <Text
+                                style={styles.modalOptionText}
+                                numberOfLines={1}
+                                ellipsizeMode="tail"
+                              >
+                                {type.text}
+                              </Text>
+                              {selectedAssetType?.asset_type_id === type.asset_type_id && (
+                                <MaterialCommunityIcons name="check" size={20} color="#003667" />
+                              )}
+                            </TouchableOpacity>
+                          ))}
+                        </ScrollView>
+                      </View>
+                    </TouchableWithoutFeedback>
+                  </View>
+                </TouchableWithoutFeedback>
+              </Modal>
             </View>
           </View>
         </View>
@@ -585,10 +949,10 @@ const BreakdownSelectionScreen = () => {
           styles.assetsSection,
           { width: RESPONSIVE_CONSTANTS.getSectionWidth() },
           DEVICE_TYPE === 'desktop' && styles.assetsSectionDesktop,
-          DEVICE_TYPE === 'tablet' && styles.assetsSectionTablet
+          DEVICE_TYPE === 'tablet' && styles.assetsSectionTablet,
         ]}>
           <View style={styles.assetsHeader}>
-            <Text 
+            <Text
               style={styles.sectionTitle}
               numberOfLines={1}
               ellipsizeMode="tail"
@@ -603,19 +967,41 @@ const BreakdownSelectionScreen = () => {
               />
             </TouchableOpacity>
           </View>
-          
-          <FlatList
-            data={availableAssets}
-            renderItem={renderAssetItem}
-            keyExtractor={(item) => item.id}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={[
-              styles.assetsList,
-              DEVICE_TYPE === 'desktop' && styles.assetsListDesktop,
-              DEVICE_TYPE === 'tablet' && styles.assetsListTablet
-            ]}
-          />
+
+          {loadingAssets ? (
+            <View style={styles.loadingAssetsContainer}>
+              <ActivityIndicator size="large" color="#003667" />
+              <Text style={styles.loadingText}>{t('common.loading') || 'Loading assets...'}</Text>
+            </View>
+          ) : availableAssets.length === 0 ? (
+            <View style={styles.emptyAssetsContainer}>
+              <MaterialCommunityIcons
+                name="information-outline"
+                size={48}
+                color="#999"
+              />
+              <Text style={styles.emptyAssetsText}>
+                {selectedAssetType
+                  ? t('breakdown.noAssetsFound') || 'No assets found for this type'
+                  : t('breakdown.selectAssetTypeToViewAssets') || 'Select an asset type to view assets'}
+              </Text>
+            </View>
+          ) : (
+            <FlatList
+              data={availableAssets}
+              renderItem={renderAssetItem}
+              keyExtractor={(item) => item.asset_id || item.id}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={[
+                styles.assetsList,
+                DEVICE_TYPE === 'desktop' && styles.assetsListDesktop,
+                DEVICE_TYPE === 'tablet' && styles.assetsListTablet,
+              ]}
+            />
+          )}
           </View>
+            </>
+          )}
         </View>
 
         <SideMenu
@@ -682,6 +1068,38 @@ const styles = StyleSheet.create({
     paddingTop: RESPONSIVE_CONSTANTS.SPACING.LG,
     alignItems: 'center',
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: RESPONSIVE_CONSTANTS.SPACING.XXXL,
+  },
+  loadingText: {
+    marginTop: RESPONSIVE_CONSTANTS.SPACING.MD,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
+    color: '#003667',
+    fontWeight: '500',
+  },
+  loadingAssetsContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: RESPONSIVE_CONSTANTS.SPACING.XXXL,
+  },
+  emptyAssetsContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: RESPONSIVE_CONSTANTS.SPACING.XXXL,
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.XL,
+  },
+  emptyAssetsText: {
+    marginTop: RESPONSIVE_CONSTANTS.SPACING.LG,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
+    color: '#999',
+    fontWeight: '500',
+    textAlign: 'center',
+  },
   selectionSection: {
     backgroundColor: '#FFFFFF',
     borderRadius: RESPONSIVE_CONSTANTS.CARD_BORDER_RADIUS,
@@ -699,6 +1117,9 @@ const styles = StyleSheet.create({
   },
   selectionSectionTablet: {
     padding: RESPONSIVE_CONSTANTS.SPACING.XL,
+    marginBottom: RESPONSIVE_CONSTANTS.SPACING.XL,
+  },
+  selectionSectionWithDropdown: {
     marginBottom: RESPONSIVE_CONSTANTS.SPACING.XL,
   },
   sectionTitle: {
@@ -751,7 +1172,6 @@ const styles = StyleSheet.create({
   },
   dropdownContainer: {
     flex: 1,
-    position: 'relative',
     maxWidth: scale(200),
   },
   dropdownButton: {
@@ -776,33 +1196,60 @@ const styles = StyleSheet.create({
     color: '#333',
     fontWeight: '500',
   },
-  dropdownOptions: {
-    position: 'absolute',
-    top: '100%',
-    left: 0,
-    right: 0,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
+  dropdownButtonDisabled: {
+    backgroundColor: '#F5F5F5',
     borderColor: '#E0E0E0',
-    borderRadius: scale(10),
-    marginTop: RESPONSIVE_CONSTANTS.SPACING.XS,
-    zIndex: 1000,
+    opacity: 0.6,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: RESPONSIVE_CONSTANTS.SPACING.XL,
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: scale(16),
+    width: '100%',
+    maxWidth: scale(400),
+    maxHeight: verticalScale(500),
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
     elevation: 10,
   },
-  dropdownOption: {
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: RESPONSIVE_CONSTANTS.SPACING.LG,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  modalTitle: {
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.LG,
+    fontWeight: 'bold',
+    color: '#003667',
+  },
+  modalScrollView: {
+    maxHeight: verticalScale(350),
+  },
+  modalOption: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.LG,
-    paddingVertical: RESPONSIVE_CONSTANTS.SPACING.MD,
+    paddingVertical: RESPONSIVE_CONSTANTS.SPACING.LG,
     borderBottomWidth: 1,
     borderBottomColor: '#F5F5F5',
   },
-  dropdownOptionText: {
+  modalOptionText: {
     fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
     color: '#333',
     fontWeight: '500',
+    flex: 1,
   },
   assetsSection: {
     flex: 1,

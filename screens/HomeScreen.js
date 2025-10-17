@@ -27,7 +27,7 @@ const { width } = Dimensions.get('window');
 const HomeScreen = () => {
   const { t } = useTranslation();
   const navigation = useNavigation();
-  const { getSortedNavigation, clearNavigation } = useNavigationContext();
+  const { getSortedNavigation, clearNavigation, userNavigation, loading } = useNavigationContext();
   const [menuVisible, setMenuVisible] = useState(false);
   const insets = useSafeAreaInsets();
   const safeAreaConfig = useSafeAreaConfig();
@@ -97,55 +97,15 @@ const HomeScreen = () => {
     const navigationItems = getSortedNavigation();
     const colors = ['#4CAF50', '#2196F3', '#FF9800', '#9C27B0', '#607D8B'];
     
-    // If no navigation items are available, show default items
+    // If no navigation items are available and not loading, return empty array
+    // This ensures only authorized pages are shown
     if (!navigationItems || navigationItems.length === 0) {
-      return [
-        {
-          id: 'asset_default',
-          title: t('navigation.assetAssignment'),
-          subtitle: t('navigation.scanAndManageAssets'),
-          icon: 'barcode-scan',
-          color: '#4CAF50',
-          onPress: () => navigation.navigate('Asset'),
-        },
-        {
-          id: 'employee_default',
-          title: t('navigation.employeeAssets'),
-          subtitle: t('navigation.viewEmployeeAssetAssignments'),
-          icon: 'account-group',
-          color: '#2196F3',
-          onPress: () => navigation.navigate('EmployeeAsset'),
-        },
-        {
-          id: 'department_default',
-          title: t('navigation.departmentAssets'),
-          subtitle: t('navigation.manageDepartmentAssetAllocations'),
-          icon: 'domain',
-          color: '#FF9800',
-          onPress: () => navigation.navigate('DepartmentAsset'),
-        },
-        {
-          id: 'maintenance_default',
-          title: t('navigation.maintenanceSupervisor'),
-          subtitle: t('navigation.updateMaintenanceSchedules'),
-          icon: 'wrench',
-          color: '#9C27B0',
-          onPress: () => navigation.navigate('MaintenanceSupervisor'),
-        },
-        {
-          id: 'report_breakdown_default',
-          title: t('navigation.reportBreakdown'),
-          subtitle: t('navigation.viewAndManageBreakdownReports'),
-          icon: 'clipboard-alert',
-          color: '#607D8B',
-          onPress: () => navigation.navigate('REPORTBREAKDOWN'),
-        },
-      ];
+      return [];
     }
     
     // Remove duplicates based on app_id
-    const uniqueItems = navigationItems.filter((item, index, self) => 
-      index === self.findIndex(t => t.app_id === item.app_id)
+    const uniqueItems = navigationItems.filter((item, index, self) =>
+      index === self.findIndex(navItem => navItem.app_id === item.app_id)
     );
     
     return uniqueItems.map((item, index) => ({
@@ -160,7 +120,8 @@ const HomeScreen = () => {
 
   const menuItems = React.useMemo(() => {
     return generateMenuItems();
-  }, [getSortedNavigation]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [getSortedNavigation, userNavigation]);
 
   const renderMenuItem = (item) => (
     <TouchableOpacity
@@ -300,7 +261,27 @@ const HomeScreen = () => {
           >
             {t('home.quickActions')}
           </Text>
-          {menuItems.map(renderMenuItem)}
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <Text style={styles.loadingText}>{t('common.loading')}</Text>
+            </View>
+          ) : menuItems.length > 0 ? (
+            menuItems.map(renderMenuItem)
+          ) : (
+            <View style={styles.noAccessContainer}>
+              <MaterialCommunityIcons
+                name="lock-outline"
+                size={64}
+                color="#BDBDBD"
+              />
+              <Text style={styles.noAccessTitle}>
+                {t('home.noAccess')}
+              </Text>
+              <Text style={styles.noAccessMessage}>
+                {t('home.contactAdministrator')}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Recent Activity */}
@@ -465,6 +446,34 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#7A7A7A',
   },
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: UI_CONSTANTS.SPACING.XXL * 2,
+  },
+  loadingText: {
+    fontSize: UI_CONSTANTS.FONT_SIZES.LG,
+    color: UI_CONSTANTS.COLORS.GRAY_DARK,
+  },
+  noAccessContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: UI_CONSTANTS.SPACING.XXL * 2,
+  },
+  noAccessTitle: {
+    fontSize: UI_CONSTANTS.FONT_SIZES.XL,
+    fontWeight: '600',
+    color: UI_CONSTANTS.COLORS.GRAY_DARK,
+    marginTop: UI_CONSTANTS.SPACING.LG,
+    textAlign: 'center',
+  },
+  noAccessMessage: {
+    fontSize: UI_CONSTANTS.FONT_SIZES.MD,
+    color: '#9E9E9E',
+    marginTop: UI_CONSTANTS.SPACING.SM,
+    textAlign: 'center',
+    paddingHorizontal: UI_CONSTANTS.SPACING.XL,
+  },
 });
 
-export default HomeScreen; 
+export default HomeScreen;

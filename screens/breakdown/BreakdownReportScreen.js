@@ -9,6 +9,7 @@ import {
   Dimensions,
   Platform,
   StatusBar,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Appbar } from 'react-native-paper';
@@ -150,7 +151,8 @@ const BreakdownReportScreen = () => {
   const insets = useSafeAreaInsets();
   const [menuVisible, setMenuVisible] = useState(false);
   const [showBreakdownCodeDropdown, setShowBreakdownCodeDropdown] = useState(false);
-  const [showMaintenanceDropdown, setShowMaintenanceDropdown] = useState(false);
+  const [showDecisionCodeDropdown, setShowDecisionCodeDropdown] = useState(false);
+  const [showPriorityDropdown, setShowPriorityDropdown] = useState(false);
   const [alertConfig, setAlertConfig] = useState({
     visible: false,
     title: '',
@@ -169,24 +171,89 @@ const BreakdownReportScreen = () => {
     assetType: t('breakdown.appleLaptop'),
     assetName: t('breakdown.macBookPro'),
     status: t('breakdown.breakdownReported'),
+    assetTypeId: 'AT001', // Default asset type ID for testing
   };
 
   // Form state
   const [formData, setFormData] = useState({
     breakdownCode: '',
     description: '',
-    createMaintenance: t('breakdown.yes'),
-    maintenanceDate: '',
+    decision_code: '',
+    priority: '',
   });
 
   // State for API data
   const [breakdownCodes, setBreakdownCodes] = useState([]);
-  const maintenanceOptions = [t('breakdown.yes'), t('breakdown.no')];
+  const [filteredBreakdownCodes, setFilteredBreakdownCodes] = useState([]);
+  const [decisionCodes] = useState([
+    {
+      code: 'BF01',
+      title: 'Maintenance Request & Breakdown Fix',
+      description: 'Create maintenance request along with breakdown fix',
+    },
+    {
+      code: 'BF02',
+      title: 'Create Breakdown fix only',
+      description: 'Create Breakdown fix only',
+    },
+    {
+      code: 'BF03',
+      title: 'Postpone fix to next maintenance',
+      description: 'Postpone breakdown fix until next maintenance',
+    },
+  ]);
 
-  // Fetch breakdown reason codes on component mount
+  // Priority options based on decision code
+  const getPriorityOptions = (decisionCode) => {
+    switch (decisionCode) {
+      case 'BF01': // Maintenance Request & Breakdown Fix
+        return ['High', 'Very High'];
+      case 'BF02': // Create Breakdown fix only
+        return ['High', 'Very High'];
+      case 'BF03': // Postpone fix to next maintenance
+        return ['Medium', 'Low'];
+      default:
+        return ['High', 'Very High', 'Medium', 'Low'];
+    }
+  };
+
+  const [priorityOptions, setPriorityOptions] = useState(['High', 'Very High', 'Medium', 'Low']);
+  const [upcomingMaintenanceDate, setUpcomingMaintenanceDate] = useState(null);
+  const [loadingMaintenance, setLoadingMaintenance] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  // Fetch breakdown reason codes and upcoming maintenance on component mount
   useEffect(() => {
     fetchBreakdownReasonCodes();
+    fetchUpcomingMaintenance();
   }, []);
+
+  // Filter breakdown codes by asset type when breakdown codes or asset data changes
+  useEffect(() => {
+    if (breakdownCodes.length > 0 && assetData.assetTypeId) {
+      const filtered = breakdownCodes.filter(code => 
+        code.asset_type_id === assetData.assetTypeId
+      );
+      setFilteredBreakdownCodes(filtered);
+    } else {
+      setFilteredBreakdownCodes([]);
+    }
+  }, [breakdownCodes, assetData.assetTypeId]);
+
+  // Update priority options when decision code changes
+  useEffect(() => {
+    if (formData.decision_code) {
+      const newPriorityOptions = getPriorityOptions(formData.decision_code);
+      setPriorityOptions(newPriorityOptions);
+      
+      // Reset priority if current selection is not available in new options
+      if (formData.priority && !newPriorityOptions.includes(formData.priority)) {
+        updateFormData('priority', '');
+      }
+    } else {
+      setPriorityOptions(['High', 'Very High', 'Medium', 'Low']);
+    }
+  }, [formData.decision_code]);
 
   // Fetch breakdown reason codes from API
   const fetchBreakdownReasonCodes = async () => {
@@ -226,6 +293,83 @@ const BreakdownReportScreen = () => {
       console.error('Error fetching breakdown reason codes:', error);
       // Fallback to empty array on error
       setBreakdownCodes([]);
+    }
+  };
+
+  // Fetch upcoming maintenance date from API
+  const fetchUpcomingMaintenance = async () => {
+    if (!assetData.id) {
+      console.warn('No asset ID available for fetching upcoming maintenance');
+      return;
+    }
+
+    try {
+      setLoadingMaintenance(true);
+      const serverUrl = getServerUrl();
+      const endpoint = API_ENDPOINTS.GET_UPCOMING_MAINTENANCE(assetData.id);
+      const url = `${serverUrl}${endpoint}`;
+
+      console.log('Fetching upcoming maintenance:', url);
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: await getApiHeaders(),
+      });
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          console.log('No upcoming maintenance found for this asset');
+          setUpcomingMaintenanceDate(null);
+          return;
+        }
+        const errorText = await response.text();
+        console.error('API Error:', response.status, errorText);
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+      }
+
+      const data = await response.json();
+      console.log('Upcoming maintenance fetched successfully:', data);
+
+      // Handle different response structures
+      let maintenanceDate = null;
+      
+      // Check if data is nested in a 'data' property
+      const responseData = data.data || data;
+      
+      if (responseData && responseData.upcoming_maintenance_date) {
+        maintenanceDate = responseData.upcoming_maintenance_date;
+      } else if (responseData && responseData.maintenance_date) {
+        maintenanceDate = responseData.maintenance_date;
+      } else if (responseData && responseData.date) {
+        maintenanceDate = responseData.date;
+      } else if (responseData && responseData.upcoming_date) {
+        maintenanceDate = responseData.upcoming_date;
+      } else if (responseData && responseData.next_maintenance_date) {
+        maintenanceDate = responseData.next_maintenance_date;
+      }
+
+      // Format the date for display
+      if (maintenanceDate) {
+        try {
+          const date = new Date(maintenanceDate);
+          const formattedDate = date.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+          });
+          setUpcomingMaintenanceDate(formattedDate);
+        } catch (error) {
+          console.error('Error formatting date:', error);
+          setUpcomingMaintenanceDate(maintenanceDate);
+        }
+      } else {
+        setUpcomingMaintenanceDate(null);
+      }
+    } catch (error) {
+      console.error('Error fetching upcoming maintenance:', error);
+      setUpcomingMaintenanceDate(null);
+    } finally {
+      setLoadingMaintenance(false);
     }
   };
 
@@ -281,10 +425,20 @@ const BreakdownReportScreen = () => {
     navigation.goBack();
   };
 
-  const handleReportBreakdown = () => {
+  const handleReportBreakdown = async () => {
     // Validate form
     if (!formData.breakdownCode) {
       showAlert(t('common.validationError'), t('breakdown.pleaseSelectBreakdownCode'), 'error');
+      return;
+    }
+
+    // Check if breakdown codes are available for this asset type
+    if (filteredBreakdownCodes.length === 0) {
+      showAlert(
+        t('breakdown.noBreakdownCodesAvailable'),
+        t('breakdown.noBreakdownCodesForAssetType'),
+        'error'
+      );
       return;
     }
 
@@ -293,19 +447,66 @@ const BreakdownReportScreen = () => {
       return;
     }
 
-    if (formData.createMaintenance === 'Yes' && !formData.maintenanceDate) {
-      showAlert(t('common.validationError'), t('breakdown.pleaseSelectMaintenanceDate'), 'error');
+    if (!formData.decision_code) {
+      showAlert(t('common.validationError'), t('breakdown.pleaseSelectDecisionCode'), 'error');
       return;
     }
 
-    showAlert(
-      t('common.success'),
-      t('breakdown.reportSubmittedSuccessfully'),
-      'success',
-      () => {
-        navigation.navigate('REPORTBREAKDOWN');
+    if (!formData.priority) {
+      showAlert(t('common.validationError'), t('breakdown.pleaseSelectPriority'), 'error');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const serverUrl = getServerUrl();
+      const endpoint = API_ENDPOINTS.CREATE_BREAKDOWN_REPORT();
+      const url = `${serverUrl}${endpoint}`;
+
+      const requestBody = {
+        asset_id: assetData.id,
+        atbrrc_id: formData.breakdownCode,
+        reported_by: 'USR001', // TODO: Get actual user ID from auth context
+        description: formData.description.trim(),
+        decision_code: formData.decision_code,
+      };
+
+      console.log('Creating breakdown report:', url, requestBody);
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: await getApiHeaders(),
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API Error:', response.status, errorText);
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
       }
-    );
+
+      const data = await response.json();
+      console.log('Breakdown report created successfully:', data);
+
+      showAlert(
+        t('common.success'),
+        t('breakdown.reportSubmittedSuccessfully'),
+        'success',
+        () => {
+          navigation.navigate('REPORTBREAKDOWN');
+        }
+      );
+    } catch (error) {
+      console.error('Error creating breakdown report:', error);
+      showAlert(
+        t('breakdown.error'),
+        `${t('breakdown.failedToSubmitReport')}: ${error.message}`,
+        'error'
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   const updateFormData = (field, value) => {
@@ -505,8 +706,8 @@ const BreakdownReportScreen = () => {
                     showsVerticalScrollIndicator={true}
                     nestedScrollEnabled={true}
                   >
-                    {breakdownCodes.length > 0 ? (
-                      breakdownCodes.map((item) => {
+                    {filteredBreakdownCodes.length > 0 ? (
+                      filteredBreakdownCodes.map((item) => {
                         const code = typeof item === 'string' ? item : item.id;
                         const displayText = typeof item === 'string' ? item : `${item.id} - ${item.text}`;
                         return (
@@ -528,17 +729,17 @@ const BreakdownReportScreen = () => {
                           </TouchableOpacity>
                         );
                       })
-                    ) : (
-                      <View style={styles.dropdownOption}>
-                        <Text 
-                          style={[styles.dropdownOptionText, { color: UI_CONSTANTS.COLORS.GRAY_DARK }]}
-                          numberOfLines={1}
-                          ellipsizeMode="tail"
-                        >
-                          {t('breakdown.noCodesAvailable')}
-                        </Text>
-                      </View>
-                    )}
+                      ) : (
+                        <View style={styles.dropdownOption}>
+                          <Text 
+                            style={[styles.dropdownOptionText, { color: UI_CONSTANTS.COLORS.GRAY_DARK }]}
+                            numberOfLines={1}
+                            ellipsizeMode="tail"
+                          >
+                            {t('breakdown.noBreakdownCodesForAssetType')}
+                          </Text>
+                        </View>
+                      )}
                   </ScrollView>
                 </View>
               )}
@@ -593,9 +794,10 @@ const BreakdownReportScreen = () => {
               onChangeText={(text) => updateFormData('description', text)}
             />
           </View>
+
         </View>
 
-        {/* Maintenance Planning Section */}
+        {/* Upcoming Maintenance Section */}
         <View style={[
           styles.section,
           { width: RESPONSIVE_CONSTANTS.getSectionWidth() },
@@ -607,95 +809,207 @@ const BreakdownReportScreen = () => {
             numberOfLines={1}
             ellipsizeMode="tail"
           >
-            {t('breakdown.maintenancePlanning')}
+            {t('breakdown.upcomingMaintenance')}
           </Text>
           
-          <View style={[
-            styles.fieldContainer,
-            RESPONSIVE_CONSTANTS.getFieldLayout()
-          ]}>
-            <Text 
-              style={styles.fieldLabel}
-              numberOfLines={1}
-              ellipsizeMode="tail"
-            >
-              {t('breakdown.createMaintenance')}
-            </Text>
-            <View style={styles.dropdownContainer}>
-              <TouchableOpacity
-                style={styles.dropdownButton}
-                onPress={() => setShowMaintenanceDropdown(!showMaintenanceDropdown)}
-              >
-                <Text 
-                  style={styles.dropdownButtonText}
-                  numberOfLines={1}
-                  ellipsizeMode="tail"
-                >
-                  {formData.createMaintenance}
-                </Text>
-                <MaterialCommunityIcons 
-                  name={showMaintenanceDropdown ? "chevron-up" : "chevron-down"} 
-                  size={UI_CONSTANTS.ICON_SIZES.MD} 
-                  color={UI_CONSTANTS.COLORS.TEXT_SECONDARY} 
-                />
-              </TouchableOpacity>
-              
-              {showMaintenanceDropdown && (
-                <View style={styles.dropdownOptions}>
-                  <ScrollView 
-                    style={styles.dropdownScrollView}
-                    showsVerticalScrollIndicator={true}
-                    nestedScrollEnabled={true}
-                  >
-                    {maintenanceOptions.map((option) => (
-                      <TouchableOpacity
-                        key={option}
-                        style={styles.dropdownOption}
-                        onPress={() => {
-                          updateFormData('createMaintenance', option);
-                          setShowMaintenanceDropdown(false);
-                        }}
-                      >
-                        <Text 
-                          style={styles.dropdownOptionText}
-                          numberOfLines={1}
-                          ellipsizeMode="tail"
-                        >
-                          {option}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                </View>
-              )}
-            </View>
-          </View>
-
-          {formData.createMaintenance === 'Yes' && (
-            <View style={[
-              styles.fieldContainer,
-              RESPONSIVE_CONSTANTS.getFieldLayout()
-            ]}>
+          <View style={styles.threeColumnLayout}>
+            {/* Decision Code Column */}
+            <View style={styles.columnContainer}>
               <Text 
-                style={styles.fieldLabel}
+                style={styles.columnLabel}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {t('breakdown.decisionCode')} *
+              </Text>
+              <View style={styles.dropdownContainer}>
+                <TouchableOpacity
+                  style={styles.dropdownButton}
+                  onPress={() => setShowDecisionCodeDropdown(!showDecisionCodeDropdown)}
+                >
+                  <Text 
+                    style={[
+                      styles.dropdownButtonText,
+                      !formData.decision_code && styles.placeholderText
+                    ]}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                  >
+                    {formData.decision_code
+                      ? (() => {
+                          const selectedItem = decisionCodes.find(item => item.code === formData.decision_code);
+                          return selectedItem ? `${selectedItem.code} - ${selectedItem.title}` : formData.decision_code;
+                        })()
+                      : t('breakdown.selectDecisionCode')
+                    }
+                  </Text>
+                  <MaterialCommunityIcons 
+                    name={showDecisionCodeDropdown ? "chevron-up" : "chevron-down"} 
+                    size={UI_CONSTANTS.ICON_SIZES.MD} 
+                    color={UI_CONSTANTS.COLORS.TEXT_SECONDARY} 
+                  />
+                </TouchableOpacity>
+                
+                {showDecisionCodeDropdown && (
+                  <View style={styles.dropdownOptions}>
+                    <ScrollView 
+                      style={styles.dropdownScrollView}
+                      showsVerticalScrollIndicator={true}
+                      nestedScrollEnabled={true}
+                    >
+                      {decisionCodes.map((item) => (
+                        <TouchableOpacity
+                          key={item.code}
+                          style={[
+                            styles.dropdownOption,
+                            formData.decision_code === item.code && styles.selectedDropdownOption,
+                          ]}
+                          onPress={() => {
+                            updateFormData('decision_code', item.code);
+                            setShowDecisionCodeDropdown(false);
+                          }}
+                        >
+                          <View style={styles.dropdownOptionContent}>
+                            <View style={styles.dropdownOptionHeader}>
+                              <MaterialCommunityIcons
+                                name={formData.decision_code === item.code ? 'check-circle' : 'circle-outline'}
+                                size={18}
+                                color={formData.decision_code === item.code ? '#FEC200' : '#999'}
+                              />
+                              <Text style={[
+                                styles.dropdownOptionCode,
+                                formData.decision_code === item.code && styles.selectedDropdownText,
+                              ]}>
+                                {item.code}
+                              </Text>
+                              <Text style={[
+                                styles.dropdownOptionTitle,
+                                formData.decision_code === item.code && styles.selectedDropdownText,
+                              ]}>
+                                {item.title}
+                              </Text>
+                            </View>
+                            <Text style={[
+                              styles.dropdownOptionDescription,
+                              formData.decision_code === item.code && styles.selectedDropdownDescription,
+                            ]}>
+                              {item.description}
+                            </Text>
+                          </View>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  </View>
+                )}
+              </View>
+              <Text style={styles.columnDescription}>
+                {t('breakdown.decisionCodeDescription')}
+              </Text>
+            </View>
+
+            {/* Priority Column */}
+            <View style={styles.columnContainer}>
+              <Text 
+                style={styles.columnLabel}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {t('breakdown.priority')} *
+              </Text>
+              <View style={styles.dropdownContainer}>
+                <TouchableOpacity
+                  style={styles.dropdownButton}
+                  onPress={() => setShowPriorityDropdown(!showPriorityDropdown)}
+                >
+                  <Text 
+                    style={[
+                      styles.dropdownButtonText,
+                      !formData.priority && styles.placeholderText
+                    ]}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                  >
+                    {formData.priority || t('breakdown.selectPriority')}
+                  </Text>
+                  <MaterialCommunityIcons 
+                    name={showPriorityDropdown ? "chevron-up" : "chevron-down"} 
+                    size={UI_CONSTANTS.ICON_SIZES.MD} 
+                    color={UI_CONSTANTS.COLORS.TEXT_SECONDARY} 
+                  />
+                </TouchableOpacity>
+                
+                {showPriorityDropdown && (
+                  <View style={styles.dropdownOptions}>
+                    <ScrollView 
+                      style={styles.dropdownScrollView}
+                      showsVerticalScrollIndicator={true}
+                      nestedScrollEnabled={true}
+                    >
+                      {priorityOptions.map((priority) => (
+                        <TouchableOpacity
+                          key={priority}
+                          style={[
+                            styles.dropdownOption,
+                            formData.priority === priority && styles.selectedDropdownOption,
+                          ]}
+                          onPress={() => {
+                            updateFormData('priority', priority);
+                            setShowPriorityDropdown(false);
+                          }}
+                        >
+                          <Text 
+                            style={[
+                              styles.dropdownOptionText,
+                              formData.priority === priority && styles.selectedDropdownText,
+                            ]}
+                            numberOfLines={1}
+                            ellipsizeMode="tail"
+                          >
+                            {priority}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  </View>
+                )}
+              </View>
+              <Text style={styles.columnDescription}>
+                {t('breakdown.priorityDescription')}
+              </Text>
+            </View>
+
+            {/* Upcoming Maintenance Date Column */}
+            <View style={styles.columnContainer}>
+              <Text 
+                style={styles.columnLabel}
                 numberOfLines={1}
                 ellipsizeMode="tail"
               >
                 {t('breakdown.upcomingMaintenanceDate')}
               </Text>
-              <TextInput
-                style={[
-                  styles.textInput,
-                  DEVICE_TYPE === 'desktop' && styles.textInputDesktop,
-                  DEVICE_TYPE === 'tablet' && styles.textInputTablet
-                ]}
-                placeholder={t('breakdown.dateFormatPlaceholder')}
-                placeholderTextColor={UI_CONSTANTS.COLORS.TEXT_SECONDARY}
-                value={formData.maintenanceDate}
-                onChangeText={(text) => updateFormData('maintenanceDate', text)}
-              />
+              <View style={styles.readOnlyField}>
+                {loadingMaintenance ? (
+                  <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="small" color="#003667" />
+                    <Text style={[styles.readOnlyText, { marginLeft: 8 }]}>
+                      {t('common.loading')}
+                    </Text>
+                  </View>
+                ) : (
+                  <Text 
+                    style={styles.readOnlyText}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                  >
+                    {upcomingMaintenanceDate || t('breakdown.noMaintenanceScheduled')}
+                  </Text>
+                )}
+              </View>
+              <Text style={styles.columnDescription}>
+                {t('breakdown.maintenanceDateDescription')}
+              </Text>
             </View>
-          )}
+          </View>
         </View>
 
         {/* Action Buttons */}
@@ -721,17 +1035,32 @@ const BreakdownReportScreen = () => {
           <TouchableOpacity 
             style={[
               styles.reportButton,
-              RESPONSIVE_CONSTANTS.getButtonSize()
+              RESPONSIVE_CONSTANTS.getButtonSize(),
+              loading && styles.disabledButton
             ]} 
             onPress={handleReportBreakdown}
+            disabled={loading}
           >
-            <Text 
-              style={styles.reportButtonText}
-              numberOfLines={1}
-              ellipsizeMode="tail"
-            >
-              {t('breakdown.reportBreakdown')}
-            </Text>
+            {loading ? (
+              <View style={styles.buttonLoadingContainer}>
+                <ActivityIndicator size="small" color="#FFFFFF" />
+                <Text 
+                  style={[styles.reportButtonText, { marginLeft: 8 }]}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {t('breakdown.submitting')}
+                </Text>
+              </View>
+            ) : (
+              <Text 
+                style={styles.reportButtonText}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {t('breakdown.reportBreakdown')}
+              </Text>
+            )}
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -871,6 +1200,10 @@ const styles = StyleSheet.create({
     color: UI_CONSTANTS.COLORS.TEXT_PRIMARY,
     fontWeight: '500',
   },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   statusContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -943,6 +1276,66 @@ const styles = StyleSheet.create({
   },
   dropdownScrollView: {
     maxHeight: 150,
+  },
+  selectedDropdownOption: {
+    backgroundColor: '#F0F8FF',
+  },
+  dropdownOptionContent: {
+    flex: 1,
+  },
+  dropdownOptionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: RESPONSIVE_CONSTANTS.SPACING.XS,
+    gap: RESPONSIVE_CONSTANTS.SPACING.SM,
+  },
+  dropdownOptionCode: {
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
+    color: '#003667',
+    fontWeight: 'bold',
+    minWidth: 40,
+  },
+  dropdownOptionTitle: {
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
+    color: '#333',
+    fontWeight: '600',
+    flex: 1,
+  },
+  dropdownOptionDescription: {
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.SM,
+    color: '#666',
+    fontStyle: 'italic',
+    marginLeft: scale(36), // Align with title text
+  },
+  selectedDropdownText: {
+    color: '#003667',
+  },
+  selectedDropdownDescription: {
+    color: '#003667',
+    fontStyle: 'normal',
+  },
+  threeColumnLayout: {
+    flexDirection: 'row',
+    gap: RESPONSIVE_CONSTANTS.SPACING.LG,
+    flexWrap: 'wrap',
+  },
+  columnContainer: {
+    flex: 1,
+    minWidth: scale(200),
+    marginBottom: RESPONSIVE_CONSTANTS.SPACING.LG,
+  },
+  columnLabel: {
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
+    fontWeight: '600',
+    color: UI_CONSTANTS.COLORS.TEXT_PRIMARY,
+    marginBottom: RESPONSIVE_CONSTANTS.SPACING.SM,
+  },
+  columnDescription: {
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.SM,
+    color: UI_CONSTANTS.COLORS.TEXT_SECONDARY,
+    fontStyle: 'italic',
+    marginTop: RESPONSIVE_CONSTANTS.SPACING.SM,
+    lineHeight: 16,
   },
   textInput: {
     borderWidth: 1,
@@ -1017,6 +1410,15 @@ const styles = StyleSheet.create({
     color: UI_CONSTANTS.COLORS.WHITE,
     fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.LG,
     fontWeight: '600',
+  },
+  buttonLoadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  disabledButton: {
+    backgroundColor: '#999',
+    opacity: 0.7,
   },
 });
 

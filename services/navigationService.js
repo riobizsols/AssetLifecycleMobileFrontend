@@ -6,30 +6,74 @@ export const navigationService = {
   // Get user navigation from API
   async getUserNavigation() {
     try {
-      // Check if we should use mock data
-      if (shouldUseMockData()) {
-        console.log('Using mock navigation data');
-        return getMockNavigationData();
-      }
-
       const token = await authUtils.getToken();
-      const response = await fetch(`${API_CONFIG.BASE_URL}/api/navigation/user/navigation?platform=M`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
+      let response;
+      let serverUrl = API_CONFIG.BASE_URL;
+
+      console.log('Fetching user navigation from:', serverUrl);
+
+      // Try primary server first with timeout
+      try {
+        response = await Promise.race([
+          fetch(`${serverUrl}/api/navigation/user/navigation?platform=M`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+              'Accept': 'application/json',
+            },
+          }),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Request timeout')), 10000)
+          )
+        ]);
+      } catch (primaryError) {
+        console.log('Primary server failed for navigation:', primaryError.message);
+
+        // Try fallback servers
+        for (const fallbackUrl of API_CONFIG.FALLBACK_URLS) {
+          try {
+            console.log(`Trying fallback server for navigation: ${fallbackUrl}`);
+            response = await Promise.race([
+              fetch(`${fallbackUrl}/api/navigation/user/navigation?platform=M`, {
+                method: 'GET',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`,
+                  'Accept': 'application/json',
+                },
+              }),
+              new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Request timeout')), 10000)
+              )
+            ]);
+            serverUrl = fallbackUrl;
+            console.log(`Successfully connected to fallback server: ${fallbackUrl}`);
+            break;
+          } catch (fallbackError) {
+            console.log(`Fallback server ${fallbackUrl} also failed:`, fallbackError.message);
+          }
+        }
+
+        // If all servers failed, return empty navigation
+        if (!response) {
+          console.log('All servers failed, returning empty navigation');
+          return {
+            user_id: null,
+            data: []
+          };
+        }
+      }
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const data = await response.json();
-      
+
       // Transform the API response to match expected format
       if (data.success && data.data) {
+        console.log('Navigation data loaded successfully from API');
         return {
           user_id: data.user_id,
           data: data.data.map(item => ({
@@ -42,14 +86,20 @@ export const navigationService = {
           }))
         };
       }
-      
-      return data;
+
+      // Return empty navigation if data format is unexpected
+      return {
+        user_id: null,
+        data: []
+      };
     } catch (error) {
       console.error('Error fetching user navigation:', error);
-      
-      // Fallback to mock data if API fails
-      console.log('Falling back to mock navigation data');
-      return getMockNavigationData();
+
+      // Return empty navigation on error (no mock data)
+      return {
+        user_id: null,
+        data: []
+      };
     }
   },
 
@@ -85,6 +135,7 @@ export const navigationService = {
       'DEPTASSIGNMENT': 'DepartmentAsset',
       'MAINTENANCE SUPERVISER': 'MaintenanceSupervisor',
       'REPORTBREAKDOWN': 'REPORTBREAKDOWN',
+      'WORKORDERMANAGEMENT': 'WorkOrderManagement',
     };
     return screenMap[appId] || 'Home';
   },
@@ -97,6 +148,7 @@ export const navigationService = {
       'DEPTASSIGNMENT': 'navigation.departmentAssets',
       'MAINTENANCE SUPERVISER': 'navigation.maintenanceSupervisor',
       'REPORTBREAKDOWN': 'navigation.reportBreakdown',
+      'WORKORDERMANAGEMENT': 'navigation.workOrderManagement',
     };
     return labelMap[appId] || 'navigation.dashboard';
   },
@@ -109,6 +161,7 @@ export const navigationService = {
       'DEPTASSIGNMENT': 'navigation.manageDepartmentAssetAllocations',
       'MAINTENANCE SUPERVISER': 'navigation.updateMaintenanceSchedules',
       'REPORTBREAKDOWN': 'navigation.viewAndManageBreakdownReports',
+      'WORKORDERMANAGEMENT': 'navigation.manageWorkOrdersAndTasks',
     };
     return subtitleMap[appId] || 'navigation.scanAndManageAssets';
   },
@@ -121,6 +174,7 @@ export const navigationService = {
       'DEPTASSIGNMENT': 'domain',
       'MAINTENANCE SUPERVISER': 'wrench',
       'REPORTBREAKDOWN': 'clipboard-alert',
+      'WORKORDERMANAGEMENT': 'clipboard-list',
     };
     return iconMap[appId] || 'view-dashboard';
   },

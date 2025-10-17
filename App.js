@@ -33,6 +33,8 @@ import ReportBreakdownScreen from "./screens/breakdown/ReportBreakdownScreen";
 import BreakdownSelectionScreen from "./screens/breakdown/BreakdownSelectionScreen";
 import BreakdownReportScreen from "./screens/breakdown/BreakdownReportScreen";
 import UpdateBreakdownScreen from "./screens/breakdown/UpdateBreakdownScreen";
+import WorkOrderManagementScreen from "./screens/work_order/WorkOrderManagementScreen";
+import WorkOrderDetailsScreen from "./screens/work_order/WorkOrderDetailsScreen";
 
 
 const Stack = createStackNavigator();
@@ -73,6 +75,8 @@ export default function App() {
             <Stack.Screen name="BREAKDOWNSELECTION" component={BreakdownSelectionScreen} />
             <Stack.Screen name="BREAKDOWNREPORT" component={BreakdownReportScreen} />
             <Stack.Screen name="UPDATEBREAKDOWN" component={UpdateBreakdownScreen} />
+            <Stack.Screen name="WorkOrderManagement" component={WorkOrderManagementScreen} />
+            <Stack.Screen name="WorkOrderDetails" component={WorkOrderDetailsScreen} />
           </Stack.Navigator>
         </NavigationContainer>
       </NavigationProvider>

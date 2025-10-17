@@ -292,10 +292,6 @@ const ReportBreakdownScreen = () => {
     navigation.navigate('BREAKDOWNSELECTION');
   };
 
-  const handleDelete = () => {
-    showAlert(t('breakdown.delete'), t('breakdown.deleteFunctionalityWillBeImplemented'), 'info');
-  };
-
   const handleRowPress = (item) => {
     // Navigate to update screen with breakdown data
     navigation.navigate('UPDATEBREAKDOWN', { breakdownData: item });
@@ -445,13 +441,6 @@ const ReportBreakdownScreen = () => {
             <TouchableOpacity style={styles.actionButton} onPress={handleAddBreakdown}>
               <MaterialCommunityIcons
                 name="plus"
-                size={24}
-                color="#FFFFFF"
-              />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionButton} onPress={handleDelete}>
-              <MaterialCommunityIcons
-                name="delete"
                 size={24}
                 color="#FFFFFF"
               />

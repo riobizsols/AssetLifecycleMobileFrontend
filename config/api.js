@@ -4,30 +4,42 @@ import { Platform } from 'react-native';
 export const API_CONFIG = {
   // Multiple server options for different environments
   SERVERS: {
-    // Local development server (your computer's IP)
-    LOCAL: 'http://192.168.0.101:4000',
+    // Local development server
+    LOCAL: 'http://localhost:4000',
     // Alternative local IPs (common for different network setups)
     LOCAL_ALT1: 'http://10.0.2.2:4000', // Android emulator
-    LOCAL_ALT2: 'http://localhost:4000', // iOS simulator
-    LOCAL_ALT3: 'http://127.0.0.1:4000', // Localhost
-    // Production server (replace with your actual production URL)
+    LOCAL_ALT2: 'http://127.0.0.1:4000', // Localhost alternative
+    LOCAL_ALT3: 'http://192.168.0.110:4000', // Network IP (if needed)
+    // Production server
     PRODUCTION: 'http://103.27.234.248:5000',
   },
 
   // Default server to use - Platform specific
-  BASE_URL: Platform.OS === 'android' 
-    ? 'http://192.168.0.101:4000'  // Use actual IP for Android (works for both emulator and physical device on same network)
-    : 'http://localhost:4000',      // Use localhost for iOS
+  // For production/release builds, use the production server
+  // For development, use local server
+  BASE_URL: __DEV__
+    ? (Platform.OS === 'android'
+        ? 'http://192.168.0.110:4000'  // Development: Use your computer's IP for Android
+        : 'http://localhost:4000')      // Development: Localhost for iOS
+    : 'http://103.27.234.248:5000',     // Production: Production server
 
   // Fallback servers to try if the main one fails - Platform specific
-  FALLBACK_URLS: Platform.OS === 'android'
-    ? [
-        'http://10.0.2.2:4000',      // Android emulator fallback
-        'http://192.168.0.101:4000', // Local network IP
-      ]
+  FALLBACK_URLS: __DEV__
+    ? (Platform.OS === 'android'
+        ? [
+            'http://192.168.0.110:4000', // Your computer's IP
+            'http://10.0.2.2:4000',      // Android emulator localhost
+            'http://localhost:4000',     // Localhost fallback
+            'http://103.27.234.248:5000', // Production fallback
+          ]
+        : [
+            'http://localhost:4000',
+            'http://127.0.0.1:4000',
+            'http://103.27.234.248:5000', // Production fallback
+          ])
     : [
-        'http://localhost:4000',
-        'http://127.0.0.1:4000',
+        'http://103.27.234.248:5000',   // Production primary
+        'http://localhost:4000',        // Local fallback (if testing locally)
       ],
 
   ACCESS_TOKEN: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJvcmdfaWQiOiJPUkcwMDEiLCJ1c2VyX2lkIjoiVVNSMDAyIiwiZW1haWwiOiJuYXJlbnJpbzc1NkBnbWFpbC5jb20iLCJqb2Jfcm9sZV9pZCI6bnVsbCwiZW1wX2ludF9pZCI6IkVNUF9JTlRfMDAwMiIsImlhdCI6MTc1OTcyODA2NSwiZXhwIjoxNzYwMzMyODY1fQ.BveUrzctoFiVNtT1CrLqaUjpsXg7kXKILjI327_3FSg',
@@ -78,7 +90,7 @@ export const getApiHeaders = async () => {
   // Import authUtils dynamically to avoid circular dependencies
   const { authUtils } = await import('../utils/auth');
   const token = await authUtils.getToken();
-  
+
   return {
     'Content-Type': 'application/json',
     'Authorization': token ? `Bearer ${token}` : `Bearer ${API_CONFIG.ACCESS_TOKEN}`,
@@ -105,8 +117,13 @@ export const API_ENDPOINTS = {
   GET_BREAKDOWN_REPORTS: () => '/api/reportbreakdown/reports',
   UPDATE_BREAKDOWN_REPORT: (id) => `/api/reportbreakdown/update/${id}`,
   GET_BREAKDOWN_REASON_CODES: (orgId) => `/api/reportbreakdown/reason-codes?org_id=${orgId}`,
+  GET_ASSET_TYPES_MAINT_REQUIRED: () => '/api/asset-types/maint-required',
+  GET_ASSETS_BY_TYPE: (assetTypeId) => `/api/assets/type/${assetTypeId}`,
+  GET_UPCOMING_MAINTENANCE: (assetId) => `/api/reportbreakdown/upcoming-maintenance/${assetId}`,
+  CREATE_BREAKDOWN_REPORT: () => '/api/reportbreakdown/create',
   LOGIN: () => '/api/auth/login',
   HEALTH: () => '/api/health',
   GET_MAINTENANCE_SCHEDULES: () => '/api/maintenance-schedules/all',
   GET_CHECKLIST_BY_ASSET_TYPE: (assetTypeId) => `/api/checklist/asset-type/${assetTypeId}`,
+  GET_WORK_ORDERS: () => '/api/work-orders/all',
 };

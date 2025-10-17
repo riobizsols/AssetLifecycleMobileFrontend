@@ -667,7 +667,9 @@ export default function Asset_1() {
               </TouchableOpacity>
             </View>
             <View style={styles.infoRow}>
-              <Text style={styles.label}>{t('employees.employeeName')}</Text>
+              <Text style={styles.label} numberOfLines={1} ellipsizeMode="tail">
+                {t('employees.employeeName')}
+              </Text>
               <Text style={styles.colon}>:</Text>
               <TextInput 
                 style={styles.value} 
@@ -675,10 +677,14 @@ export default function Asset_1() {
                 editable={false}
                 placeholder={t('employees.employeeName')}
                 placeholderTextColor="#B6B7B8"
+                numberOfLines={1}
+                ellipsizeMode="tail"
               />
             </View>
             <View style={styles.infoRow}>
-              <Text style={styles.label}>{t('employees.department')}</Text>
+              <Text style={styles.label} numberOfLines={1} ellipsizeMode="tail">
+                {t('employees.department')}
+              </Text>
               <Text style={styles.colon}>:</Text>
               <TextInput 
                 style={styles.value} 
@@ -686,10 +692,14 @@ export default function Asset_1() {
                 editable={false}
                 placeholder={t('employees.department')}
                 placeholderTextColor="#B6B7B8"
+                numberOfLines={1}
+                ellipsizeMode="tail"
               />
             </View>
             <View style={styles.infoRow}>
-              <Text style={styles.label}>No of Assets</Text>
+              <Text style={styles.label} numberOfLines={1} ellipsizeMode="tail">
+                No of Assets
+              </Text>
               <Text style={styles.colon}>:</Text>
               <TextInput 
                 style={styles.value} 
@@ -697,6 +707,8 @@ export default function Asset_1() {
                 editable={false}
                 placeholder="0"
                 placeholderTextColor="#B6B7B8"
+                numberOfLines={1}
+                ellipsizeMode="tail"
               />
             </View>
           </View>
@@ -1082,19 +1094,24 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginBottom: RESPONSIVE_CONSTANTS.SPACING.SM,
+    minHeight: verticalScale(40),
   },
   label: {
-    width: RESPONSIVE_CONSTANTS.LABEL_WIDTH,
+    minWidth: scale(120),
+    maxWidth: scale(180),
     color: "#616161",
     fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
     fontWeight: "500",
+    textAlign: "left",
+    flexShrink: 0,
   },
   colon: {
-    width: RESPONSIVE_CONSTANTS.COLON_WIDTH,
+    width: scale(15),
     color: "#616161",
     fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
     textAlign: "center",
-    marginRight: RESPONSIVE_CONSTANTS.SPACING.MD,
+    marginHorizontal: RESPONSIVE_CONSTANTS.SPACING.SM,
+    flexShrink: 0,
   },
   value: {
     flex: 1,
@@ -1108,6 +1125,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#ccc",
     fontWeight: "400",
+    minWidth: scale(100),
   },
   tableContainer: {
     flex: 1,

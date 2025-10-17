@@ -41,6 +41,14 @@ export const mockNavigationData = {
       access_level: "A",
       int_status: 1,
       icon: "clipboard-alert"
+    },
+    {
+      app_id: "WORKORDERMANAGEMENT",
+      label: "Work Order Management",
+      sequence: 6,
+      access_level: "A",
+      int_status: 1,
+      icon: "clipboard-list"
     }
   ]
 };

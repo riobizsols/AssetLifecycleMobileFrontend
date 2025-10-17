@@ -3,28 +3,30 @@ const os = require('os');
 function getLocalIPAddress() {
   const interfaces = os.networkInterfaces();
   
+  console.log('=== Network Interfaces ===');
+  
   for (const name of Object.keys(interfaces)) {
-    for (const interface of interfaces[name]) {
-      // Skip over non-IPv4 and internal (i.e. 127.0.0.1) addresses
-      if (interface.family === 'IPv4' && !interface.internal) {
-        return interface.address;
+    console.log(`\n${name}:`);
+    
+    for (const iface of interfaces[name]) {
+      if (iface.family === 'IPv4' && !iface.internal) {
+        console.log(`  IPv4: ${iface.address}`);
+        
+        // Check if this looks like a local network IP
+        if (iface.address.startsWith('192.168.') || 
+            iface.address.startsWith('10.') || 
+            iface.address.startsWith('172.')) {
+          console.log(`  ✅ Recommended for Android: http://${iface.address}:4000`);
+        }
       }
     }
   }
   
-  return null;
+  console.log('\n=== Instructions ===');
+  console.log('1. Make sure your Android device is on the same WiFi network');
+  console.log('2. Update the IP address in config/api.js if needed');
+  console.log('3. Restart your React Native app');
+  console.log('4. Test the connection');
 }
 
-const ipAddress = getLocalIPAddress();
-
-if (ipAddress) {
-  console.log('\n🌐 Your computer\'s IP address is:', ipAddress);
-  console.log('📡 Backend server should be accessible at:', `http://${ipAddress}:4000`);
-  console.log('\n📝 Update your config/api.js file with this IP address:');
-  console.log(`   BASE_URL: 'http://${ipAddress}:4000'`);
-  console.log('\n🔧 Make sure your backend server is running on port 4000');
-  console.log('📱 Ensure your mobile device is on the same network as this computer\n');
-} else {
-  console.log('❌ Could not determine your IP address');
-  console.log('🔧 Please check your network connection\n');
-}
+getLocalIPAddress();
