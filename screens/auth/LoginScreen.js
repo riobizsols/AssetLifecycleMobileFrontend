@@ -16,6 +16,7 @@ import { StatusBar } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { API_CONFIG, getApiHeaders, findWorkingServer, API_ENDPOINTS } from '../../config/api';
 import { authUtils } from '../../utils/auth';
+import { safeFetch, getErrorMessage } from '../../utils/responseHandler';
 import CustomAlert from '../../components/CustomAlert';
 import { useNavigation } from '../../context/NavigationContext';
 import { useLanguage } from '../../context/LanguageContext';
@@ -76,80 +77,43 @@ const LoginScreen = ({ navigation }) => {
     setIsLoading(true);
 
     try {
-      // Try the configured server URL first, then fallback to other servers if needed
-      let serverUrl = API_CONFIG.BASE_URL;
-      let response;
-      let lastError;
-
       console.log('=== Login Attempt Started ===');
-      console.log('Primary server URL:', serverUrl);
+      console.log('Primary server URL:', API_CONFIG.BASE_URL);
       console.log('Login endpoint:', API_ENDPOINTS.LOGIN());
-      console.log('Full URL:', `${serverUrl}${API_ENDPOINTS.LOGIN()}`);
 
       // Try primary server first
-      try {
-        console.log('Attempting connection to primary server...');
-        response = await Promise.race([
-          fetch(`${serverUrl}${API_ENDPOINTS.LOGIN()}`, {
+      let result = await safeFetch(`${API_CONFIG.BASE_URL}${API_ENDPOINTS.LOGIN()}`, {
+        method: 'POST',
+        body: JSON.stringify({
+          email: email,
+          password: password,
+        }),
+      });
+
+      // If primary server failed, try fallback servers
+      if (!result.success && result.isNetworkError) {
+        console.log('Primary server failed, trying fallback servers...');
+        
+        for (const fallbackUrl of API_CONFIG.FALLBACK_URLS) {
+          console.log(`Trying fallback server: ${fallbackUrl}`);
+          result = await safeFetch(`${fallbackUrl}${API_ENDPOINTS.LOGIN()}`, {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-            },
             body: JSON.stringify({
               email: email,
               password: password,
             }),
-          }),
-          new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Request timeout')), 10000)
-          )
-        ]);
-        console.log('Primary server responded!');
-      } catch (error) {
-        console.log('Primary server failed:', error.message);
-        console.log('Error type:', error.constructor.name);
-        console.log('Trying fallback servers...');
-        lastError = error;
-        
-        // Try fallback servers
-        for (const fallbackUrl of API_CONFIG.FALLBACK_URLS) {
-          try {
-            console.log(`Trying fallback server: ${fallbackUrl}`);
-            response = await Promise.race([
-              fetch(`${fallbackUrl}${API_ENDPOINTS.LOGIN()}`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Accept': 'application/json',
-                },
-                body: JSON.stringify({
-                  email: email,
-                  password: password,
-                }),
-              }),
-              new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Request timeout')), 10000)
-              )
-            ]);
-            serverUrl = fallbackUrl;
+          });
+          
+          if (result.success) {
             console.log(`Successfully connected to fallback server: ${fallbackUrl}`);
             break;
-          } catch (fallbackError) {
-            console.log(`Fallback server ${fallbackUrl} also failed:`, fallbackError.message);
-            lastError = fallbackError;
           }
-        }
-        
-        // If all servers failed, throw the last error
-        if (!response) {
-          throw lastError;
         }
       }
 
-      const data = await response.json();
-
-      if (response.ok) {
+      if (result.success) {
+        const data = result.data;
+        
         // Store the token and user data if provided in the response
         if (data.token) {
           await authUtils.storeToken(data.token);
@@ -177,25 +141,13 @@ const LoginScreen = ({ navigation }) => {
           navigation.replace('Home');
         });
       } else {
-        // Handle different error cases
-        const errorMessage = data.message || data.error || t('auth.loginFailed');
+        // Handle error cases
+        const errorMessage = getErrorMessage(result);
         showAlert(t('auth.loginFailed'), errorMessage, 'error');
       }
     } catch (error) {
       console.error('Login error:', error);
-      
-      // Provide more specific error messages based on error type
-      let errorMessage = t('auth.networkError');
-      
-      if (error.message.includes('Network request failed')) {
-        errorMessage = t('auth.serverNotReachable');
-      } else if (error.message.includes('timeout')) {
-        errorMessage = t('auth.timeoutError');
-      } else if (error.message.includes('fetch')) {
-        errorMessage = t('auth.networkError');
-      }
-      
-      showAlert(t('auth.connectionError'), errorMessage, 'error');
+      showAlert(t('auth.connectionError'), error.message, 'error');
     } finally {
       setIsLoading(false);
     }

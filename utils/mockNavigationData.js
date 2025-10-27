@@ -49,7 +49,47 @@ export const mockNavigationData = {
       access_level: "A",
       int_status: 1,
       icon: "clipboard-list"
-    }
+    },
+    {
+      app_id: "FCMDEBUG",
+      label: "FCM Debug",
+      sequence: 7,
+      access_level: "A",
+      int_status: 1,
+      icon: "bug"
+    },
+    {
+      app_id: "FCMTEST",
+      label: "FCM Test",
+      sequence: 8,
+      access_level: "A",
+      int_status: 1,
+      icon: "bell-ring"
+    },
+        {
+          app_id: "NOTIFICATIONSETTINGS",
+          label: "Notification Settings",
+          sequence: 9,
+          access_level: "A",
+          int_status: 1,
+          icon: "cog"
+        },
+        {
+          app_id: "STATUSBARTESTER",
+          label: "Status Bar Tester",
+          sequence: 10,
+          access_level: "A",
+          int_status: 1,
+          icon: "bell-outline"
+        },
+        {
+          app_id: "NOTIFICATIONTROUBLESHOOTER",
+          label: "Notification Troubleshooter",
+          sequence: 11,
+          access_level: "A",
+          int_status: 1,
+          icon: "wrench"
+        }
   ]
 };
 
@@ -62,5 +102,5 @@ export const getMockNavigationData = () => {
 export const shouldUseMockData = () => {
   // Use mock data only when API fails or for testing
   // This ensures the app works even when backend is not available
-  return false; // Set to false to use real API data
+  return true; // Set to true to use mock data for FCM testing
 };

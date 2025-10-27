@@ -6,6 +6,12 @@ export const navigationService = {
   // Get user navigation from API
   async getUserNavigation() {
     try {
+      // Use mock data if enabled for testing
+      if (shouldUseMockData()) {
+        console.log('Using mock navigation data for testing');
+        return getMockNavigationData();
+      }
+
       const token = await authUtils.getToken();
       let response;
       let serverUrl = API_CONFIG.BASE_URL;
@@ -95,7 +101,13 @@ export const navigationService = {
     } catch (error) {
       console.error('Error fetching user navigation:', error);
 
-      // Return empty navigation on error (no mock data)
+      // Use mock data as fallback if enabled
+      if (shouldUseMockData()) {
+        console.log('Using mock navigation data as fallback');
+        return getMockNavigationData();
+      }
+
+      // Return empty navigation on error
       return {
         user_id: null,
         data: []
@@ -136,6 +148,11 @@ export const navigationService = {
       'MAINTENANCE SUPERVISER': 'MaintenanceSupervisor',
       'REPORTBREAKDOWN': 'REPORTBREAKDOWN',
       'WORKORDERMANAGEMENT': 'WorkOrderManagement',
+        'FCMDEBUG': 'FCMDebug',
+        'FCMTEST': 'FCMTest',
+        'NOTIFICATIONSETTINGS': 'NotificationSettings',
+        'STATUSBARTESTER': 'StatusBarTester',
+        'NOTIFICATIONTROUBLESHOOTER': 'NotificationTroubleshooter',
     };
     return screenMap[appId] || 'Home';
   },
@@ -149,6 +166,11 @@ export const navigationService = {
       'MAINTENANCE SUPERVISER': 'navigation.maintenanceSupervisor',
       'REPORTBREAKDOWN': 'navigation.reportBreakdown',
       'WORKORDERMANAGEMENT': 'navigation.workOrderManagement',
+        'FCMDEBUG': 'FCM Debug',
+        'FCMTEST': 'FCM Test',
+        'NOTIFICATIONSETTINGS': 'Notification Settings',
+        'STATUSBARTESTER': 'Status Bar Tester',
+        'NOTIFICATIONTROUBLESHOOTER': 'Notification Troubleshooter',
     };
     return labelMap[appId] || 'navigation.dashboard';
   },
@@ -175,6 +197,11 @@ export const navigationService = {
       'MAINTENANCE SUPERVISER': 'wrench',
       'REPORTBREAKDOWN': 'clipboard-alert',
       'WORKORDERMANAGEMENT': 'clipboard-list',
+        'FCMDEBUG': 'bug',
+        'FCMTEST': 'bell-ring',
+        'NOTIFICATIONSETTINGS': 'cog',
+        'STATUSBARTESTER': 'bell-outline',
+        'NOTIFICATIONTROUBLESHOOTER': 'wrench',
     };
     return iconMap[appId] || 'view-dashboard';
   },
