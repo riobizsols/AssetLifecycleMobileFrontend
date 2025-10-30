@@ -18,6 +18,7 @@ import CustomAlert from '../components/CustomAlert';
 import { authUtils } from '../utils/auth';
 import SideMenu from '../components/SideMenu';
 import { useNavigation as useNavigationContext } from '../context/NavigationContext';
+import { useNotification } from '../context/NotificationContext';
 import { navigationService } from '../services/navigationService';
 import { UI_CONSTANTS, COMMON_STYLES, UI_UTILS } from '../utils/uiConstants';
 import { useSafeAreaConfig, getSafeAreaStyles, getContainerStyles } from '../utils/safeAreaUtils';
@@ -28,6 +29,7 @@ const HomeScreen = () => {
   const { t } = useTranslation();
   const navigation = useNavigation();
   const { getSortedNavigation, clearNavigation, userNavigation, loading } = useNavigationContext();
+  const { handleUserLogout } = useNotification();
   const [menuVisible, setMenuVisible] = useState(false);
   const insets = useSafeAreaInsets();
   const safeAreaConfig = useSafeAreaConfig();
@@ -69,8 +71,16 @@ const HomeScreen = () => {
       'warning',
       async () => {
         try {
+          // Handle FCM logout (unregister token and clear storage)
+          await handleUserLogout();
+          
+          // Clear authentication data
           await authUtils.removeToken();
+          
+          // Clear navigation data
           clearNavigation();
+          
+          // Navigate to login screen
           navigation.reset({
             index: 0,
             routes: [{ name: 'Login' }],

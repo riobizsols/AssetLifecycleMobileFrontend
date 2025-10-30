@@ -27,30 +27,15 @@ The following mappings have been added to `services/navigationService.js`:
 'MAINTENANCE SUPERVISER': 'wrench'
 ```
 
-## Mock Data Configuration
-
-The mock navigation data in `utils/mockNavigationData.js` includes:
-
-```javascript
-{
-  app_id: "MAINTENANCE SUPERVISER",
-  label: "Maintenance Supervisor",
-  sequence: 4,
-  access_level: "A",
-  int_status: 1,
-  icon: "wrench"
-}
-```
-
 ## How It Works
 
 1. **Backend Integration:** When the app fetches navigation data from the backend API, it will look for an item with `app_id: "MAINTENANCE SUPERVISER"`
 
 2. **Screen Navigation:** When the user taps on the Maintenance Supervisor item, it will navigate to the `MaintenanceSupervisor` screen
 
-3. **Fallback:** If the backend is not available, the app will use mock data that includes the Maintenance Supervisor configuration
+3. **Access Control:** The Maintenance Supervisor requires admin access level (`A`)
 
-4. **Access Control:** The Maintenance Supervisor requires admin access level (`A`)
+4. **Error Handling:** If the backend is not available, the app will return an empty navigation menu
 
 ## Testing the Configuration
 
@@ -81,7 +66,7 @@ For the backend to support this configuration, ensure that:
 
 1. **Check backend response** - ensure the navigation API returns the correct app_id
 2. **Verify user permissions** - ensure the user has admin access
-3. **Check mock data** - if using mock data, ensure it's enabled
+3. **Check API connectivity** - ensure the backend is accessible
 4. **Clear app cache** - restart the app to refresh navigation data
 
 ### If navigation doesn't work:
@@ -93,7 +78,6 @@ For the backend to support this configuration, ensure that:
 ## Files Modified
 
 - `services/navigationService.js` - Added navigation mappings
-- `utils/mockNavigationData.js` - Added mock data for testing
 - `App.js` - Added maintenance screen routes
 - `screens/HomeScreen.js` - Added maintenance dashboard to default menu
 

@@ -20,12 +20,14 @@ import { safeFetch, getErrorMessage } from '../../utils/responseHandler';
 import CustomAlert from '../../components/CustomAlert';
 import { useNavigation } from '../../context/NavigationContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { useNotification } from '../../context/NotificationContext';
 import { UI_CONSTANTS, COMMON_STYLES, UI_UTILS } from '../../utils/uiConstants';
 
 const LoginScreen = ({ navigation }) => {
   const { t } = useTranslation();
   const { changeLanguage } = useLanguage();
   const { loadUserNavigation } = useNavigation();
+  const { handleUserLogin } = useNotification();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
@@ -135,6 +137,12 @@ const LoginScreen = ({ navigation }) => {
         loadUserNavigation().catch(error => {
           console.error('Error loading user navigation:', error);
           // Navigation loading failed, but login was successful
+        });
+        
+        // Handle FCM token registration after successful login (async, don't wait)
+        handleUserLogin().catch(error => {
+          console.error('Error handling FCM login:', error);
+          // FCM registration failed, but login was successful
         });
         
         showAlert(t('common.success'), t('auth.loginSuccessful'), 'success', () => {

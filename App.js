@@ -1,10 +1,13 @@
 import * as React from "react";
+import { useEffect } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { NavigationProvider } from "./context/NavigationContext";
 import { LanguageProvider } from "./context/LanguageContext";
 import './config/i18n'; // Initialize i18n
+import '@react-native-firebase/app'; // Initialize Firebase
+import fcmService from './services/FCMService'; // Initialize FCM Service
 import Employee_Asset from "./app/index"; // or wherever your Asset_1 is
 import AnotherPage from "./app/Dept_Asset";
 import Emp_Asset_2 from "./screens/employee_asset/emp_asset_2";
@@ -51,6 +54,25 @@ const Tab = createBottomTabNavigator();
 // TabNavigator removed - Employee and Department assets are now separate stack screens
 
 export default function App() {
+  useEffect(() => {
+    // Initialize FCM when app starts
+    const initializeFCM = async () => {
+      try {
+        console.log('🚀 App starting - Initializing FCM Service...');
+        const success = await fcmService.initialize();
+        if (success) {
+          console.log('✅ FCM Service initialized successfully in App.js');
+        } else {
+          console.log('⚠️ FCM Service initialization failed in App.js');
+        }
+      } catch (error) {
+        console.error('❌ Error initializing FCM Service in App.js:', error);
+      }
+    };
+
+    initializeFCM();
+  }, []);
+
   return (
     <LanguageProvider>
       <NavigationProvider>

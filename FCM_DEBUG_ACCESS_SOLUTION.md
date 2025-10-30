@@ -17,10 +17,10 @@ I've implemented multiple ways to access the FCM Debug screen. Here are all the 
 4. **Tap on "FCM Debug"** to open the debug screen
 
 ### **If FCM Debug doesn't appear in the menu:**
-- The navigation is using mock data
-- Mock data is enabled (`shouldUseMockData() = true`)
-- FCM items are configured in the mock data
-- Navigation service has proper mappings
+- Check if the backend API is returning FCM navigation items
+- Verify user permissions for FCM modules
+- Ensure the navigation API endpoint is accessible
+- Check navigation service mappings
 
 ## 📱 **Method 2: Direct Navigation (Backup)**
 
@@ -48,11 +48,10 @@ navigation.navigate('NotificationSettings');
 ## 🔧 **Configuration Status:**
 
 ### ✅ **What's Configured:**
-- **Mock Navigation Data** - FCM items added
 - **Navigation Service** - Screen mappings configured
 - **App.js** - Screen routes configured
 - **Component Files** - All FCM components exist
-- **Mock Data Usage** - Enabled for testing
+- **API Integration** - Backend navigation endpoint configured
 
 ### ✅ **Navigation Mappings:**
 - `FCMDEBUG` → `FCMDebug` screen
@@ -85,14 +84,14 @@ navigation.navigate('NotificationSettings');
 1. **Check Console Logs:**
    ```javascript
    // Look for these messages in console
-   "Using mock navigation data for testing"
-   "FCM items found: 3"
+   "Fetching user navigation from: [server_url]"
+   "Navigation data loaded successfully from API"
    ```
 
-2. **Verify Mock Data:**
+2. **Verify API Response:**
    ```bash
-   # Run navigation test
-   node scripts/test-navigation.js
+   # Check if navigation API is accessible
+   curl -H "Authorization: Bearer [token]" [server_url]/api/navigation/user/navigation?platform=M
    ```
 
 3. **Check Navigation Loading:**
@@ -126,19 +125,20 @@ navigation.navigate('NotificationSettings');
 
 ## 📊 **Verification Steps:**
 
-### **Step 1: Check Navigation Test**
+### **Step 1: Check API Connectivity**
 ```bash
-node scripts/test-navigation.js
+# Test navigation API endpoint
+curl -H "Authorization: Bearer [token]" [server_url]/api/navigation/user/navigation?platform=M
 ```
-Should show:
-- ✅ Mock data loaded successfully
-- ✅ FCM items found: 3
-- ✅ FCM Debug screen configured
+Should return:
+- ✅ Navigation data with FCM items
+- ✅ Proper JSON response structure
+- ✅ No authentication errors
 
 ### **Step 2: Check App Console**
 Look for:
-- "Using mock navigation data for testing"
-- "FCM items found: 3"
+- "Fetching user navigation from: [server_url]"
+- "Navigation data loaded successfully from API"
 - Navigation loading messages
 
 ### **Step 3: Check Home Screen**

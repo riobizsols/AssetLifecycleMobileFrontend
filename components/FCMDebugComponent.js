@@ -25,7 +25,7 @@ const FCMDebugComponent = () => {
 
   const initializeDebug = async () => {
     try {
-      const token = await FCMService.getToken();
+      const token = await FCMService.getFCMToken();
       setFcmToken(token);
       setApiUrl(FCMApiClient.baseURL);
     } catch (error) {

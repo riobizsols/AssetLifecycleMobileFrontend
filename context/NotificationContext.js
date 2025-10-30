@@ -185,7 +185,7 @@ export const NotificationProvider = ({ children }) => {
   const initializeFCM = async () => {
     try {
       await FCMService.initialize();
-      const token = await FCMService.getToken();
+      const token = await FCMService.getFCMToken();
       
       dispatch({ type: ACTION_TYPES.SET_INITIALIZED, payload: true });
       dispatch({ type: ACTION_TYPES.SET_FCM_TOKEN, payload: token });

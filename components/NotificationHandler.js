@@ -14,7 +14,7 @@ const NotificationHandler = ({ children }) => {
   const initializeFCM = async () => {
     try {
       await FCMService.initialize();
-      const token = await FCMService.getToken();
+      const token = await FCMService.getFCMToken();
       setFcmToken(token);
       setInitialized(true);
       

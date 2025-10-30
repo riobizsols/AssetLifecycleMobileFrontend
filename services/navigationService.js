@@ -1,17 +1,10 @@
 import { API_CONFIG, getApiHeaders } from '../config/api';
 import { authUtils } from '../utils/auth';
-import { getMockNavigationData, shouldUseMockData } from '../utils/mockNavigationData';
 
 export const navigationService = {
   // Get user navigation from API
   async getUserNavigation() {
     try {
-      // Use mock data if enabled for testing
-      if (shouldUseMockData()) {
-        console.log('Using mock navigation data for testing');
-        return getMockNavigationData();
-      }
-
       const token = await authUtils.getToken();
       let response;
       let serverUrl = API_CONFIG.BASE_URL;
@@ -100,12 +93,6 @@ export const navigationService = {
       };
     } catch (error) {
       console.error('Error fetching user navigation:', error);
-
-      // Use mock data as fallback if enabled
-      if (shouldUseMockData()) {
-        console.log('Using mock navigation data as fallback');
-        return getMockNavigationData();
-      }
 
       // Return empty navigation on error
       return {
