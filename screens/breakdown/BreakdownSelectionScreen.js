@@ -289,19 +289,42 @@ const BreakdownSelectionScreen = () => {
       console.error('=== Fetch Assets Error ===');
       console.error('Error message:', error.message);
 
-      let errorMessage = 'Failed to load assets. Please try again.';
-
-      if (error.message.includes('Network request failed')) {
-        errorMessage = 'Network connection failed. Please check your internet connection.';
-      } else if (error.message.includes('timeout')) {
-        errorMessage = 'Request timed out. Please try again.';
-      } else if (error.message.includes('HTTP')) {
-        errorMessage = `Server error: ${error.message}`;
+      // Parse error message to extract JSON if present
+      let errorMessage = error.message;
+      let parsedError = null;
+      
+      try {
+        // Try to extract JSON from error message
+        const jsonMatch = errorMessage.match(/\{.*\}/);
+        if (jsonMatch) {
+          parsedError = JSON.parse(jsonMatch[0]);
+          if (parsedError.message) {
+            errorMessage = parsedError.message;
+          }
+        }
+      } catch (parseError) {
+        // If parsing fails, use original error message
+        console.warn('Could not parse error JSON:', parseError);
+      }
+      
+      // Handle specific error cases
+      let displayMessage = t('breakdown.errors.loadAssetsError');
+      
+      if (errorMessage.includes('Session expired') || errorMessage.includes('session expired') || errorMessage.includes('expired')) {
+        displayMessage = t('breakdown.errors.sessionExpired');
+      } else if (errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
+        displayMessage = t('breakdown.errors.unauthorized');
+      } else if (errorMessage.includes('Network') || errorMessage.includes('network') || errorMessage.includes('fetch')) {
+        displayMessage = t('breakdown.errors.networkError');
+      } else if (errorMessage.includes('timeout') || errorMessage.includes('Timeout')) {
+        displayMessage = t('breakdown.errors.timeoutError');
+      } else if (errorMessage.includes('500') || errorMessage.includes('Server')) {
+        displayMessage = t('breakdown.errors.serverError');
       }
 
       showAlert(
         t('breakdown.error'),
-        errorMessage,
+        displayMessage,
         'error'
       );
       setAvailableAssets([]);
@@ -379,19 +402,42 @@ const BreakdownSelectionScreen = () => {
       console.error('Error message:', error.message);
       console.error('Error stack:', error.stack);
 
-      let errorMessage = 'Failed to load asset types. Please try again.';
-
-      if (error.message.includes('Network request failed')) {
-        errorMessage = 'Network connection failed. Please check your internet connection and server status.';
-      } else if (error.message.includes('timeout')) {
-        errorMessage = 'Request timed out. Please try again.';
-      } else if (error.message.includes('HTTP')) {
-        errorMessage = `Server error: ${error.message}`;
+      // Parse error message to extract JSON if present
+      let errorMessage = error.message;
+      let parsedError = null;
+      
+      try {
+        // Try to extract JSON from error message
+        const jsonMatch = errorMessage.match(/\{.*\}/);
+        if (jsonMatch) {
+          parsedError = JSON.parse(jsonMatch[0]);
+          if (parsedError.message) {
+            errorMessage = parsedError.message;
+          }
+        }
+      } catch (parseError) {
+        // If parsing fails, use original error message
+        console.warn('Could not parse error JSON:', parseError);
+      }
+      
+      // Handle specific error cases
+      let displayMessage = t('breakdown.errors.loadCodesError');
+      
+      if (errorMessage.includes('Session expired') || errorMessage.includes('session expired') || errorMessage.includes('expired')) {
+        displayMessage = t('breakdown.errors.sessionExpired');
+      } else if (errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
+        displayMessage = t('breakdown.errors.unauthorized');
+      } else if (errorMessage.includes('Network') || errorMessage.includes('network') || errorMessage.includes('fetch')) {
+        displayMessage = t('breakdown.errors.networkError');
+      } else if (errorMessage.includes('timeout') || errorMessage.includes('Timeout')) {
+        displayMessage = t('breakdown.errors.timeoutError');
+      } else if (errorMessage.includes('500') || errorMessage.includes('Server')) {
+        displayMessage = t('breakdown.errors.serverError');
       }
 
       showAlert(
         t('breakdown.error'),
-        errorMessage,
+        displayMessage,
         'error'
       );
       // Set empty array on error

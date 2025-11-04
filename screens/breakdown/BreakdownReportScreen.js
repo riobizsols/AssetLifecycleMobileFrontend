@@ -428,7 +428,11 @@ const BreakdownReportScreen = () => {
   const handleReportBreakdown = async () => {
     // Validate form
     if (!formData.breakdownCode) {
-      showAlert(t('common.validationError'), t('breakdown.pleaseSelectBreakdownCode'), 'error');
+      showAlert(
+        t('alerts.validationError'),
+        t('breakdown.validation.breakdownCodeRequired'),
+        'error'
+      );
       return;
     }
 
@@ -442,18 +446,55 @@ const BreakdownReportScreen = () => {
       return;
     }
 
+    // Validate breakdown code exists in filtered codes
+    const isValidCode = filteredBreakdownCodes.some(code => {
+      const codeId = typeof code === 'string' ? code : code.id;
+      return codeId === formData.breakdownCode;
+    });
+    
+    if (!isValidCode) {
+      showAlert(
+        t('alerts.validationError'),
+        t('breakdown.validation.invalidBreakdownCode'),
+        'error'
+      );
+      return;
+    }
+
     if (!formData.description.trim()) {
-      showAlert(t('common.validationError'), t('breakdown.pleaseProvideDescription'), 'error');
+      showAlert(
+        t('alerts.validationError'),
+        t('breakdown.validation.descriptionRequired'),
+        'error'
+      );
+      return;
+    }
+
+    // Check description length
+    if (formData.description.trim().length < 20) {
+      showAlert(
+        t('alerts.validationError'),
+        t('breakdown.validation.descriptionTooShort'),
+        'error'
+      );
       return;
     }
 
     if (!formData.decision_code) {
-      showAlert(t('common.validationError'), t('breakdown.pleaseSelectDecisionCode'), 'error');
+      showAlert(
+        t('alerts.validationError'),
+        t('breakdown.validation.decisionCodeRequired'),
+        'error'
+      );
       return;
     }
 
     if (!formData.priority) {
-      showAlert(t('common.validationError'), t('breakdown.pleaseSelectPriority'), 'error');
+      showAlert(
+        t('alerts.validationError'),
+        t('breakdown.validation.priorityRequired'),
+        'error'
+      );
       return;
     }
 
@@ -499,9 +540,47 @@ const BreakdownReportScreen = () => {
       );
     } catch (error) {
       console.error('Error creating breakdown report:', error);
+      
+      // Parse error message to extract JSON if present
+      let errorMessage = error.message;
+      let parsedError = null;
+      
+      try {
+        // Try to extract JSON from error message
+        const jsonMatch = errorMessage.match(/\{.*\}/);
+        if (jsonMatch) {
+          parsedError = JSON.parse(jsonMatch[0]);
+          if (parsedError.message) {
+            errorMessage = parsedError.message;
+          }
+        }
+      } catch (parseError) {
+        // If parsing fails, use original error message
+        console.warn('Could not parse error JSON:', parseError);
+      }
+      
+      // Handle specific error cases
+      let displayMessage = t('breakdown.errors.submitError');
+      
+      if (errorMessage.includes('Session expired') || errorMessage.includes('session expired') || errorMessage.includes('expired')) {
+        displayMessage = t('breakdown.errors.sessionExpired');
+      } else if (errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
+        displayMessage = t('breakdown.errors.unauthorized');
+      } else if (errorMessage.includes('Network') || errorMessage.includes('network') || errorMessage.includes('fetch')) {
+        displayMessage = t('breakdown.errors.networkError');
+      } else if (errorMessage.includes('timeout') || errorMessage.includes('Timeout')) {
+        displayMessage = t('breakdown.errors.timeoutError');
+      } else if (errorMessage.includes('500') || errorMessage.includes('Server')) {
+        displayMessage = t('breakdown.errors.serverError');
+      } else if (parsedError && parsedError.message) {
+        displayMessage = t('breakdown.errors.submitErrorDetails', { message: parsedError.message });
+      } else if (errorMessage) {
+        displayMessage = t('breakdown.errors.submitErrorDetails', { message: errorMessage });
+      }
+      
       showAlert(
         t('breakdown.error'),
-        `${t('breakdown.failedToSubmitReport')}: ${error.message}`,
+        displayMessage,
         'error'
       );
     } finally {

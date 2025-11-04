@@ -1,6 +1,7 @@
 import messaging from '@react-native-firebase/messaging';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
+import { check, request, PERMISSIONS, RESULTS } from 'react-native-permissions';
 import FCMApiClient from './FCMApiClient';
 import { authUtils } from '../utils/auth';
 
@@ -23,13 +24,10 @@ class FCMService {
       // Initialize API client
       await FCMApiClient.initialize();
 
-      // Request permission
-      const authStatus = await messaging().requestPermission();
-      const enabled = authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-                     authStatus === messaging.AuthorizationStatus.PROVISIONAL;
-
-      if (!enabled) {
-        console.log('❌ FCM permission not granted');
+      // Request notification permission
+      const permissionGranted = await this.requestNotificationPermission();
+      if (!permissionGranted) {
+        console.log('❌ Notification permission not granted');
         return false;
       }
 
@@ -60,6 +58,95 @@ class FCMService {
       return true;
     } catch (error) {
       console.error('❌ FCM initialization failed:', error);
+      return false;
+    }
+  }
+
+  async requestNotificationPermission() {
+    try {
+      if (Platform.OS === 'android') {
+        // For Android 13+ (API 33+), we need to request POST_NOTIFICATIONS permission
+        const checkResult = await check(PERMISSIONS.ANDROID.POST_NOTIFICATIONS);
+        console.log('📱 Android notification permission status:', checkResult);
+
+        if (checkResult === RESULTS.GRANTED) {
+          console.log('✅ Android notification permission already granted');
+          return true;
+        }
+
+        // UNAVAILABLE means permission doesn't exist (Android < 13), so proceed
+        if (checkResult === RESULTS.UNAVAILABLE) {
+          console.log('✅ Android < 13 detected - notification permission not required');
+          return true;
+        }
+
+        // Blocked - user needs to enable in settings
+        if (checkResult === RESULTS.BLOCKED) {
+          Alert.alert(
+            'Notification Permission Blocked',
+            'Notification permission is blocked. Please enable it in your device settings (Settings > Apps > Asset Management App > Notifications) to receive push notifications.',
+            [{ text: 'OK' }]
+          );
+          return false;
+        }
+
+        // Limited - proceed but might have limited functionality
+        if (checkResult === RESULTS.LIMITED) {
+          console.log('⚠️ Android notification permission is limited');
+          return true;
+        }
+
+        // DENIED - request permission
+        if (checkResult === RESULTS.DENIED) {
+          console.log('🔔 Requesting Android notification permission...');
+          const requestResult = await request(PERMISSIONS.ANDROID.POST_NOTIFICATIONS);
+          console.log('📱 Android notification permission request result:', requestResult);
+
+          if (requestResult === RESULTS.GRANTED) {
+            console.log('✅ Android notification permission granted');
+            return true;
+          } else if (requestResult === RESULTS.BLOCKED) {
+            Alert.alert(
+              'Notification Permission Blocked',
+              'Notification permission is blocked. Please enable it in your device settings to receive push notifications.',
+              [{ text: 'OK' }]
+            );
+            return false;
+          } else {
+            console.log('❌ Android notification permission denied');
+            Alert.alert(
+              'Notification Permission Required',
+              'Please enable notification permissions to receive push notifications. You can enable it later in Settings.',
+              [{ text: 'OK' }]
+            );
+            // Allow app to continue, but notifications won't work
+            return false;
+          }
+        }
+
+        return false;
+      } else {
+        // For iOS, use Firebase's requestPermission
+        const authStatus = await messaging().requestPermission();
+        const enabled = authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+                       authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+        
+        if (enabled) {
+          console.log('✅ iOS notification permission granted');
+        } else {
+          console.log('❌ iOS notification permission denied');
+        }
+        
+        return enabled;
+      }
+    } catch (error) {
+      console.error('❌ Error requesting notification permission:', error);
+      // For Android, if there's an error (e.g., API < 33), we can still proceed
+      // as POST_NOTIFICATIONS is only required for API 33+
+      if (Platform.OS === 'android') {
+        console.log('⚠️ Permission check failed, proceeding anyway (may be API < 33)');
+        return true;
+      }
       return false;
     }
   }
@@ -134,16 +221,15 @@ class FCMService {
   }
 
   setupMessageHandlers() {
-    // Handle background messages
-    messaging().setBackgroundMessageHandler(async remoteMessage => {
-      console.log('📨 Message handled in the background!', remoteMessage);
-      // Handle background message here
-    });
+    // Note: Background message handler is registered in index.js
+    // It must be registered at the top level before AppRegistry.registerComponent
 
     // Handle foreground messages
     messaging().onMessage(async remoteMessage => {
       console.log('📨 Foreground message received:', remoteMessage);
       this.handleForegroundMessage(remoteMessage);
+      // Note: Unread count is incremented in NotificationHandler component
+      // which has access to NotificationContext
     });
 
     // Handle notification tap when app is in background/quit
@@ -170,14 +256,8 @@ class FCMService {
       data: data,
     });
 
-    // Show alert for foreground messages
-    if (notification) {
-      Alert.alert(
-        notification.title || 'New Message',
-        notification.body || 'You have a new message',
-        [{ text: 'OK' }]
-      );
-    }
+    // Don't show alert popup in foreground - badge will indicate new notification
+    // Just log the notification for debugging
   }
 
   handleNotificationTap(remoteMessage) {
@@ -359,21 +439,39 @@ class FCMService {
     }
   }
 
-  // Get notification history
-  async getNotificationHistory(limit = 50, offset = 0) {
+  // Get notification history with optional filters
+  /**
+   * Get notification history for current user
+   * @param {Object} filters - Optional filters (notificationType, status, startDate, endDate, limit, offset)
+   * @returns {Promise<Object>} Notification history object with userId and history array
+   */
+  async getNotificationHistory(filters = {}) {
     try {
-      const result = await FCMApiClient.getNotificationHistory(limit, offset);
-      return result.data;
+      // Set default values for limit and offset if not provided
+      const queryFilters = {
+        limit: filters.limit || 50,
+        offset: filters.offset || 0,
+        ...filters,
+      };
+
+      const result = await FCMApiClient.getNotificationHistory(queryFilters);
+      
+      if (result && result.success) {
+        console.log('✅ Notification history retrieved:', result.data?.history?.length || 0, 'items');
+        return result.data; // Returns { userId, history: [...] }
+      } else if (result && result.data) {
+        // Handle case where response might not have success field
+        return result.data;
+      } else {
+        throw new Error(result?.message || 'Failed to get notification history');
+      }
     } catch (error) {
       console.error('❌ Error getting notification history:', error);
 
       // Return empty history if endpoint is not available
       return {
-        notifications: [],
-        total: 0,
-        limit: limit,
-        offset: offset,
-        note: 'Notification history endpoint not implemented on backend',
+        userId: null,
+        history: [],
       };
     }
   }
@@ -444,6 +542,29 @@ class FCMService {
   // Legacy method for backward compatibility
   async sendTokenToServer(token, userId) {
     return this.registerTokenWithBackend();
+  }
+
+  // Public method to manually request notification permission
+  // Useful if user denied permission initially and wants to grant it later
+  async requestPermissionManually() {
+    return this.requestNotificationPermission();
+  }
+
+  // Check current notification permission status
+  async checkNotificationPermission() {
+    try {
+      if (Platform.OS === 'android') {
+        const result = await check(PERMISSIONS.ANDROID.POST_NOTIFICATIONS);
+        return result === RESULTS.GRANTED;
+      } else {
+        const authStatus = await messaging().hasPermission();
+        return authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+               authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+      }
+    } catch (error) {
+      console.error('❌ Error checking notification permission:', error);
+      return false;
+    }
   }
 }
 

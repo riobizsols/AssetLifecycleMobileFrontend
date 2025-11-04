@@ -27,7 +27,8 @@
     "select": "Selecionar",
     "required": "Obrigatório",
     "na": "N/A",
-    "notAvailable": "Não disponível"
+    "notAvailable": "Não disponível",
+    "retry": "Tentar novamente"
   },
   "auth": {
     "login": "Entrar",
@@ -423,7 +424,35 @@
     "breakdownReportedSuccessfully": "Falha relatada com sucesso",
     "breakdownUpdatedSuccessfully": "Falha atualizada com sucesso",
     "breakdownResolvedSuccessfully": "Falha resolvida com sucesso",
-    "noCodesAvailable": "Nenhum código disponível"
+    "noCodesAvailable": "Nenhum código disponível",
+    "validation": {
+      "breakdownCodeRequired": "O código de falha é obrigatório. Por favor, selecione um código de falha para continuar.",
+      "descriptionRequired": "A descrição é obrigatória. Por favor, forneça uma descrição detalhada do problema de falha.",
+      "descriptionTooShort": "A descrição é muito curta. Por favor, forneça pelo menos 20 caracteres descrevendo o problema.",
+      "decisionCodeRequired": "O código de decisão é obrigatório. Por favor, selecione como deseja lidar com esta falha.",
+      "priorityRequired": "A prioridade é obrigatória. Por favor, selecione um nível de prioridade com base na sua seleção de código de decisão.",
+      "allFieldsRequired": "Por favor, preencha todos os campos obrigatórios antes de enviar o relatório de falha.",
+      "invalidBreakdownCode": "Código de falha inválido selecionado. Por favor, escolha um código de falha válido para este tipo de ativo.",
+      "descriptionMinLength": "A descrição deve ter pelo menos {{min}} caracteres. Por favor, forneça mais detalhes.",
+      "descriptionMaxLength": "A descrição não pode exceder {{max}} caracteres. Por favor, encurte sua descrição."
+    },
+    "errors": {
+      "sessionExpired": "Sua sessão expirou. Por favor, faça login novamente para continuar.",
+      "unauthorized": "Você não está autorizado a realizar esta ação. Por favor, verifique suas permissões.",
+      "networkError": "Falha na conexão de rede. Por favor, verifique sua conexão com a internet e tente novamente.",
+      "serverError": "Erro do servidor ocorrido. Por favor, tente novamente mais tarde ou entre em contato com o suporte se o problema persistir.",
+      "timeoutError": "Solicitação expirada. Por favor, verifique sua conexão de rede e tente novamente.",
+      "fetchReportsError": "Não foi possível buscar os relatórios de falhas. Por favor, verifique sua conexão e tente novamente.",
+      "fetchReportsDetails": "Falha ao carregar os relatórios de falhas. {{message}}",
+      "updateError": "Não foi possível atualizar o relatório de falha. Por favor, verifique as informações e tente novamente.",
+      "updateErrorDetails": "Falha ao atualizar o relatório de falha. {{message}}",
+      "submitError": "Não foi possível enviar o relatório de falha. Por favor, verifique todos os campos e tente novamente.",
+      "submitErrorDetails": "Falha ao enviar o relatório de falha. {{message}}",
+      "loadCodesError": "Não foi possível carregar os códigos de falha. Por favor, atualize e tente novamente.",
+      "loadAssetsError": "Não foi possível carregar os ativos. Por favor, verifique sua conexão e tente novamente.",
+      "noAssetSelected": "Nenhum ativo selecionado. Por favor, selecione um ativo antes de relatar uma falha.",
+      "genericError": "Um erro inesperado ocorreu. Por favor, tente novamente ou entre em contato com o suporte se o problema continuar."
+    }
   },
   "maintenance": {
     "maintenanceSupervisor": "Supervisor de Manutenção",
@@ -631,6 +660,9 @@
     "ok": "OK",
     "storagePermissionDenied": "Permissão de armazenamento negada. Não é possível salvar PDF.",
     "pdfGenerationFailed": "Falha ao gerar PDF. Tente novamente.",
+    "pdfFileNotFound": "Arquivo PDF não encontrado",
+    "failedToOpenPDF": "Falha ao abrir o arquivo PDF. Tente abri-lo manualmente da pasta Downloads.",
+    "tapToOpenPDF": "Toque para abrir PDF",
     "tabOverview": "Visão Geral",
     "tabVendor": "Fornecedor",
     "tabChecklist": "Lista de Verificação",
@@ -641,5 +673,10 @@
       "checklist": "Lista de Verificação",
       "history": "Histórico"
     }
+  },
+  "notifications": {
+    "title": "Notificações",
+    "noNotifications": "Ainda não há notificações",
+    "errorLoading": "Erro ao carregar notificações"
   }
 }

@@ -222,9 +222,47 @@ const ReportBreakdownScreen = () => {
       }
     } catch (error) {
       console.error('Error fetching breakdown reports:', error);
+      
+      // Parse error message to extract JSON if present
+      let errorMessage = error.message;
+      let parsedError = null;
+      
+      try {
+        // Try to extract JSON from error message
+        const jsonMatch = errorMessage.match(/\{.*\}/);
+        if (jsonMatch) {
+          parsedError = JSON.parse(jsonMatch[0]);
+          if (parsedError.message) {
+            errorMessage = parsedError.message;
+          }
+        }
+      } catch (parseError) {
+        // If parsing fails, use original error message
+        console.warn('Could not parse error JSON:', parseError);
+      }
+      
+      // Handle specific error cases
+      let displayMessage = t('breakdown.errors.fetchReportsError');
+      
+      if (errorMessage.includes('Session expired') || errorMessage.includes('session expired') || errorMessage.includes('expired')) {
+        displayMessage = t('breakdown.errors.sessionExpired');
+      } else if (errorMessage.includes('401') || errorMessage.includes('Unauthorized') || errorMessage.includes('unauthorized')) {
+        displayMessage = t('breakdown.errors.unauthorized');
+      } else if (errorMessage.includes('Network') || errorMessage.includes('network') || errorMessage.includes('fetch')) {
+        displayMessage = t('breakdown.errors.networkError');
+      } else if (errorMessage.includes('timeout') || errorMessage.includes('Timeout')) {
+        displayMessage = t('breakdown.errors.timeoutError');
+      } else if (errorMessage.includes('500') || errorMessage.includes('Server')) {
+        displayMessage = t('breakdown.errors.serverError');
+      } else if (parsedError && parsedError.message) {
+        displayMessage = t('breakdown.errors.fetchReportsDetails', { message: parsedError.message });
+      } else if (errorMessage) {
+        displayMessage = t('breakdown.errors.fetchReportsDetails', { message: errorMessage });
+      }
+      
       showAlert(
         t('breakdown.error'),
-        `${t('breakdown.failedToFetchBreakdownReports')}: ${error.message}`,
+        displayMessage,
         'error'
       );
       setBreakdownData([]);

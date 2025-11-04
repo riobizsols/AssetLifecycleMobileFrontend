@@ -227,25 +227,48 @@ class FCMApiClient {
     }
   }
 
-  // Get notification history (if backend supports it)
-  async getNotificationHistory(limit = 50, offset = 0) {
+  // Get notification history with optional filters
+  async getNotificationHistory(filters = {}) {
     try {
-      return await this.makeRequest(`/fcm/notification-history?limit=${limit}&offset=${offset}`, 'GET');
+      // Build query string from filters
+      const queryParams = new URLSearchParams();
+      
+      // Add filter parameters if provided
+      if (filters.notificationType) {
+        queryParams.append('notificationType', filters.notificationType);
+      }
+      if (filters.status) {
+        queryParams.append('status', filters.status);
+      }
+      if (filters.startDate) {
+        queryParams.append('startDate', filters.startDate);
+      }
+      if (filters.endDate) {
+        queryParams.append('endDate', filters.endDate);
+      }
+      if (filters.limit !== undefined) {
+        queryParams.append('limit', filters.limit.toString());
+      }
+      if (filters.offset !== undefined) {
+        queryParams.append('offset', filters.offset.toString());
+      }
+
+      const queryString = queryParams.toString();
+      const endpoint = `/fcm/history${queryString ? `?${queryString}` : ''}`;
+      
+      return await this.makeRequest(endpoint, 'GET');
     } catch (error) {
       console.error('Error getting notification history:', error);
       
-      // If the endpoint doesn't exist, return mock data
+      // If the endpoint doesn't exist, return empty data
       if (error.message.includes('Cannot GET') || error.message.includes('404')) {
-        console.log('Notification history endpoint not available, returning mock data');
+        console.log('Notification history endpoint not available');
         return {
           success: true,
-          message: 'Notification history endpoint not implemented',
+          message: 'Notification history endpoint not available',
           data: {
-            notifications: [],
-            total: 0,
-            limit: limit,
-            offset: offset,
-            note: 'This endpoint is not implemented on the backend yet'
+            userId: null,
+            history: [],
           }
         };
       }

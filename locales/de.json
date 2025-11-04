@@ -27,7 +27,8 @@
     "select": "Auswählen",
     "required": "Erforderlich",
     "na": "N/A",
-    "notAvailable": "Nicht verfügbar"
+    "notAvailable": "Nicht verfügbar",
+    "retry": "Wiederholen"
   },
   "auth": {
     "login": "Anmelden",
@@ -387,7 +388,35 @@
     "null": "NULL",
     "dellXps13": "Dell XPS 13",
     "hpEliteBook840": "HP EliteBook 840",
-    "noCodesAvailable": "Keine Codes verfügbar"
+    "noCodesAvailable": "Keine Codes verfügbar",
+    "validation": {
+      "breakdownCodeRequired": "Störungscode ist erforderlich. Bitte wählen Sie einen Störungscode aus, um fortzufahren.",
+      "descriptionRequired": "Beschreibung ist erforderlich. Bitte geben Sie eine detaillierte Beschreibung des Störungsproblems an.",
+      "descriptionTooShort": "Beschreibung ist zu kurz. Bitte geben Sie mindestens 20 Zeichen an, die das Problem beschreiben.",
+      "decisionCodeRequired": "Entscheidungscode ist erforderlich. Bitte wählen Sie aus, wie Sie mit dieser Störung umgehen möchten.",
+      "priorityRequired": "Priorität ist erforderlich. Bitte wählen Sie eine Prioritätsstufe basierend auf Ihrer Entscheidungscode-Auswahl.",
+      "allFieldsRequired": "Bitte füllen Sie alle erforderlichen Felder aus, bevor Sie den Störungsbericht einreichen.",
+      "invalidBreakdownCode": "Ungültiger Störungscode ausgewählt. Bitte wählen Sie einen gültigen Störungscode für diesen Anlagentyp.",
+      "descriptionMinLength": "Die Beschreibung muss mindestens {{min}} Zeichen lang sein. Bitte geben Sie weitere Details an.",
+      "descriptionMaxLength": "Die Beschreibung darf {{max}} Zeichen nicht überschreiten. Bitte kürzen Sie Ihre Beschreibung."
+    },
+    "errors": {
+      "sessionExpired": "Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an, um fortzufahren.",
+      "unauthorized": "Sie sind nicht berechtigt, diese Aktion auszuführen. Bitte überprüfen Sie Ihre Berechtigungen.",
+      "networkError": "Netzwerkverbindung fehlgeschlagen. Bitte überprüfen Sie Ihre Internetverbindung und versuchen Sie es erneut.",
+      "serverError": "Serverfehler aufgetreten. Bitte versuchen Sie es später erneut oder wenden Sie sich an den Support, wenn das Problem weiterhin besteht.",
+      "timeoutError": "Anfrage abgelaufen. Bitte überprüfen Sie Ihre Netzwerkverbindung und versuchen Sie es erneut.",
+      "fetchReportsError": "Störungsberichte konnten nicht abgerufen werden. Bitte überprüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
+      "fetchReportsDetails": "Laden der Störungsberichte fehlgeschlagen. {{message}}",
+      "updateError": "Störungsbericht konnte nicht aktualisiert werden. Bitte überprüfen Sie die Informationen und versuchen Sie es erneut.",
+      "updateErrorDetails": "Aktualisierung des Störungsberichts fehlgeschlagen. {{message}}",
+      "submitError": "Störungsbericht konnte nicht eingereicht werden. Bitte überprüfen Sie alle Felder und versuchen Sie es erneut.",
+      "submitErrorDetails": "Einreichung des Störungsberichts fehlgeschlagen. {{message}}",
+      "loadCodesError": "Störungscodes konnten nicht geladen werden. Bitte aktualisieren Sie und versuchen Sie es erneut.",
+      "loadAssetsError": "Anlagen konnten nicht geladen werden. Bitte überprüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
+      "noAssetSelected": "Keine Anlage ausgewählt. Bitte wählen Sie eine Anlage aus, bevor Sie eine Störung melden.",
+      "genericError": "Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut oder wenden Sie sich an den Support, wenn das Problem weiterhin besteht."
+    }
   },
   "maintenance": {
     "maintenanceSupervisor": "Wartungsaufsicht",
@@ -589,6 +618,9 @@
     "ok": "OK",
     "storagePermissionDenied": "Speicherberechtigung verweigert. PDF kann nicht gespeichert werden.",
     "pdfGenerationFailed": "PDF-Erstellung fehlgeschlagen. Bitte versuchen Sie es erneut.",
+    "pdfFileNotFound": "PDF-Datei nicht gefunden",
+    "failedToOpenPDF": "Fehler beim Öffnen der PDF-Datei. Bitte versuchen Sie, sie manuell aus dem Downloads-Ordner zu öffnen.",
+    "tapToOpenPDF": "Zum Öffnen des PDFs antippen",
     "tabOverview": "Übersicht",
     "tabVendor": "Anbieter",
     "tabChecklist": "Checkliste",
@@ -599,5 +631,10 @@
       "checklist": "Checkliste",
       "history": "Verlauf"
     }
+  },
+  "notifications": {
+    "title": "Benachrichtigungen",
+    "noNotifications": "Noch keine Benachrichtigungen",
+    "errorLoading": "Fehler beim Laden der Benachrichtigungen"
   }
 }

@@ -27,7 +27,8 @@
     "select": "Select",
     "required": "Required",
     "na": "N/A",
-    "notAvailable": "Not Available"
+    "notAvailable": "Not Available",
+    "retry": "Retry"
   },
   "auth": {
     "login": "Sign In",
@@ -420,7 +421,35 @@
     "decisionCodeDescription": "Choose how to handle this breakdown: immediate fix, create maintenance request, or postpone",
     "priorityDescription": "Priority depends on decision code: High/Very High for immediate fixes, Medium/Low for postponed fixes",
     "maintenanceDateDescription": "This date is automatically fetched from the asset's maintenance schedule",
-    "submitting": "Submitting..."
+    "submitting": "Submitting...",
+    "validation": {
+      "breakdownCodeRequired": "Breakdown code is required. Please select a breakdown code to continue.",
+      "descriptionRequired": "Description is required. Please provide a detailed description of the breakdown issue.",
+      "descriptionTooShort": "Description is too short. Please provide at least 20 characters describing the issue.",
+      "decisionCodeRequired": "Decision code is required. Please select how you want to handle this breakdown.",
+      "priorityRequired": "Priority is required. Please select a priority level based on your decision code selection.",
+      "allFieldsRequired": "Please fill in all required fields before submitting the breakdown report.",
+      "invalidBreakdownCode": "Invalid breakdown code selected. Please choose a valid breakdown code for this asset type.",
+      "descriptionMinLength": "Description must be at least {{min}} characters long. Please provide more details.",
+      "descriptionMaxLength": "Description cannot exceed {{max}} characters. Please shorten your description."
+    },
+    "errors": {
+      "sessionExpired": "Your session has expired. Please log in again to continue.",
+      "unauthorized": "You are not authorized to perform this action. Please check your permissions.",
+      "networkError": "Network connection failed. Please check your internet connection and try again.",
+      "serverError": "Server error occurred. Please try again later or contact support if the problem persists.",
+      "timeoutError": "Request timed out. Please check your network connection and try again.",
+      "fetchReportsError": "Unable to fetch breakdown reports. Please check your connection and try again.",
+      "fetchReportsDetails": "Failed to load breakdown reports. {{message}}",
+      "updateError": "Unable to update breakdown report. Please verify the information and try again.",
+      "updateErrorDetails": "Failed to update breakdown report. {{message}}",
+      "submitError": "Unable to submit breakdown report. Please check all fields and try again.",
+      "submitErrorDetails": "Failed to submit breakdown report. {{message}}",
+      "loadCodesError": "Unable to load breakdown codes. Please refresh and try again.",
+      "loadAssetsError": "Unable to load assets. Please check your connection and try again.",
+      "noAssetSelected": "No asset selected. Please select an asset before reporting a breakdown.",
+      "genericError": "An unexpected error occurred. Please try again or contact support if the problem continues."
+    }
   },
   "maintenance": {
     "maintenanceSupervisor": "Maintenance Supervisor",
@@ -631,6 +660,9 @@
     "ok": "OK",
     "storagePermissionDenied": "Storage permission denied. Cannot save PDF.",
     "pdfGenerationFailed": "Failed to generate PDF. Please try again.",
+    "pdfFileNotFound": "PDF file not found",
+    "failedToOpenPDF": "Failed to open PDF file. Please try opening it manually from the Downloads folder.",
+    "tapToOpenPDF": "Tap to open PDF",
     "tabOverview": "Overview",
     "tabVendor": "Vendor",
     "tabChecklist": "Checklist",
@@ -641,5 +673,10 @@
       "checklist": "Checklist",
       "history": "History"
     }
+  },
+  "notifications": {
+    "title": "Notifications",
+    "noNotifications": "No notifications yet",
+    "errorLoading": "Failed to load notifications"
   }
 }

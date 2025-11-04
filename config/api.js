@@ -9,7 +9,7 @@ export const API_CONFIG = {
     // Alternative local IPs (common for different network setups)
     LOCAL_ALT1: 'http://10.0.2.2:4000', // Android emulator
     LOCAL_ALT2: 'http://127.0.0.1:4000', // Localhost alternative
-    LOCAL_ALT3: 'http://192.168.0.110:4000', // Network IP (if needed)
+    LOCAL_ALT3: 'http://192.168.0.109:4000', // Network IP (if needed)
     // Production server
     PRODUCTION: 'http://103.27.234.248:5000',
   },
@@ -19,7 +19,7 @@ export const API_CONFIG = {
   // For development, use local server
   BASE_URL: __DEV__
     ? (Platform.OS === 'android'
-        ? 'http://192.168.0.104:4000'  // Development: Use your computer's IP for Android
+        ? 'http://192.168.0.109:4000'  // Development: Use your computer's IP for Android
         : 'http://localhost:4000')      // Development: Localhost for iOS
     : 'http://103.27.234.248:5000',     // Production: Production server
 
@@ -27,7 +27,7 @@ export const API_CONFIG = {
   FALLBACK_URLS: __DEV__
     ? (Platform.OS === 'android'
         ? [
-            'http://192.168.0.104:4000', // Your computer's IP
+            'http://192.168.0.109:4000', // Your computer's IP
             'http://10.0.2.2:4000',      // Android emulator localhost
             'http://localhost:4000',     // Localhost fallback
             'http://103.27.234.248:5000', // Production fallback

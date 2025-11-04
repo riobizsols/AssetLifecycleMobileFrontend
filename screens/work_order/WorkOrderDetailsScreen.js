@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,8 @@ import {
   TouchableOpacity,
   Alert,
   Platform,
+  ActivityIndicator,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -18,6 +20,9 @@ import { scale, verticalScale, moderateScale } from 'react-native-size-matters';
 import { UI_CONSTANTS } from '../../utils/uiConstants';
 import RNFS from 'react-native-fs';
 import jsPDF from 'jspdf';
+import Share from 'react-native-share';
+import { getServerUrl, getApiHeaders, API_ENDPOINTS } from '../../config/api';
+import BannerNotification from '../../components/BannerNotification';
 
 // Responsive UI constants
 const RESPONSIVE_CONSTANTS = {
@@ -52,14 +57,83 @@ const WorkOrderDetailsScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [checklistData, setChecklistData] = useState([]);
+  const [loadingChecklist, setLoadingChecklist] = useState(false);
+  const [showBannerNotification, setShowBannerNotification] = useState(false);
+  const [pdfPath, setPdfPath] = useState(null);
+
+  // Fetch checklist data when checklist tab is active
+  useEffect(() => {
+    if (activeTab === 'checklist' && workOrder?.assetTypeId && checklistData.length === 0 && !loadingChecklist) {
+      fetchChecklistData();
+    }
+  }, [activeTab, workOrder?.assetTypeId]);
+
+  const fetchChecklistData = async () => {
+    if (!workOrder?.assetTypeId) {
+      console.warn('No asset type ID available for fetching checklist');
+      return;
+    }
+
+    try {
+      setLoadingChecklist(true);
+      const serverUrl = getServerUrl();
+      const endpoint = API_ENDPOINTS.GET_CHECKLIST_BY_ASSET_TYPE(workOrder.assetTypeId);
+      const url = `${serverUrl}${endpoint}`;
+
+      console.log('Fetching checklist data from:', url);
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: await getApiHeaders(),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Checklist API Error:', response.status, errorText);
+        // Don't throw error, just log it and show empty state
+        setChecklistData([]);
+        return;
+      }
+
+      const data = await response.json();
+      console.log('Checklist data fetched successfully:', data);
+
+      // Handle different response structures
+      let checklistArray = [];
+      if (data.success && data.data) {
+        checklistArray = data.data;
+      } else if (data.data && Array.isArray(data.data)) {
+        checklistArray = data.data;
+      } else if (Array.isArray(data)) {
+        checklistArray = data;
+      } else {
+        console.warn('Unexpected checklist API response structure:', data);
+        checklistArray = [];
+      }
+
+      setChecklistData(checklistArray);
+    } catch (error) {
+      console.error('Error fetching checklist data:', error);
+      setChecklistData([]);
+    } finally {
+      setLoadingChecklist(false);
+    }
+  };
 
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
-    // Add any refresh logic here if needed
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 1000);
-  }, []);
+    // Refresh checklist if checklist tab is active
+    if (activeTab === 'checklist') {
+      fetchChecklistData().finally(() => {
+        setRefreshing(false);
+      });
+    } else {
+      setTimeout(() => {
+        setRefreshing(false);
+      }, 1000);
+    }
+  }, [activeTab]);
 
   const formatDateOnly = (dateString) => {
     if (!dateString) {
@@ -128,99 +202,171 @@ const WorkOrderDetailsScreen = () => {
       const textColor = [51, 51, 51]; // Dark gray
       const secondaryColor = [102, 102, 102]; // Light gray
 
+      // Page dimensions (A4: 210mm x 297mm)
+      const pageWidth = 210;
+      const pageHeight = 297;
+      const marginLeft = 15;
+      const marginRight = 15;
+      const contentWidth = pageWidth - marginLeft - marginRight;
+      const labelWidth = 65; // Fixed width for labels for consistent alignment
+      const valueStartX = marginLeft + labelWidth + 5; // Start value after label + spacing
+      const valueWidth = contentWidth - labelWidth - 5; // Remaining width for values
+
       // Helper function to add text with word wrapping
-      const addText = (text, x, y, maxWidth = 180, fontSize = 10, color = textColor) => {
+      const addText = (text, x, y, maxWidth = contentWidth, fontSize = 10, color = textColor, align = 'left') => {
+        if (!text) text = '';
         doc.setFontSize(fontSize);
         doc.setTextColor(color[0], color[1], color[2]);
-        const lines = doc.splitTextToSize(text, maxWidth);
-        doc.text(lines, x, y);
-        return y + (lines.length * fontSize * 0.4);
+        const lines = doc.splitTextToSize(String(text), maxWidth);
+        
+        // Handle alignment
+        let alignX = x;
+        if (align === 'center') {
+          alignX = x + (maxWidth / 2);
+          doc.text(lines, alignX, y, { align: 'center' });
+        } else if (align === 'right') {
+          alignX = x + maxWidth;
+          doc.text(lines, alignX, y, { align: 'right' });
+        } else {
+          doc.text(lines, x, y);
+        }
+        
+        // Return new Y position (using proper line height: fontSize * 0.55 for better spacing)
+        const lineHeight = fontSize * 0.55;
+        return y + (lines.length * lineHeight);
       };
 
       // Helper function to add section header
       const addSectionHeader = (text, y) => {
+        const headerHeight = 8;
+        const headerPadding = 3;
+        
+        // Draw header background
         doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-        doc.rect(10, y - 5, 190, 8, 'F');
+        doc.rect(marginLeft, y - headerPadding, contentWidth, headerHeight, 'F');
+        
+        // Add header text (centered in the header)
         doc.setTextColor(255, 255, 255);
         doc.setFontSize(12);
         doc.setFont(undefined, 'bold');
-        doc.text(text, 15, y);
+        const textY = y + (headerHeight / 2) - 2; // Center vertically in header
+        doc.text(text, marginLeft + (contentWidth / 2), textY, { align: 'center' });
+        
+        // Reset text color and font
         doc.setTextColor(textColor[0], textColor[1], textColor[2]);
         doc.setFont(undefined, 'normal');
-        return y + 15;
+        
+        return y + headerHeight + 8; // Return Y position after header + spacing
       };
 
-      // Helper function to add info row
-      const addInfoRow = (label, value, x, y) => {
-        const labelY = addText(`${label}:`, x, y, 80, 10, secondaryColor);
-        const valueY = addText(value || 'N/A', x + 85, y, 95, 10, textColor);
-        return Math.max(labelY, valueY) + 5;
+      // Helper function to add info row with proper alignment
+      const addInfoRow = (label, value, y) => {
+        const fontSize = 10;
+        const lineHeight = fontSize * 0.55;
+        
+        // Add label (right-aligned for consistent alignment)
+        doc.setFontSize(fontSize);
+        doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
+        const labelText = `${label}:`;
+        doc.text(labelText, marginLeft + labelWidth, y, { align: 'right' });
+        
+        // Add value
+        doc.setTextColor(textColor[0], textColor[1], textColor[2]);
+        const valueText = value || 'N/A';
+        const valueLines = doc.splitTextToSize(String(valueText), valueWidth);
+        doc.text(valueLines, valueStartX, y);
+        
+        // Calculate new Y position based on which has more lines
+        const labelLines = doc.splitTextToSize(labelText, labelWidth).length;
+        const maxLines = Math.max(labelLines, valueLines.length);
+        
+        return y + (maxLines * lineHeight) + 5; // Return Y with proper spacing
       };
 
       let currentY = 20;
 
-      // Add header
-      currentY = addText('WORK ORDER DETAILS REPORT', 10, currentY, 190, 16, primaryColor);
-      currentY += 5;
-      currentY = addText(`Generated: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`, 10, currentY, 190, 8, secondaryColor);
-      currentY += 10;
+      // Add header - centered title
+      currentY = addText('WORK ORDER DETAILS REPORT', marginLeft, currentY, contentWidth, 18, primaryColor, 'center');
+      currentY += 6;
+      
+      // Add generation timestamp - centered
+      const timestamp = `Generated: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`;
+      currentY = addText(timestamp, marginLeft, currentY, contentWidth, 9, secondaryColor, 'center');
+      currentY += 12;
 
       // Add work order info
-      currentY = addInfoRow('Work Order ID', workOrder?.id, 10, currentY);
-      currentY = addInfoRow('Status', getStatusText(workOrder?.status), 10, currentY);
-      currentY += 10;
+      currentY = addInfoRow('Work Order ID', workOrder?.id, currentY);
+      currentY = addInfoRow('Status', getStatusText(workOrder?.status), currentY);
+      currentY += 8;
 
       // Overview Section
       currentY = addSectionHeader('OVERVIEW', currentY);
-      currentY = addInfoRow('Asset ID', workOrder?.assetId, 10, currentY);
-      currentY = addInfoRow('Asset Type', workOrder?.assetType, 10, currentY);
-      currentY = addInfoRow('Maintenance Date', workOrder?.maintenanceDate ? formatDateOnly(workOrder.maintenanceDate) : null, 10, currentY);
-      currentY = addInfoRow('Serial Number', workOrder?.serialNumber || workOrder?.assetName, 10, currentY);
-      currentY = addInfoRow('Location', workOrder?.location, 10, currentY);
-      currentY = addInfoRow('Current Condition', workOrder?.currentCondition, 10, currentY);
-      currentY += 10;
+      currentY = addInfoRow('Asset ID', workOrder?.assetId, currentY);
+      currentY = addInfoRow('Asset Type', workOrder?.assetType, currentY);
+      currentY = addInfoRow('Maintenance Date', workOrder?.maintenanceDate ? formatDateOnly(workOrder.maintenanceDate) : null, currentY);
+      currentY = addInfoRow('Serial Number', workOrder?.serialNumber || workOrder?.assetName, currentY);
+      currentY = addInfoRow('Location', workOrder?.location, currentY);
+      currentY = addInfoRow('Current Condition', workOrder?.currentCondition, currentY);
+      currentY += 8;
 
       // Vendor Section
       currentY = addSectionHeader('VENDOR INFORMATION', currentY);
-      currentY = addInfoRow('Vendor Name', workOrder?.vendorName || workOrder?.vendor?.name || 'Ramesh Kishna', 10, currentY);
-      currentY = addInfoRow('Email', workOrder?.vendorEmail || workOrder?.vendor?.email || 'ranjith@gmail.com', 10, currentY);
-      currentY = addInfoRow('Maintenance Type', workOrder?.maintenanceType || 'Regular Maintenance', 10, currentY);
-      currentY = addInfoRow('Contact Person', workOrder?.contactPerson || workOrder?.vendor?.contact_person || 'ranjith', 10, currentY);
-      currentY = addInfoRow('Phone', workOrder?.vendorPhone || workOrder?.vendor?.phone || '9944387601', 10, currentY);
-      currentY = addInfoRow('Status', getStatusText(workOrder?.status), 10, currentY);
-      currentY += 10;
+      currentY = addInfoRow('Vendor Name', workOrder?.vendorName || workOrder?.vendor?.name || workOrder?.vendor?.vendor_name || 'N/A', currentY);
+      currentY = addInfoRow('Email', workOrder?.vendorEmail || workOrder?.vendor?.email || workOrder?.vendor?.vendor_email || 'N/A', currentY);
+      currentY = addInfoRow('Maintenance Type', workOrder?.maintenanceType || 'N/A', currentY);
+      currentY = addInfoRow('Contact Person', workOrder?.contactPerson || workOrder?.vendor?.contact_person || workOrder?.vendor?.contact_name || 'N/A', currentY);
+      currentY = addInfoRow('Phone', workOrder?.vendorPhone || workOrder?.vendor?.phone || workOrder?.vendor?.vendor_phone || 'N/A', currentY);
+      currentY = addInfoRow('Status', getStatusText(workOrder?.status), currentY);
+      currentY += 8;
 
-      // Checklist Section
-      currentY = addSectionHeader('MAINTENANCE CHECKLIST', currentY);
-      currentY = addText(`• ${t('workOrder.physicalConditionCheck')}`, 15, currentY);
-      currentY += 8;
-      currentY = addText(`• ${t('workOrder.accessibilityLabeling')}`, 15, currentY);
-      currentY += 8;
-      currentY = addText(`• ${t('workOrder.pressureGaugeSealVerification')}`, 15, currentY);
-      currentY += 10;
+      // Checklist Section - Only show if there's actual checklist data
+      if (checklistData && checklistData.length > 0) {
+        currentY = addSectionHeader('MAINTENANCE CHECKLIST', currentY);
+        
+        checklistData.forEach((item) => {
+          // Extract the checklist item text from various possible field names
+          const itemText = item.item || item.title || item.name || item.checklist_item || 'Checklist Item';
+          currentY = addText(`• ${itemText}`, valueStartX, currentY, valueWidth);
+          
+          // Add description if available
+          if (item.description) {
+            currentY = addText(`  ${item.description}`, valueStartX + 5, currentY, valueWidth - 5, 9, secondaryColor);
+          }
+          
+          // Add instructions if available
+          if (item.instructions) {
+            currentY = addText(`  Instructions: ${item.instructions}`, valueStartX + 5, currentY, valueWidth - 5, 9, secondaryColor);
+          }
+          
+          currentY += 4; // Spacing between checklist items
+        });
+        currentY += 4;
+      }
 
       // History Section
       currentY = addSectionHeader('MAINTENANCE HISTORY', currentY);
-      currentY = addInfoRow('Maintenance Activity', '13/10/2025', 10, currentY);
-      currentY = addInfoRow('Vendor', 'Ramesh Kishna', 10, currentY);
-      currentY = addInfoRow('Maintenance ID', 'ams001', 10, currentY);
-      currentY = addInfoRow('Status', t('workOrder.statusInProgress'), 10, currentY);
-      currentY += 10;
+      currentY = addInfoRow('Maintenance Activity', '13/10/2025', currentY);
+      currentY = addInfoRow('Vendor', 'Ramesh Kishna', currentY);
+      currentY = addInfoRow('Maintenance ID', 'ams001', currentY);
+      currentY = addInfoRow('Status', t('workOrder.statusInProgress'), currentY);
+      currentY += 8;
 
       // Additional Issues Section (if available)
       if (workOrder?.description || workOrder?.additionalIssues) {
         currentY = addSectionHeader('ADDITIONAL ISSUES', currentY);
-        currentY = addText(workOrder?.description || workOrder?.additionalIssues || 'N/A', 15, currentY, 175);
-        currentY += 15;
+        currentY = addText(workOrder?.description || workOrder?.additionalIssues || 'N/A', valueStartX, currentY, valueWidth);
+        currentY += 10;
       }
 
-      // Add footer
-      currentY = Math.max(currentY, 250);
+      // Add footer with proper alignment
+      // Ensure footer is at least 30mm from bottom or after last content
+      const footerStartY = Math.max(currentY + 15, pageHeight - 30);
       doc.setDrawColor(200, 200, 200);
-      doc.line(10, currentY, 200, currentY);
-      currentY += 10;
-      currentY = addText('Generated by Work Order Management System', 10, currentY, 190, 8, secondaryColor);
-      currentY = addText(`Report Date: ${new Date().toLocaleDateString()}`, 10, currentY, 190, 8, secondaryColor);
+      doc.line(marginLeft, footerStartY, pageWidth - marginRight, footerStartY);
+      
+      let footerY = footerStartY + 8;
+      footerY = addText('Generated by Work Order Management System', marginLeft, footerY, contentWidth, 8, secondaryColor, 'center');
+      footerY = addText(`Report Date: ${new Date().toLocaleDateString()}`, marginLeft, footerY, contentWidth, 8, secondaryColor, 'center');
 
       // Generate PDF file path
       const fileName = `WorkOrder_${workOrder?.id || 'Unknown'}_${new Date().toISOString().split('T')[0]}.pdf`;
@@ -234,6 +380,13 @@ const WorkOrderDetailsScreen = () => {
 
       await RNFS.writeFile(pdfPath, base64Data, 'base64');
 
+      // Store PDF path for banner notification
+      setPdfPath(pdfPath);
+      
+      // Show banner notification
+      setShowBannerNotification(true);
+
+      // Also show alert popup
       Alert.alert(
         t('workOrder.pdfGenerated'),
         `${t('workOrder.pdfSavedTo')} ${pdfPath}`,
@@ -388,6 +541,91 @@ const WorkOrderDetailsScreen = () => {
         </TouchableOpacity>
       </View>
 
+      {/* Banner Notification */}
+      <BannerNotification
+        visible={showBannerNotification}
+        title={t('workOrder.pdfGenerated')}
+        message={t('workOrder.tapToOpenPDF') || 'Tap to open PDF'}
+        type="success"
+        onPress={async () => {
+          if (pdfPath) {
+            try {
+              // Check if file exists
+              const fileExists = await RNFS.exists(pdfPath);
+              if (fileExists) {
+                if (Platform.OS === 'android') {
+                  // For Android, use react-native-share to open/view PDF
+                  // This will show a share sheet with apps that can view PDFs
+                  try {
+                    const shareOptions = {
+                      url: `file://${pdfPath}`,
+                      type: 'application/pdf',
+                      filename: pdfPath.split('/').pop(), // Extract filename
+                    };
+                    await Share.open(shareOptions);
+                  } catch (shareError) {
+                    // User might have cancelled the share sheet - that's okay
+                    // Check if it's a cancellation vs actual error
+                    const errorMessage = shareError?.message || String(shareError);
+                    if (
+                      !errorMessage.includes('User did not share') &&
+                      !errorMessage.includes('User cancelled') &&
+                      !errorMessage.includes('userCancel')
+                    ) {
+                      console.error('Share error:', shareError);
+                      // If share fails, inform user they can manually open from Downloads
+                      Alert.alert(
+                        t('workOrder.error'),
+                        `${t('workOrder.failedToOpenPDF')}\n\n${t('workOrder.pdfSavedTo')} ${pdfPath.split('/').pop()}`
+                      );
+                    }
+                    // If user cancelled, just silently dismiss
+                  }
+                } else {
+                  // For iOS, use Share.open which handles file URIs better
+                  try {
+                    await Share.open({
+                      url: `file://${pdfPath}`,
+                      type: 'application/pdf',
+                    });
+                  } catch (shareError) {
+                    const errorMessage = shareError?.message || String(shareError);
+                    if (
+                      !errorMessage.includes('User did not share') &&
+                      !errorMessage.includes('User cancelled') &&
+                      !errorMessage.includes('userCancel')
+                    ) {
+                      console.error('Error opening PDF on iOS:', shareError);
+                      Alert.alert(
+                        t('workOrder.error'),
+                        t('workOrder.failedToOpenPDF')
+                      );
+                    }
+                  }
+                }
+              } else {
+                Alert.alert(
+                  t('workOrder.error'),
+                  t('workOrder.pdfFileNotFound')
+                );
+              }
+            } catch (error) {
+              console.error('Error opening PDF:', error);
+              Alert.alert(
+                t('workOrder.error'),
+                t('workOrder.failedToOpenPDF')
+              );
+            }
+          }
+        }}
+        onDismiss={() => {
+          setShowBannerNotification(false);
+          setPdfPath(null);
+        }}
+        duration={8000}
+        autoDismiss={true}
+      />
+
       <ScrollView
         style={styles.scrollContainer}
         refreshControl={
@@ -455,29 +693,39 @@ const WorkOrderDetailsScreen = () => {
               <View style={styles.vendorColumn}>
                 <View style={styles.vendorField}>
                   <Text style={styles.vendorLabel}>{t('workOrder.vendorName')}:</Text>
-                  <Text style={styles.vendorValue}>{workOrder.vendorName || workOrder.vendor?.name || 'Ramesh Kishna'}</Text>
+                  <Text style={styles.vendorValue}>
+                    {workOrder.vendorName || workOrder.vendor?.name || workOrder.vendor?.vendor_name || 'N/A'}
+                  </Text>
                 </View>
 
                 <View style={styles.vendorField}>
                   <Text style={styles.vendorLabel}>{t('workOrder.email')}:</Text>
-                  <Text style={styles.vendorValue}>{workOrder.vendorEmail || workOrder.vendor?.email || 'ranjith@gmail.com'}</Text>
+                  <Text style={styles.vendorValue}>
+                    {workOrder.vendorEmail || workOrder.vendor?.email || workOrder.vendor?.vendor_email || 'N/A'}
+                  </Text>
                 </View>
 
                 <View style={styles.vendorField}>
                   <Text style={styles.vendorLabel}>{t('workOrder.maintenanceType')}:</Text>
-                  <Text style={styles.vendorValue}>{workOrder.maintenanceType || 'Regular Maintenance'}</Text>
+                  <Text style={styles.vendorValue}>
+                    {workOrder.maintenanceType || 'N/A'}
+                  </Text>
                 </View>
               </View>
 
               <View style={styles.vendorColumn}>
                 <View style={styles.vendorField}>
                   <Text style={styles.vendorLabel}>{t('workOrder.contactPerson')}:</Text>
-                  <Text style={styles.vendorValue}>{workOrder.contactPerson || workOrder.vendor?.contact_person || 'ranjith'}</Text>
+                  <Text style={styles.vendorValue}>
+                    {workOrder.contactPerson || workOrder.vendor?.contact_person || workOrder.vendor?.contact_name || 'N/A'}
+                  </Text>
                 </View>
 
                 <View style={styles.vendorField}>
                   <Text style={styles.vendorLabel}>{t('workOrder.phone')}:</Text>
-                  <Text style={styles.vendorValue}>{workOrder.vendorPhone || workOrder.vendor?.phone || '9944387601'}</Text>
+                  <Text style={styles.vendorValue}>
+                    {workOrder.vendorPhone || workOrder.vendor?.phone || workOrder.vendor?.vendor_phone || 'N/A'}
+                  </Text>
                 </View>
 
                 <View style={styles.vendorField}>
@@ -497,19 +745,43 @@ const WorkOrderDetailsScreen = () => {
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>{t('workOrder.maintenanceChecklist')}</Text>
 
-            <View style={styles.checklistContainer}>
-              <View style={styles.checklistItem}>
-                <Text style={styles.checklistItemText}>{t('workOrder.physicalConditionCheck')}</Text>
+            {loadingChecklist ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#003667" />
+                <Text style={styles.loadingText}>{t('common.loading') || 'Loading checklist...'}</Text>
               </View>
-
-              <View style={styles.checklistItem}>
-                <Text style={styles.checklistItemText}>{t('workOrder.accessibilityLabeling')}</Text>
+            ) : checklistData.length > 0 ? (
+              <View style={styles.checklistContainer}>
+                {checklistData.map((item, index) => (
+                  <View key={index} style={styles.checklistItem}>
+                    <View style={styles.checklistItemHeader}>
+                      <Text style={styles.checklistItemText}>
+                        {item.item || item.title || item.name || item.checklist_item || `Item ${index + 1}`}
+                      </Text>
+                    </View>
+                    {item.description && (
+                      <Text style={styles.checklistItemDescription}>
+                        {item.description}
+                      </Text>
+                    )}
+                    {item.instructions && (
+                      <Text style={styles.checklistItemInstructions}>
+                        Instructions: {item.instructions}
+                      </Text>
+                    )}
+                  </View>
+                ))}
               </View>
-
-              <View style={styles.checklistItem}>
-                <Text style={styles.checklistItemText}>{t('workOrder.pressureGaugeSealVerification')}</Text>
+            ) : (
+              <View style={styles.emptyChecklistContainer}>
+                <MaterialCommunityIcons name="clipboard-outline" size={48} color="#ccc" />
+                <Text style={styles.emptyChecklistText}>
+                  {workOrder?.assetTypeId 
+                    ? t('maintenance.noChecklistItems') || 'No checklist items found'
+                    : 'Asset type ID not available'}
+                </Text>
               </View>
-            </View>
+            )}
           </View>
         )}
 
@@ -809,7 +1081,45 @@ const styles = StyleSheet.create({
   checklistItemText: {
     fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
     color: '#333',
-    fontWeight: '500',
+    fontWeight: '600',
+    marginBottom: RESPONSIVE_CONSTANTS.SPACING.XS,
+  },
+  checklistItemHeader: {
+    marginBottom: RESPONSIVE_CONSTANTS.SPACING.XS,
+  },
+  checklistItemDescription: {
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.SM,
+    color: '#666',
+    marginTop: RESPONSIVE_CONSTANTS.SPACING.SM,
+    lineHeight: 20,
+  },
+  checklistItemInstructions: {
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.SM,
+    color: '#888',
+    fontStyle: 'italic',
+    marginTop: RESPONSIVE_CONSTANTS.SPACING.XS,
+    lineHeight: 18,
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: RESPONSIVE_CONSTANTS.SPACING.XXL,
+  },
+  loadingText: {
+    marginTop: RESPONSIVE_CONSTANTS.SPACING.MD,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
+    color: '#666',
+  },
+  emptyChecklistContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: RESPONSIVE_CONSTANTS.SPACING.XXL,
+  },
+  emptyChecklistText: {
+    marginTop: RESPONSIVE_CONSTANTS.SPACING.MD,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
+    color: '#666',
+    textAlign: 'center',
   },
   historyContainer: {
     gap: RESPONSIVE_CONSTANTS.SPACING.MD,

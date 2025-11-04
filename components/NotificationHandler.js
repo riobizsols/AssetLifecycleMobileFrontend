@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Alert } from 'react-native';
-import messaging, { getMessaging, onMessage, onTokenRefresh } from '@react-native-firebase/messaging';
+import messaging from '@react-native-firebase/messaging';
 import FCMService from '../services/FCMService';
+import { useNotification } from '../context/NotificationContext';
 
 const NotificationHandler = ({ children }) => {
+  const { incrementUnreadCount } = useNotification();
   const [fcmToken, setFcmToken] = useState(null);
   const [initialized, setInitialized] = useState(false);
 
@@ -28,8 +30,7 @@ const NotificationHandler = ({ children }) => {
 
   // Handle token refresh
   useEffect(() => {
-    const messagingInstance = getMessaging();
-    const unsubscribe = onTokenRefresh(messagingInstance, async (token) => {
+    const unsubscribe = messaging().onTokenRefresh(async (token) => {
       console.log('FCM token refreshed:', token);
       setFcmToken(token);
       // Send new token to server
@@ -41,31 +42,30 @@ const NotificationHandler = ({ children }) => {
 
   // Handle foreground messages
   useEffect(() => {
-    const messagingInstance = getMessaging();
-    const unsubscribe = onMessage(messagingInstance, async (remoteMessage) => {
+    const unsubscribe = messaging().onMessage(async (remoteMessage) => {
       console.log('Foreground message received:', remoteMessage);
       
-      // You can customize how to handle foreground messages here
+      // Don't show popup alert in foreground - increment unread count instead
+      // The notification badge will show a red dot
       if (remoteMessage.notification) {
-        Alert.alert(
-          remoteMessage.notification.title || 'New Notification',
-          remoteMessage.notification.body || 'You have a new message',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'OK', onPress: () => console.log('Notification pressed') }
-          ]
-        );
+        console.log('📨 Foreground notification:', {
+          title: remoteMessage.notification.title,
+          body: remoteMessage.notification.body,
+        });
+        // Increment unread count to show red dot badge
+        incrementUnreadCount();
       }
     });
 
     return unsubscribe;
-  }, []);
+  }, [incrementUnreadCount]);
 
   // Handle notification tap when app is in background
   useEffect(() => {
     const unsubscribe = messaging().onNotificationOpenedApp((remoteMessage) => {
       console.log('Notification opened app from background:', remoteMessage);
       handleNotificationTap(remoteMessage);
+      // Don't increment count - user is opening notification directly
     });
 
     return unsubscribe;

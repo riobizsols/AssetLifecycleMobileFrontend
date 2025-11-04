@@ -27,7 +27,8 @@
     "select": "Seleccionar",
     "required": "Requerido",
     "na": "N/A",
-    "notAvailable": "No disponible"
+    "notAvailable": "No disponible",
+    "retry": "Reintentar"
   },
   "auth": {
     "login": "Iniciar Sesión",
@@ -423,7 +424,35 @@
     "breakdownReportedSuccessfully": "Avería reportada exitosamente",
     "breakdownUpdatedSuccessfully": "Avería actualizada exitosamente",
     "breakdownResolvedSuccessfully": "Avería resuelta exitosamente",
-    "noCodesAvailable": "No hay códigos disponibles"
+    "noCodesAvailable": "No hay códigos disponibles",
+    "validation": {
+      "breakdownCodeRequired": "El código de avería es requerido. Por favor selecciona un código de avería para continuar.",
+      "descriptionRequired": "La descripción es requerida. Por favor proporciona una descripción detallada del problema de avería.",
+      "descriptionTooShort": "La descripción es muy corta. Por favor proporciona al menos 20 caracteres describiendo el problema.",
+      "decisionCodeRequired": "El código de decisión es requerido. Por favor selecciona cómo deseas manejar esta avería.",
+      "priorityRequired": "La prioridad es requerida. Por favor selecciona un nivel de prioridad basado en tu selección de código de decisión.",
+      "allFieldsRequired": "Por favor completa todos los campos requeridos antes de enviar el reporte de avería.",
+      "invalidBreakdownCode": "Código de avería inválido seleccionado. Por favor elige un código de avería válido para este tipo de activo.",
+      "descriptionMinLength": "La descripción debe tener al menos {{min}} caracteres. Por favor proporciona más detalles.",
+      "descriptionMaxLength": "La descripción no puede exceder {{max}} caracteres. Por favor acorta tu descripción."
+    },
+    "errors": {
+      "sessionExpired": "Tu sesión ha expirado. Por favor inicia sesión nuevamente para continuar.",
+      "unauthorized": "No estás autorizado para realizar esta acción. Por favor verifica tus permisos.",
+      "networkError": "Falló la conexión de red. Por favor verifica tu conexión a internet e intenta de nuevo.",
+      "serverError": "Ocurrió un error del servidor. Por favor intenta más tarde o contacta al soporte si el problema persiste.",
+      "timeoutError": "La solicitud expiró. Por favor verifica tu conexión de red e intenta de nuevo.",
+      "fetchReportsError": "No se pudieron obtener los reportes de averías. Por favor verifica tu conexión e intenta de nuevo.",
+      "fetchReportsDetails": "Falló al cargar los reportes de averías. {{message}}",
+      "updateError": "No se pudo actualizar el reporte de avería. Por favor verifica la información e intenta de nuevo.",
+      "updateErrorDetails": "Falló al actualizar el reporte de avería. {{message}}",
+      "submitError": "No se pudo enviar el reporte de avería. Por favor verifica todos los campos e intenta de nuevo.",
+      "submitErrorDetails": "Falló al enviar el reporte de avería. {{message}}",
+      "loadCodesError": "No se pudieron cargar los códigos de avería. Por favor actualiza e intenta de nuevo.",
+      "loadAssetsError": "No se pudieron cargar los activos. Por favor verifica tu conexión e intenta de nuevo.",
+      "noAssetSelected": "Ningún activo seleccionado. Por favor selecciona un activo antes de reportar una avería.",
+      "genericError": "Ocurrió un error inesperado. Por favor intenta de nuevo o contacta al soporte si el problema continúa."
+    }
   },
   "maintenance": {
     "maintenanceSupervisor": "Supervisor de Mantenimiento",
@@ -631,6 +660,9 @@
     "ok": "OK",
     "storagePermissionDenied": "Permiso de almacenamiento denegado. No se puede guardar PDF.",
     "pdfGenerationFailed": "Error al generar PDF. Inténtelo de nuevo.",
+    "pdfFileNotFound": "Archivo PDF no encontrado",
+    "failedToOpenPDF": "Error al abrir el archivo PDF. Intente abrirlo manualmente desde la carpeta de Descargas.",
+    "tapToOpenPDF": "Toca para abrir PDF",
     "tabOverview": "Resumen",
     "tabVendor": "Proveedor",
     "tabChecklist": "Lista de Verificación",
@@ -641,5 +673,10 @@
       "checklist": "Lista de Verificación",
       "history": "Historial"
     }
+  },
+  "notifications": {
+    "title": "Notificaciones",
+    "noNotifications": "Aún no hay notificaciones",
+    "errorLoading": "Error al cargar las notificaciones"
   }
 }

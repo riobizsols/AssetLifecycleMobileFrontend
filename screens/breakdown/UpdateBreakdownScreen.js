@@ -168,6 +168,7 @@ const UpdateBreakdownScreen = () => {
 
   // State for API data
   const [breakdownCodes, setBreakdownCodes] = useState([]);
+  const [filteredBreakdownCodes, setFilteredBreakdownCodes] = useState([]);
   const [decisionCodes] = useState([
     {
       code: 'BF01',
@@ -187,12 +188,80 @@ const UpdateBreakdownScreen = () => {
   ]);
 
   const [showBreakdownCodeDropdown, setShowBreakdownCodeDropdown] = useState(false);
-  const [showDecisionCodeDropdownUpward, setShowDecisionCodeDropdownUpward] = useState(false);
 
   // Fetch breakdown reason codes on component mount
   useEffect(() => {
     fetchBreakdownReasonCodes();
   }, []);
+
+  // State to store asset type ID (from breakdownData or fetched from asset)
+  const [assetTypeId, setAssetTypeId] = useState(null);
+
+  // Fetch asset details to get asset_type_id if not available in breakdownData
+  useEffect(() => {
+    const fetchAssetTypeId = async () => {
+      // First, check if asset_type_id is already in breakdownData
+      if (breakdownData.asset_type_id) {
+        setAssetTypeId(breakdownData.asset_type_id);
+        return;
+      }
+
+      // If not, try to fetch it from asset details
+      if (breakdownData.asset_id) {
+        try {
+          const serverUrl = getServerUrl();
+          const endpoint = API_ENDPOINTS.GET_ASSET_DETAILS(breakdownData.asset_id);
+          const url = `${serverUrl}${endpoint}`;
+
+          console.log('Fetching asset details to get asset_type_id:', url);
+
+          const response = await fetch(url, {
+            method: 'GET',
+            headers: await getApiHeaders(),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            // Handle different response structures
+            const assetData = data.data || data.asset || data;
+            const fetchedAssetTypeId = assetData.asset_type_id || assetData.assetTypeId;
+            
+            if (fetchedAssetTypeId) {
+              setAssetTypeId(fetchedAssetTypeId);
+              console.log('Fetched asset_type_id from asset details:', fetchedAssetTypeId);
+            } else {
+              console.warn('Asset details fetched but no asset_type_id found');
+            }
+          } else {
+            console.warn('Failed to fetch asset details:', response.status);
+          }
+        } catch (error) {
+          console.error('Error fetching asset details:', error);
+          // Continue without asset_type_id - will show all codes
+        }
+      }
+    };
+
+    fetchAssetTypeId();
+  }, [breakdownData.asset_id, breakdownData.asset_type_id]);
+
+  // Filter breakdown codes by asset type when breakdown codes or asset type changes
+  useEffect(() => {
+    if (breakdownCodes.length > 0 && assetTypeId) {
+      const filtered = breakdownCodes.filter(code => {
+        const codeAssetTypeId = typeof code === 'object' ? code.asset_type_id : null;
+        return codeAssetTypeId === assetTypeId;
+      });
+      setFilteredBreakdownCodes(filtered);
+      console.log('Filtered breakdown codes by asset_type_id:', assetTypeId, 'Found:', filtered.length);
+    } else if (breakdownCodes.length > 0) {
+      // If no asset_type_id available, show all codes (fallback)
+      console.warn('No asset_type_id available, showing all codes');
+      setFilteredBreakdownCodes(breakdownCodes);
+    } else {
+      setFilteredBreakdownCodes([]);
+    }
+  }, [breakdownCodes, assetTypeId]);
 
   // Fetch breakdown reason codes from API
   const fetchBreakdownReasonCodes = async () => {
@@ -282,7 +351,6 @@ const UpdateBreakdownScreen = () => {
   const handleCancel = () => {
     // Close all dropdowns before navigating
     setShowBreakdownCodeDropdown(false);
-    setShowDecisionCodeDropdownUpward(false);
     navigation.goBack();
   };
 
@@ -296,19 +364,51 @@ const UpdateBreakdownScreen = () => {
   const handleUpdateBreakdown = async () => {
     // Validate form
     if (!formData.atbrrc_id) {
-      showAlert(t('common.validationError'), t('breakdown.pleaseSelectBreakdownCode'), 'error');
+      showAlert(
+        t('alerts.validationError'),
+        t('breakdown.validation.breakdownCodeRequired'),
+        'error'
+      );
+      return;
+    }
+
+    // Validate breakdown code exists in available codes (use filtered codes)
+    const codesToCheck = filteredBreakdownCodes.length > 0 ? filteredBreakdownCodes : breakdownCodes;
+    const isValidCode = codesToCheck.some(code => {
+      const codeId = typeof code === 'string' ? code : code.id;
+      return codeId === formData.atbrrc_id;
+    });
+    
+    if (!isValidCode) {
+      showAlert(
+        t('alerts.validationError'),
+        t('breakdown.validation.invalidBreakdownCode'),
+        'error'
+      );
       return;
     }
 
     if (!formData.description.trim()) {
-      showAlert(t('common.validationError'), t('breakdown.pleaseProvideDescription'), 'error');
+      showAlert(
+        t('alerts.validationError'),
+        t('breakdown.validation.descriptionRequired'),
+        'error'
+      );
       return;
     }
 
-    if (!formData.decision_code) {
-      showAlert(t('common.validationError'), t('breakdown.pleaseSelectDecisionCode'), 'error');
+    // Check description length
+    if (formData.description.trim().length < 20) {
+      showAlert(
+        t('alerts.validationError'),
+        t('breakdown.validation.descriptionTooShort'),
+        'error'
+      );
       return;
     }
+
+    // Decision code is read-only, so it should always be present from breakdownData
+    // No validation needed as it's not user-editable
 
     setLoading(true);
 
@@ -350,9 +450,47 @@ const UpdateBreakdownScreen = () => {
       );
     } catch (error) {
       console.error('Error updating breakdown report:', error);
+      
+      // Parse error message to extract JSON if present
+      let errorMessage = error.message;
+      let parsedError = null;
+      
+      try {
+        // Try to extract JSON from error message
+        const jsonMatch = errorMessage.match(/\{.*\}/);
+        if (jsonMatch) {
+          parsedError = JSON.parse(jsonMatch[0]);
+          if (parsedError.message) {
+            errorMessage = parsedError.message;
+          }
+        }
+      } catch (parseError) {
+        // If parsing fails, use original error message
+        console.warn('Could not parse error JSON:', parseError);
+      }
+      
+      // Handle specific error cases
+      let displayMessage = t('breakdown.errors.updateError');
+      
+      if (errorMessage.includes('Session expired') || errorMessage.includes('session expired') || errorMessage.includes('expired')) {
+        displayMessage = t('breakdown.errors.sessionExpired');
+      } else if (errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
+        displayMessage = t('breakdown.errors.unauthorized');
+      } else if (errorMessage.includes('Network') || errorMessage.includes('network') || errorMessage.includes('fetch')) {
+        displayMessage = t('breakdown.errors.networkError');
+      } else if (errorMessage.includes('timeout') || errorMessage.includes('Timeout')) {
+        displayMessage = t('breakdown.errors.timeoutError');
+      } else if (errorMessage.includes('500') || errorMessage.includes('Server')) {
+        displayMessage = t('breakdown.errors.serverError');
+      } else if (parsedError && parsedError.message) {
+        displayMessage = t('breakdown.errors.updateErrorDetails', { message: parsedError.message });
+      } else if (errorMessage) {
+        displayMessage = t('breakdown.errors.updateErrorDetails', { message: errorMessage });
+      }
+      
       showAlert(
         t('breakdown.error'),
-        `${t('breakdown.failedToUpdateBreakdown')}: ${error.message}`,
+        displayMessage,
         'error'
       );
     } finally {
@@ -454,8 +592,8 @@ const UpdateBreakdownScreen = () => {
                       showsVerticalScrollIndicator={true}
                       nestedScrollEnabled={true}
                     >
-                      {breakdownCodes.length > 0 ? (
-                        breakdownCodes.map((item) => {
+                      {(filteredBreakdownCodes.length > 0 ? filteredBreakdownCodes : breakdownCodes).length > 0 ? (
+                        (filteredBreakdownCodes.length > 0 ? filteredBreakdownCodes : breakdownCodes).map((item) => {
                           const code = typeof item === 'string' ? item : item.id;
                           const displayText = typeof item === 'string' ? item : `${item.id} - ${item.text}`;
                           return (
@@ -509,21 +647,20 @@ const UpdateBreakdownScreen = () => {
               </View>
             </View>
 
-            {/* Decision Code Field */}
+            {/* Decision Code Field - Read Only */}
             <View style={styles.inputGroup}>
               <View style={styles.inputLabelRow}>
                 <MaterialCommunityIcons name="checkbox-marked-circle" size={18} color="#003667" />
                 <Text style={styles.inputLabel}>{t('breakdown.decisionCode')}</Text>
+                <View style={styles.readOnlyBadge}>
+                  <Text style={styles.readOnlyBadgeText}>Read Only</Text>
+                </View>
               </View>
               <View style={styles.dropdownContainer}>
-                <TouchableOpacity
-                  style={styles.modernDropdownButton}
-                  onPress={() => {
-                    setShowDecisionCodeDropdownUpward(!showDecisionCodeDropdownUpward);
-                  }}
-                >
+                <View style={[styles.modernDropdownButton, styles.readOnlyDropdownButton]}>
                   <Text style={[
                     styles.dropdownButtonText,
+                    styles.readOnlyText,
                     !formData.decision_code && styles.placeholderText,
                   ]}>
                     {formData.decision_code
@@ -535,63 +672,11 @@ const UpdateBreakdownScreen = () => {
                     }
                   </Text>
                   <MaterialCommunityIcons
-                    name={showDecisionCodeDropdownUpward ? 'chevron-down' : 'chevron-up'}
-                    size={22}
-                    color="#003667"
+                    name="lock"
+                    size={20}
+                    color="#999"
                   />
-                </TouchableOpacity>
-
-                {showDecisionCodeDropdownUpward && (
-                  <View style={styles.dropdownOptionsUpward}>
-                    <ScrollView
-                      style={styles.dropdownScrollView}
-                      showsVerticalScrollIndicator={true}
-                      nestedScrollEnabled={true}
-                    >
-                      {decisionCodes.map((item) => (
-                        <TouchableOpacity
-                          key={item.code}
-                          style={[
-                            styles.modernDropdownOption,
-                            formData.decision_code === item.code && styles.selectedDropdownOption,
-                          ]}
-                          onPress={() => {
-                            updateFormData('decision_code', item.code);
-                            setShowDecisionCodeDropdownUpward(false);
-                          }}
-                        >
-                          <View style={styles.dropdownOptionContent}>
-                            <View style={styles.dropdownOptionHeader}>
-                              <MaterialCommunityIcons
-                                name={formData.decision_code === item.code ? 'check-circle' : 'circle-outline'}
-                                size={18}
-                                color={formData.decision_code === item.code ? '#FEC200' : '#999'}
-                              />
-                              <Text style={[
-                                styles.dropdownOptionCode,
-                                formData.decision_code === item.code && styles.selectedDropdownText,
-                              ]}>
-                                {item.code}
-                              </Text>
-                              <Text style={[
-                                styles.dropdownOptionTitle,
-                                formData.decision_code === item.code && styles.selectedDropdownText,
-                              ]}>
-                                {item.title}
-                              </Text>
-                            </View>
-                            <Text style={[
-                              styles.dropdownOptionDescription,
-                              formData.decision_code === item.code && styles.selectedDropdownDescription,
-                            ]}>
-                              {item.description}
-                            </Text>
-                          </View>
-                        </TouchableOpacity>
-                      ))}
-                    </ScrollView>
-                  </View>
-                )}
+                </View>
               </View>
             </View>
           </View>
@@ -998,6 +1083,27 @@ const styles = StyleSheet.create({
     backgroundColor: '#999',
     shadowOpacity: 0.1,
     elevation: 2,
+  },
+  // Read-only styles
+  readOnlyBadge: {
+    backgroundColor: '#E0E0E0',
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.SM,
+    paddingVertical: RESPONSIVE_CONSTANTS.SPACING.XS,
+    borderRadius: scale(4),
+    marginLeft: RESPONSIVE_CONSTANTS.SPACING.SM,
+  },
+  readOnlyBadgeText: {
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.XS,
+    color: '#616161',
+    fontWeight: '600',
+  },
+  readOnlyDropdownButton: {
+    backgroundColor: '#F5F5F5',
+    borderColor: '#D0D0D0',
+    opacity: 0.8,
+  },
+  readOnlyText: {
+    color: '#616161',
   },
 });
 

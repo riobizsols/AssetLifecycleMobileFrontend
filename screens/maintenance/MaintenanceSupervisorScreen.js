@@ -33,7 +33,7 @@ const MaintenanceSupervisorScreen = ({ navigation }) => {
   const [formData, setFormData] = useState({
     name: 'Rahul',
     phone: '9876543210',
-    status: t('maintenance.completed'),
+    status: t('maintenance.inProgress'), // Changed to inProgress by default so form is editable
     poNumber: '2344',
     invoice: '32432532535',
     email: 'technician@gmail.com',

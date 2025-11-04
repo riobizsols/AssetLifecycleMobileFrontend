@@ -46,6 +46,7 @@ import DirectFCMAccess from "./components/DirectFCMAccess";
 import StatusBarNotificationTester from "./components/StatusBarNotificationTester";
 import NotificationTroubleshooter from "./components/NotificationTroubleshooter";
 import { NotificationProvider } from "./context/NotificationContext";
+import NotificationsScreen from "./screens/NotificationsScreen";
 
 
 const Stack = createStackNavigator();
@@ -83,6 +84,7 @@ export default function App() {
                 <Stack.Screen name="Loading" component={LoadingScreen} />
                 <Stack.Screen name="Login" component={LoginScreen} />
                 <Stack.Screen name="Home" component={HomeScreen} />
+                <Stack.Screen name="Notifications" component={NotificationsScreen} />
                 <Stack.Screen name="Asset" component={Asset_1} />
                 <Stack.Screen name="EmployeeAsset" component={Employee_Asset} />
                 <Stack.Screen name="DepartmentAsset" component={Dept_Asset_1} />

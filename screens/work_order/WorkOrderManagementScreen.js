@@ -208,6 +208,36 @@ const WorkOrderManagementScreen = () => {
           console.log(`Asset object for item ${index}:`, item.asset);
           console.log(`Asset keys for item ${index}:`, Object.keys(item.asset));
         }
+        if (item.vendor) {
+          console.log(`Vendor object for item ${index}:`, item.vendor);
+          console.log(`Vendor keys for item ${index}:`, Object.keys(item.vendor));
+        }
+        // Helper function to extract string value from asset_type (handle both object and string)
+        const getAssetTypeName = () => {
+          // If asset_type is an object, extract the name
+          if (item.asset_type && typeof item.asset_type === 'object') {
+            return item.asset_type.asset_type_name || item.asset_type.name || item.asset_type.text || null;
+          }
+          if (item.asset?.asset_type && typeof item.asset.asset_type === 'object') {
+            return item.asset.asset_type.asset_type_name || item.asset.asset_type.name || item.asset.asset_type.text || null;
+          }
+          // Otherwise try direct string values
+          return item.asset_type_name || item.asset?.asset_type_name || (typeof item.assetType === 'string' ? item.assetType : null) || (typeof item.asset_type === 'string' ? item.asset_type : null) || item.ASSET_TYPE || item.equipment_type || null;
+        };
+
+        // Helper function to extract asset type ID (handle both object and string)
+        const getAssetTypeId = () => {
+          // If asset_type is an object, extract the ID
+          if (item.asset_type && typeof item.asset_type === 'object') {
+            return item.asset_type.asset_type_id || item.asset_type.id || null;
+          }
+          if (item.asset?.asset_type && typeof item.asset.asset_type === 'object') {
+            return item.asset.asset_type.asset_type_id || item.asset.asset_type.id || null;
+          }
+          // Otherwise try direct values
+          return item.asset?.asset_type_id || item.asset_type_id || item.assetTypeId || item.ASSET_TYPE_ID || item.equipment_type_id || null;
+        };
+
         const transformed = {
           id: item.work_order_id || item.id || item.workOrderId || item.wo_id || item.workorder_id || item.WO_ID,
           title: item.title || item.work_order_title || item.workOrderTitle || item.work_title || item.subject || item.WORK_ORDER_TITLE,
@@ -221,7 +251,15 @@ const WorkOrderManagementScreen = () => {
           description: item.description || item.work_description || item.workDescription || item.notes || item.details || item.DESCRIPTION || item.work_notes || item.remarks,
           maintenanceType: item.maintenance_type_name || item.maintenance_type || item.work_type || item.type || item.maintenanceType || item.MAINTENANCE_TYPE || item.work_order_type,
           startDate: item.act_maint_st_date || item.start_date || item.actual_start_date || item.startDate || item.START_DATE || item.work_start_date || item.commencement_date,
-          assetType: item.asset_type_name || item.asset?.asset_type_id || item.asset_type_id || item.assetType || item.asset_type || item.ASSET_TYPE || item.equipment_type,
+          assetType: getAssetTypeName(),
+          assetTypeId: getAssetTypeId(),
+          // Vendor information
+          vendorName: item.vendor?.vendor_name || item.vendor?.name || item.vendor_name || item.vendorName || item.service_vendor_name || item.SERVICE_VENDOR_NAME || null,
+          vendorEmail: item.vendor?.email || item.vendor?.vendor_email || item.vendor_email || item.vendorEmail || item.service_vendor_email || item.SERVICE_VENDOR_EMAIL || null,
+          contactPerson: item.vendor?.contact_person || item.vendor?.contact_name || item.contact_person || item.contactPerson || item.vendor_contact_person || item.CONTACT_PERSON || null,
+          vendorPhone: item.vendor?.phone || item.vendor?.vendor_phone || item.vendor_phone || item.vendorPhone || item.service_vendor_phone || item.SERVICE_VENDOR_PHONE || null,
+          // Keep full vendor object if needed
+          vendor: item.vendor || null,
         };
 
         console.log(`Transformed item ${index}:`, transformed);
@@ -383,7 +421,7 @@ const WorkOrderManagementScreen = () => {
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>{t('workOrder.assetType')}:</Text>
             <Text style={styles.detailValue} numberOfLines={1}>
-              {item.assetType}
+              {typeof item.assetType === 'string' ? item.assetType : item.assetType?.asset_type_name || item.assetType?.name || item.assetType?.text || 'N/A'}
             </Text>
           </View>
         )}

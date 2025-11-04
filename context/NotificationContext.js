@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useCallback, useMemo } from 'react';
 import FCMService from '../services/FCMService';
 
 // Notification types supported by the backend
@@ -41,6 +41,9 @@ const initialState = {
   settingsLoading: false,
   settingsError: null,
   testNotificationLoading: false,
+  
+  // Unread Count
+  unreadCount: 0,
 };
 
 // Action types
@@ -70,6 +73,11 @@ const ACTION_TYPES = {
   SET_SETTINGS_LOADING: 'SET_SETTINGS_LOADING',
   SET_SETTINGS_ERROR: 'SET_SETTINGS_ERROR',
   SET_TEST_NOTIFICATION_LOADING: 'SET_TEST_NOTIFICATION_LOADING',
+  
+  // Unread Count
+  INCREMENT_UNREAD_COUNT: 'INCREMENT_UNREAD_COUNT',
+  CLEAR_UNREAD_COUNT: 'CLEAR_UNREAD_COUNT',
+  SET_UNREAD_COUNT: 'SET_UNREAD_COUNT',
   
   // Reset
   RESET_STATE: 'RESET_STATE',
@@ -161,6 +169,15 @@ const notificationReducer = (state, action) => {
     
     case ACTION_TYPES.SET_TEST_NOTIFICATION_LOADING:
       return { ...state, testNotificationLoading: action.payload };
+    
+    case ACTION_TYPES.INCREMENT_UNREAD_COUNT:
+      return { ...state, unreadCount: state.unreadCount + 1 };
+    
+    case ACTION_TYPES.CLEAR_UNREAD_COUNT:
+      return { ...state, unreadCount: 0 };
+    
+    case ACTION_TYPES.SET_UNREAD_COUNT:
+      return { ...state, unreadCount: action.payload };
     
     case ACTION_TYPES.RESET_STATE:
       return initialState;
@@ -370,6 +387,21 @@ export const NotificationProvider = ({ children }) => {
     }));
   };
 
+  // Increment unread count when notification is received
+  const incrementUnreadCount = useCallback(() => {
+    dispatch({ type: ACTION_TYPES.INCREMENT_UNREAD_COUNT });
+  }, []);
+
+  // Clear unread count (when user opens notifications screen)
+  const clearUnreadCount = useCallback(() => {
+    dispatch({ type: ACTION_TYPES.CLEAR_UNREAD_COUNT });
+  }, []);
+
+  // Set unread count to specific value
+  const setUnreadCount = useCallback((count) => {
+    dispatch({ type: ACTION_TYPES.SET_UNREAD_COUNT, payload: count });
+  }, []);
+
   const contextValue = {
     // State
     ...state,
@@ -390,6 +422,9 @@ export const NotificationProvider = ({ children }) => {
     isNotificationEnabled,
     getNotificationPreference,
     getAllNotificationTypes,
+    incrementUnreadCount,
+    clearUnreadCount,
+    setUnreadCount,
     
     // Constants
     NOTIFICATION_TYPES,

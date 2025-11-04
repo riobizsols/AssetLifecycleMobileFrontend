@@ -10,7 +10,7 @@ import {
   TextInput,
   ActivityIndicator,
 } from 'react-native';
-import messaging, { getMessaging, onMessage, onTokenRefresh } from '@react-native-firebase/messaging';
+import messaging from '@react-native-firebase/messaging';
 import FCMService from '../services/FCMService';
 import { useNotification } from '../context/NotificationContext';
 import CustomAlert from './CustomAlert';

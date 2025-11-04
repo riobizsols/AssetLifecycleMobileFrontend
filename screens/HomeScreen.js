@@ -29,7 +29,7 @@ const HomeScreen = () => {
   const { t } = useTranslation();
   const navigation = useNavigation();
   const { getSortedNavigation, clearNavigation, userNavigation, loading } = useNavigationContext();
-  const { handleUserLogout } = useNotification();
+  const { handleUserLogout, unreadCount } = useNotification();
   const [menuVisible, setMenuVisible] = useState(false);
   const insets = useSafeAreaInsets();
   const safeAreaConfig = useSafeAreaConfig();
@@ -192,6 +192,16 @@ const HomeScreen = () => {
               {t('navigation.assetManagement')}
             </Text>
           </View>
+          <View style={styles.rightIconsContainer}>
+            <TouchableOpacity
+              style={styles.notificationButton}
+              onPress={() => navigation.navigate('Notifications')}
+              activeOpacity={0.7}
+            >
+              <MaterialCommunityIcons name="bell-outline" size={24} color="#FEC200" />
+              {unreadCount > 0 && <View style={styles.notificationBadge} />}
+            </TouchableOpacity>
+          </View>
         </View>
 
       <ScrollView style={[styles.content, { backgroundColor: UI_CONSTANTS.COLORS.BACKGROUND }]} showsVerticalScrollIndicator={false}>
@@ -353,6 +363,25 @@ const styles = StyleSheet.create({
     padding: UI_CONSTANTS.SPACING.MD,
     marginLeft: UI_CONSTANTS.SPACING.SM,
     zIndex: 2,
+  },
+  rightIconsContainer: {
+    position: 'absolute',
+    right: UI_CONSTANTS.SPACING.SM,
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  notificationButton: {
+    padding: UI_CONSTANTS.SPACING.MD,
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: UI_CONSTANTS.SPACING.SM - 2,
+    right: UI_CONSTANTS.SPACING.SM - 2,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FF3B30',
   },
   centerTitleContainer: {
     position: 'absolute',
