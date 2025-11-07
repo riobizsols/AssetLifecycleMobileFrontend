@@ -7,6 +7,7 @@
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
+  // Initialize Firebase - MUST be called before super
   [FIRApp configure];
   
   self.moduleName = @"AssetManagementApp";

@@ -40,25 +40,40 @@ class FCMService {
         this.fcmToken = storedToken;
         this.isRegistered = await authUtils.getFCMTokenRegistered();
       } else {
-        // Get new FCM token
-        await this.getFCMToken();
+        // Get new FCM token (may return null for free accounts or missing entitlements)
+        const token = await this.getFCMToken();
+        if (!token) {
+          // Error already logged in getFCMToken with appropriate level
+          // App can still function, just without FCM
+        }
       }
 
-      // Set up message handlers
-      this.setupMessageHandlers();
-
-      // Set up token refresh handler
-      this.setupTokenRefreshHandler();
+      // Set up message handlers (only if we have a token or on Android)
+      if (this.fcmToken || Platform.OS === 'android') {
+        this.setupMessageHandlers();
+        this.setupTokenRefreshHandler();
+      } else {
+        console.log('⚠️ Skipping message handlers - no FCM token available');
+      }
 
       // Load cached preferences
       await this.loadNotificationPreferences();
 
       this.isInitialized = true;
-      console.log('✅ FCM Service initialized successfully');
+      
+      if (this.fcmToken) {
+        console.log('✅ FCM Service initialized successfully with token');
+      } else {
+        console.log('⚠️ FCM Service initialized but no token available');
+        console.log('   App will continue to work, but push notifications are disabled');
+      }
+      
       return true;
     } catch (error) {
       console.error('❌ FCM initialization failed:', error);
-      return false;
+      // Don't fail initialization completely - app can still work
+      this.isInitialized = true;
+      return true;
     }
   }
 
@@ -153,6 +168,31 @@ class FCMService {
 
   async getFCMToken() {
     try {
+      // On iOS, register device for remote messages before getting token
+      if (Platform.OS === 'ios') {
+        try {
+          await messaging().registerDeviceForRemoteMessages();
+          console.log('✅ iOS device registered for remote messages');
+        } catch (registerError) {
+          // If already registered, this will throw an error - that's okay
+          if (registerError.code === 'messaging/already-registered') {
+            console.log('✅ iOS device already registered for remote messages');
+          } else if (registerError.code === 'messaging/unknown' && 
+                     registerError.message?.includes('aps-environment')) {
+            // Missing entitlement - likely free developer account
+            console.log('ℹ️ Push notifications not available (missing aps-environment entitlement)');
+            console.log('💡 This is normal for free Apple Developer accounts');
+            console.log('💡 App will continue without push notifications');
+            this.fcmToken = null;
+            return null;
+          } else {
+            // Other registration errors - log but continue
+            console.log('⚠️ Could not register device for remote messages:', registerError.message);
+            // Continue anyway - might still work
+          }
+        }
+      }
+
       this.fcmToken = await messaging().getToken();
       console.log('📱 FCM Token:', this.fcmToken);
 
@@ -164,8 +204,47 @@ class FCMService {
 
       return this.fcmToken;
     } catch (error) {
-      console.error('❌ Error getting FCM token:', error);
-      throw error;
+      // Handle specific iOS errors gracefully
+      if (Platform.OS === 'ios') {
+        // Check for entitlement errors (most common issue)
+        if (error.code === 'messaging/unknown' && 
+            error.message?.includes('aps-environment')) {
+          console.log('ℹ️ Push notifications not available (aps-environment entitlement issue)');
+          console.log('💡 This is normal for free Apple Developer accounts');
+          console.log('💡 App will continue without push notifications');
+          
+          this.fcmToken = null;
+          return null;
+        }
+        
+        // Check if it's an APNs token error (free account limitation)
+        if (error.code === 'messaging/unknown' && 
+            (error.message?.includes('APNS token') || 
+             error.message?.includes('No APNS token'))) {
+          console.log('ℹ️ FCM Token unavailable: APNs token required');
+          console.log('💡 This typically means using free Apple Developer account');
+          console.log('💡 App will continue without push notifications');
+          
+          // Don't throw - allow app to continue without FCM token
+          this.fcmToken = null;
+          return null;
+        }
+        
+        // Check for unregistered device error
+        if (error.code === 'messaging/unregistered') {
+          console.log('ℹ️ Device not registered for remote messages');
+          console.log('💡 This may be due to missing entitlements or free developer account');
+          console.log('💡 App will continue without push notifications');
+          
+          this.fcmToken = null;
+          return null;
+        }
+      }
+      
+      // For other errors, log but don't crash
+      console.log('⚠️ Could not get FCM token:', error.message || error);
+      this.fcmToken = null;
+      return null;
     }
   }
 
@@ -200,6 +279,26 @@ class FCMService {
       console.log('🔄 FCM token refreshed:', newToken);
 
       try {
+        // On iOS, ensure device is registered for remote messages
+        if (Platform.OS === 'ios') {
+          try {
+            await messaging().registerDeviceForRemoteMessages();
+          } catch (registerError) {
+            // If already registered, that's fine - continue
+            if (registerError.code === 'messaging/already-registered') {
+              // Already registered, continue
+            } else if (registerError.code === 'messaging/unknown' && 
+                       registerError.message?.includes('aps-environment')) {
+              // Missing entitlement - skip token refresh
+              console.log('ℹ️ Skipping token refresh (push notifications not available)');
+              return;
+            } else {
+              // Other errors - log but continue
+              console.log('⚠️ Could not register device during token refresh:', registerError.message);
+            }
+          }
+        }
+
         // Update current token
         this.fcmToken = newToken;
 

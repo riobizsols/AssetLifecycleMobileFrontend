@@ -118,6 +118,8 @@ export const API_ENDPOINTS = {
   UPDATE_BREAKDOWN_REPORT: (id) => `/api/reportbreakdown/update/${id}`,
   GET_BREAKDOWN_REASON_CODES: (orgId) => `/api/reportbreakdown/reason-codes?org_id=${orgId}`,
   GET_ASSET_TYPES_MAINT_REQUIRED: () => '/api/asset-types/maint-required',
+  GET_ASSET_TYPES_FOR_USER: () => '/api/asset-types/assignment-type/user',
+  GET_ASSET_TYPES_FOR_DEPARTMENT: () => '/api/asset-types/assignment-type/department',
   GET_ASSETS_BY_TYPE: (assetTypeId) => `/api/assets/type/${assetTypeId}`,
   GET_UPCOMING_MAINTENANCE: (assetId) => `/api/reportbreakdown/upcoming-maintenance/${assetId}`,
   CREATE_BREAKDOWN_REPORT: () => '/api/reportbreakdown/create',

@@ -763,6 +763,63 @@ export default function DepartmentScreenMain() {
             </View>
           )}
         </View>
+        
+        {/* Show History Link and Assign Asset Button */}
+        {departmentId && (
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity
+              style={styles.historyButton}
+              onPress={() => {
+                console.log('History link pressed');
+                console.log('Department ID:', departmentId);
+                
+                if (!departmentId || !departmentId.trim()) {
+                  Alert.alert(
+                    t('assets.noDepartment'), 
+                    t('assets.pleaseEnterDepartmentIdFirst'),
+                    [{ text: t('common.ok') }]
+                  );
+                  return;
+                }
+                
+                // Navigate to history screen
+                navigation.navigate('DepartmentAssetHistory', {
+                  departmentId: departmentId.trim(),
+                  departmentName: departmentInfo.name || departmentId
+                });
+              }}
+              disabled={loading}
+            >
+              <Text style={styles.historyLinkText}>
+                {loading ? t('assets.loading') : t('assets.viewHistory')}
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={styles.assignAssetButton}
+              onPress={() => {
+                console.log('Assign Asset button pressed');
+                console.log('Department ID:', departmentId);
+                
+                if (!departmentId) {
+                  Alert.alert(t('assets.noDepartment'), t('assets.pleaseEnterDepartmentIdFirst'));
+                  return;
+                }
+                
+          // Navigate to department asset assign screen (with scan/select options)
+          navigation.navigate('DepartmentAssetAssign', {
+            departmentId: departmentId,
+            departmentName: departmentInfo.name
+          });
+              }}
+              disabled={loading}
+            >
+              <Text style={styles.assignAssetButtonText}>
+                {t('assets.assignAsset')}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
         </View>
       
       {/* Custom Alert */}
@@ -1246,6 +1303,44 @@ const styles = StyleSheet.create({
     marginTop: RESPONSIVE_CONSTANTS.SPACING.MD,
     fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
     color: '#999',
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.LG,
+    paddingVertical: RESPONSIVE_CONSTANTS.SPACING.MD,
+    backgroundColor: '#EEEEEE',
+  },
+  historyButton: {
+    flex: 1,
+    alignItems: 'center',
+    marginRight: RESPONSIVE_CONSTANTS.SPACING.SM,
+    paddingVertical: RESPONSIVE_CONSTANTS.SPACING.MD,
+  },
+  assignAssetButton: {
+    flex: 1,
+    backgroundColor: '#003667',
+    borderRadius: scale(6),
+    paddingVertical: RESPONSIVE_CONSTANTS.SPACING.MD,
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.LG,
+    alignItems: 'center',
+    marginLeft: RESPONSIVE_CONSTANTS.SPACING.SM,
+    minHeight: RESPONSIVE_CONSTANTS.BUTTON_HEIGHT,
+    justifyContent: 'center',
+  },
+  historyLinkText: {
+    color: '#003667',
+    fontWeight: '500',
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
+    textDecorationLine: 'underline',
+    textAlign: 'center',
+  },
+  assignAssetButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '500',
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
+    textAlign: 'center',
   },
 });
 

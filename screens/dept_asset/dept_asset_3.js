@@ -172,95 +172,144 @@ export default function AssetDetailsScreen() {
 
     // Handle cancel assignment
     const handleCancelAssignment = async () => {
-      if (!assignmentData?.asset_assign_id) {
-        Alert.alert(t('common.error'), t('assets.assignmentIdNotFound'));
+      // Get asset ID from either assetData or assignmentData
+      const assetId = assetData?.asset_id || assetData?.id || assignmentData?.asset_id;
+      
+      if (!assetId) {
+        Alert.alert(t('common.error'), t('assets.assetIdNotFound'));
         return;
       }
 
-      console.log('Original assignment data:', assignmentData);
+      // If we have assetData but no assignmentData, we need to fetch the current assignment first
+      // Use assignmentDetails from API if available, otherwise use assignmentData from params
+      let currentAssignment = assignmentDetails || assignmentData;
+      if (assetData && !currentAssignment) {
+        try {
+          const assignmentUrl = `${API_CONFIG.BASE_URL}${API_ENDPOINTS.GET_ASSET_ASSIGNMENT(assetId)}`;
+          console.log('Fetching current assignment for cancellation:', assignmentUrl);
+          
+          const assignmentResponse = await fetch(assignmentUrl, {
+            method: 'GET',
+            headers: await getApiHeaders(),
+          });
+          
+          if (assignmentResponse.ok) {
+            const assignmentDataResponse = await assignmentResponse.json();
+            console.log('Current assignment data:', assignmentDataResponse);
+            
+            if (assignmentDataResponse && Array.isArray(assignmentDataResponse) && assignmentDataResponse.length > 0) {
+              // Find the latest active assignment
+              currentAssignment = assignmentDataResponse.find(assignment => 
+                assignment.latest_assignment_flag === true && 
+                assignment.action === "A"
+              );
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching current assignment:", error);
+          Alert.alert(t('common.error'), t('assets.failedToFetchCurrentAssignmentDetails'));
+          return;
+        }
+      }
+      
+      if (!currentAssignment) {
+        Alert.alert(t('common.error'), t('assets.noActiveAssignmentFound'));
+        return;
+      }
+
+      // Validate required fields are present
+      console.log('Current assignment data for cancellation:', currentAssignment);
+      if (!currentAssignment.asset_id || !currentAssignment.dept_id || !currentAssignment.org_id) {
+        console.error('Missing required fields in assignment:', {
+          asset_id: currentAssignment.asset_id,
+          dept_id: currentAssignment.dept_id,
+          org_id: currentAssignment.org_id
+        });
+        Alert.alert(t('common.error'), 'Assignment data is incomplete. Missing required fields.');
+        return;
+      }
 
       Alert.alert(
         t('assets.cancelAssignment'),
-        t('assets.confirmCancelAssignment'),
+        t('assets.confirmCancelAssignmentForAsset', { assetName: assetData?.description || assetId }),
         [
           {
             text: t('common.cancel'),
             style: "cancel"
           },
           {
-            text: t('assets.yes'),
+            text: t('common.yes'),
             onPress: async () => {
               setLoading(true);
               try {
-                console.log(`Cancelling assignment: ${assignmentData.asset_assign_id}`);
-                
-                // First, update the current assignment to set latest_assignment_flag to false
-                const updateUrl = `${API_CONFIG.BASE_URL}/api/asset-assignments/${assignmentData.asset_assign_id}`;
+                // First API call: Update existing assignment to set latest_assignment_flag to false
+                const updateUrl = `${API_CONFIG.BASE_URL}/api/asset-assignments/asset/${assetId}`;
+                console.log("Updating existing assignment:", updateUrl);
+
+                const updateData = {
+                  latest_assignment_flag: false,
+                };
+
                 const updateResponse = await fetch(updateUrl, {
-                  method: 'PUT',
-                  headers: {
-                    ...getApiHeaders(),
-                    'Content-Type': 'application/json'
-                  },
-                  body: JSON.stringify({
-                    latest_assignment_flag: false
-                  })
+                  method: "PUT",
+                  headers: await getApiHeaders(),
+                  body: JSON.stringify(updateData),
                 });
 
                 if (!updateResponse.ok) {
-                  const errorText = await updateResponse.text();
-                  console.error('Update API error response:', errorText);
-                  throw new Error(`Failed to update assignment: ${updateResponse.status} - ${errorText}`);
+                  console.error("Failed to update existing assignment");
+                  // Continue with creating new row even if update fails
                 }
 
-                console.log('Existing assignment updated successfully');
+                // Second API call: Create new assignment row for cancellation
+                const createUrl = `${API_CONFIG.BASE_URL}/api/asset-assignments`;
+                console.log("Creating new assignment row for cancellation:", createUrl);
 
-                // Now create a new cancellation record
-                const cancelUrl = `${API_CONFIG.BASE_URL}/api/asset-assignments`;
-                const cancelData = {
-                  asset_assign_id: `AA${Date.now()}`, // Generate a unique ID
-                  asset_id: assignmentData.asset_id,
-                  employee_int_id: assignmentData.employee_int_id,
-                  dept_id: assignmentData.dept_id,
-                  action: "C", // Cancel
-                  action_by: assignmentData.action_by || "USR001",
-                  latest_assignment_flag: true,
-                  assignment_type: assignmentData.assignment_type || t('assets.department'),
-                  org_id: assignmentData.org_id || "ORG001",
+                // Generate a unique asset assignment ID
+                const assetAssignId = `AA${Date.now()}`;
+
+                // Create new assignment row with cancellation data
+                // Only include employee_int_id if it exists in the original assignment
+                const newAssignmentData = {
+                  asset_assign_id: assetAssignId,
+                  dept_id: currentAssignment.dept_id,
+                  asset_id: assetId,
+                  org_id: currentAssignment.org_id || "ORG001",
+                  action: "C", // Cancel action
                   action_on: new Date().toISOString(),
-                  remarks: "Assignment cancelled"
+                  action_by: "SYSTEM",
+                  latest_assignment_flag: false,
                 };
+                
+                // Only add employee_int_id if it exists (for department-only assignments, it should be null/omitted)
+                if (currentAssignment.employee_int_id) {
+                  newAssignmentData.employee_int_id = currentAssignment.employee_int_id;
+                }
 
-                console.log('Creating new cancellation record with data:', cancelData);
+                console.log("New assignment data:", newAssignmentData);
 
-                const cancelResponse = await fetch(cancelUrl, {
-                  method: 'POST',
-                  headers: {
-                    ...getApiHeaders(),
-                    'Content-Type': 'application/json'
-                  },
-                  body: JSON.stringify(cancelData)
+                const createResponse = await fetch(createUrl, {
+                  method: "POST",
+                  headers: await getApiHeaders(),
+                  body: JSON.stringify(newAssignmentData),
                 });
 
-                if (!cancelResponse.ok) {
-                  const errorText = await cancelResponse.text();
-                  console.error('Cancellation API error response:', errorText);
-                  throw new Error(`Failed to create cancellation record: ${cancelResponse.status} - ${errorText}`);
+                if (createResponse.ok) {
+                  Alert.alert(
+                    t('assets.success'),
+                    t('assets.assetAssignmentCancelledSuccessfully'),
+                    [
+                      {
+                        text: t('common.ok'),
+                        onPress: () => navigation.goBack()
+                      }
+                    ]
+                  );
+                } else {
+                  const errorData = await createResponse.json().catch(() => ({}));
+                  console.error("Server error details:", errorData);
+                  throw new Error(`HTTP error! status: ${createResponse.status}`);
                 }
-
-                console.log('Cancellation record created successfully');
-
-                Alert.alert(
-                  t('assets.success'),
-                  t('assets.assetAssignmentCancelledSuccessfully'),
-                  [
-                    {
-                      text: t('common.ok'),
-                      onPress: () => navigation.goBack()
-                    }
-                  ]
-                );
-
               } catch (error) {
                 console.error("Error cancelling assignment:", error);
                 Alert.alert(

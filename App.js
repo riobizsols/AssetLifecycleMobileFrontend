@@ -26,6 +26,10 @@ import EmployeeAssetAssign from "./screens/employee_asset/emp_asset_assign";
 import EmployeeAssetDetails from "./screens/employee_asset/emp_asset_details";
 import EmployeeAssetAssignment from "./screens/employee_asset/emp_asset_assignment";
 import EmployeeAssetSelect from "./screens/employee_asset/emp_asset_select";
+import DepartmentAssetAssign from "./screens/dept_asset/dept_asset_assign";
+import DepartmentAssetSelect from "./screens/dept_asset/dept_asset_select";
+import DepartmentAssetAssignment from "./screens/dept_asset/dept_asset_assignment";
+import DepartmentAssetHistory from "./screens/dept_asset/dept_asset_history";
 import LoginScreen from "./screens/auth/LoginScreen";
 import LoadingScreen from "./screens/auth/LoadingScreen";
 import HomeScreen from "./screens/HomeScreen";
@@ -102,6 +106,10 @@ export default function App() {
                 <Stack.Screen name="EmployeeAssetDetails" component={EmployeeAssetDetails} />
                 <Stack.Screen name="EmployeeAssetAssignment" component={EmployeeAssetAssignment} />
                 <Stack.Screen name="EmployeeAssetSelect" component={EmployeeAssetSelect} />
+                <Stack.Screen name="DepartmentAssetAssign" component={DepartmentAssetAssign} />
+                <Stack.Screen name="DepartmentAssetSelect" component={DepartmentAssetSelect} />
+                <Stack.Screen name="DepartmentAssetAssignment" component={DepartmentAssetAssignment} />
+                <Stack.Screen name="DepartmentAssetHistory" component={DepartmentAssetHistory} />
                 <Stack.Screen name="ServerStatus" component={ServerStatusChecker} />
                 <Stack.Screen name="MaintenanceSupervisor" component={MaintenanceSupervisorListScreen} />
                 <Stack.Screen name="MaintenanceSupervisorForm" component={MaintenanceSupervisorScreen} />

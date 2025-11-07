@@ -596,8 +596,25 @@ export default function App() {
           <View style={styles.yellowLine} />
           <View style={styles.detailsTable}>
             <DetailRow
+              label={t('assets.assetId')}
+              value={
+                assetData?.asset_id ||
+                assetAssignment?.asset_id ||
+                t('common.na')
+              }
+            />
+            <DetailRow
               label={t('assets.serialNumber')}
               value={assetData?.serial_number || barcode || t('common.na')}
+            />
+            <DetailRow
+              label={t('assets.description')}
+              value={
+                assetData?.description ||
+                assetData?.text ||
+                assetData?.name ||
+                t('common.na')
+              }
             />
             <DetailRow
               label={t('employees.department')}
@@ -608,7 +625,7 @@ export default function App() {
               }
             />
             <DetailRow
-              label={t('employees.employeeName')}
+              label={t('assets.assignedTo')}
               value={
                 loadingDetails
                   ? t('assets.loading')
@@ -736,7 +753,7 @@ function DetailRow({ label, value }) {
           styles.detailValue,
           RESPONSIVE_CONSTANTS.getValueWidth()
         ]} 
-        value={value} 
+        value={value != null ? String(value) : ''} 
         editable={false} 
       />
     </View>

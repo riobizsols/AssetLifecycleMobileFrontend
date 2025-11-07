@@ -5,5 +5,6 @@ module.exports = {
     },
     android: {},
   },
-  assets: ['./node_modules/react-native-vector-icons/Fonts'],
+  // Fonts are handled by CocoaPods (RNVectorIcons) for iOS
+  // assets: ['./node_modules/react-native-vector-icons/Fonts'],
 };
