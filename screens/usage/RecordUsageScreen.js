@@ -540,8 +540,8 @@ const RecordUsageScreen = () => {
                     <MaterialCommunityIcons
                       name={
                         selectedAsset
-                          ? "clipboard-text-clock-outline"
-                          : "playlist-search"
+                        ? "clipboard-text-clock-outline"
+                        : "magnify"
                       }
                       size={40}
                       color={UI_CONSTANTS.COLORS.TEXT_SECONDARY}
