@@ -38,6 +38,19 @@ const RecordUsageScreen = () => {
   const [usageSubmitError, setUsageSubmitError] = useState(null);
   const [usageSubmitSuccess, setUsageSubmitSuccess] = useState(null);
 
+  const formatDate = useCallback((value) => {
+    if (!value) {
+      return "--";
+    }
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return value;
+    }
+
+    return date.toISOString().split("T")[0];
+  }, []);
+
   const loadAssets = useCallback(async () => {
     setAssetsLoading(true);
     setAssetsError(null);
@@ -122,7 +135,9 @@ const RecordUsageScreen = () => {
               typeof entry?.usage_counter === "number"
                 ? entry.usage_counter
                 : Number(entry?.usage_counter) || 0,
-            date: entry?.created_on || entry?.createdAt || entry?.date,
+            date: formatDate(
+              entry?.created_on || entry?.createdAt || entry?.date,
+            ),
             recordedBy:
               entry?.created_by_name ||
               entry?.created_by ||
@@ -144,7 +159,7 @@ const RecordUsageScreen = () => {
         setUsageHistoryLoading(false);
       }
     },
-    [t],
+    [formatDate, t],
   );
 
   useEffect(() => {
@@ -206,6 +221,21 @@ const RecordUsageScreen = () => {
     setUsageHistoryError(null);
     setUsageSubmitError(null);
     setUsageSubmitSuccess(null);
+  };
+
+  const handleUsageCounterChange = (value) => {
+    const sanitized = value.replace(/[^0-9.]/g, "");
+    if (sanitized === usageCounter) {
+      return;
+    }
+
+    setUsageCounter(sanitized);
+    if (usageSubmitError) {
+      setUsageSubmitError(null);
+    }
+    if (usageSubmitSuccess) {
+      setUsageSubmitSuccess(null);
+    }
   };
 
   const handleSubmit = () => {
@@ -385,12 +415,12 @@ const RecordUsageScreen = () => {
               <TextInput
                 style={styles.input}
                 value={usageCounter}
-                onChangeText={setUsageCounter}
+                onChangeText={handleUsageCounterChange}
                 placeholder={t(
                   "recordUsage.enterUsageKm",
                   "Enter usage value (km)",
                 )}
-                keyboardType="numeric"
+                keyboardType={Platform.OS === "ios" ? "decimal-pad" : "decimal-pad"}
                 placeholderTextColor={UI_CONSTANTS.COLORS.TEXT_SECONDARY}
               />
 
