@@ -9,7 +9,7 @@ export const API_CONFIG = {
     // Alternative local IPs (common for different network setups)
     LOCAL_ALT1: 'http://10.0.2.2:4000', // Android emulator
     LOCAL_ALT2: 'http://127.0.0.1:4000', // Localhost alternative
-    LOCAL_ALT3: 'http://192.168.0.109:4000', // Network IP (if needed)
+    LOCAL_ALT3: 'http://192.168.1.3:5000', // Network IP (if needed)
     // Production server
     PRODUCTION: 'http://103.27.234.248:5000',
   },
@@ -19,27 +19,27 @@ export const API_CONFIG = {
   // For development, use local server
   BASE_URL: __DEV__
     ? (Platform.OS === 'android'
-        ? 'http://192.168.0.109:4000'  // Development: Use your computer's IP for Android
-        : 'http://localhost:4000')      // Development: Localhost for iOS
+        ? 'http://192.168.1.3:5000'  // Development: Use your computer's IP for Android
+        : 'http://localhost:5000')      // Development: Localhost for iOS
     : 'http://103.27.234.248:5000',     // Production: Production server
 
   // Fallback servers to try if the main one fails - Platform specific
   FALLBACK_URLS: __DEV__
     ? (Platform.OS === 'android'
         ? [
-            'http://192.168.0.109:4000', // Your computer's IP
-            'http://10.0.2.2:4000',      // Android emulator localhost
-            'http://localhost:4000',     // Localhost fallback
+            'http://192.168.1.3:5000', // Your computer's IP
+            'http://10.0.2.2:5000',    // Android emulator localhost
+            'http://localhost:5000',   // Localhost fallback
             'http://103.27.234.248:5000', // Production fallback
           ]
         : [
-            'http://localhost:4000',
-            'http://127.0.0.1:4000',
+            'http://localhost:5000',
+            'http://127.0.0.1:5000',
             'http://103.27.234.248:5000', // Production fallback
           ])
     : [
         'http://103.27.234.248:5000',   // Production primary
-        'http://localhost:4000',        // Local fallback (if testing locally)
+        'http://localhost:5000',        // Local fallback (if testing locally)
       ],
 
   ACCESS_TOKEN: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJvcmdfaWQiOiJPUkcwMDEiLCJ1c2VyX2lkIjoiVVNSMDAyIiwiZW1haWwiOiJuYXJlbnJpbzc1NkBnbWFpbC5jb20iLCJqb2Jfcm9sZV9pZCI6bnVsbCwiZW1wX2ludF9pZCI6IkVNUF9JTlRfMDAwMiIsImlhdCI6MTc1OTcyODA2NSwiZXhwIjoxNzYwMzMyODY1fQ.BveUrzctoFiVNtT1CrLqaUjpsXg7kXKILjI327_3FSg',
@@ -128,4 +128,7 @@ export const API_ENDPOINTS = {
   GET_MAINTENANCE_SCHEDULES: () => '/api/maintenance-schedules/all',
   GET_CHECKLIST_BY_ASSET_TYPE: (assetTypeId) => `/api/checklist/asset-type/${assetTypeId}`,
   GET_WORK_ORDERS: () => '/api/work-orders/all',
+  GET_ASSET_USAGE_ASSETS: () => '/api/asset-usage/assets',
+  RECORD_ASSET_USAGE: () => '/api/asset-usage',
+  GET_ASSET_USAGE_HISTORY: (assetId) => `/api/asset-usage/${assetId}/history`,
 };

@@ -60,12 +60,14 @@
     "maintenanceSupervisor": "Supervisor de Manutenção",
     "reportBreakdown": "Relatar Falha",
     "workOrderManagement": "Gestão de Ordens de Serviço",
+    "usageBasedAsset": "Ativo Baseado em Uso",
     "scanAndManageAssets": "Escanear e gerenciar ativos",
     "viewEmployeeAssetAssignments": "Ver atribuições de ativos do funcionário",
     "manageDepartmentAssetAllocations": "Gerenciar alocações de ativos do departamento",
     "updateMaintenanceSchedules": "Atualizar cronogramas de manutenção e gerenciar listas de verificação",
     "viewAndManageBreakdownReports": "Ver e gerenciar relatórios de falhas",
-    "manageWorkOrdersAndTasks": "Gerenciar ordens de serviço e tarefas"
+    "manageWorkOrdersAndTasks": "Gerenciar ordens de serviço e tarefas",
+    "trackUsageAndHistory": "Registrar uso e revisar histórico"
   },
   "home": {
     "welcomeBack": "Bem-vindo de volta!",
@@ -691,5 +693,17 @@
     "title": "Notificações",
     "noNotifications": "Ainda não há notificações",
     "errorLoading": "Erro ao carregar notificações"
+  },
+  "recordUsage": {
+    "title": "Registrar Uso do Ativo",
+    "usageLabel": "Uso (km)",
+    "enterUsageKm": "Insira o valor de uso (km)",
+    "selectAssetPrompt": "Selecione um ativo para ver o histórico de uso.",
+    "loadingHistory": "Carregando histórico de uso...",
+    "failedToLoadHistory": "Falha ao carregar o histórico de uso.",
+    "unknownUser": "Usuário desconhecido",
+    "invalidUsageCounter": "O uso deve ser um número inteiro não negativo.",
+    "submitSuccess": "Uso registrado com sucesso.",
+    "submitError": "Falha ao registrar o uso."
   }
 }
