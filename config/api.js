@@ -5,7 +5,7 @@ export const API_CONFIG = {
   // Multiple server options for different environments
   SERVERS: {
     // Local development server
-    LOCAL: 'http://localhost:4000',
+    LOCAL: 'http://localhost:5000',
     // Alternative local IPs (common for different network setups)
     LOCAL_ALT1: 'http://10.0.2.2:4000', // Android emulator
     LOCAL_ALT2: 'http://127.0.0.1:4000', // Localhost alternative

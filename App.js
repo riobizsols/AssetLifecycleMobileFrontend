@@ -49,6 +49,7 @@ import FCMDebugComponent from "./components/FCMDebugComponent";
 import DirectFCMAccess from "./components/DirectFCMAccess";
 import StatusBarNotificationTester from "./components/StatusBarNotificationTester";
 import NotificationTroubleshooter from "./components/NotificationTroubleshooter";
+import RecordUsageScreen from "./screens/usage/RecordUsageScreen";
 import { NotificationProvider } from "./context/NotificationContext";
 import NotificationsScreen from "./screens/NotificationsScreen";
 
@@ -125,6 +126,7 @@ export default function App() {
         <Stack.Screen name="DirectFCMAccess" component={DirectFCMAccess} />
         <Stack.Screen name="StatusBarTester" component={StatusBarNotificationTester} />
         <Stack.Screen name="NotificationTroubleshooter" component={NotificationTroubleshooter} />
+        <Stack.Screen name="RecordUsage" component={RecordUsageScreen} />
               </Stack.Navigator>
             </NavigationContainer>
           </NotificationHandler>
