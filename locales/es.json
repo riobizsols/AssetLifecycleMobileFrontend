@@ -60,12 +60,14 @@
     "maintenanceSupervisor": "Supervisor de Mantenimiento",
     "reportBreakdown": "Reportar Avería",
     "workOrderManagement": "Gestión de Órdenes de Trabajo",
+    "usageBasedAsset": "Activo Basado en Uso",
     "scanAndManageAssets": "Escanear y gestionar activos",
     "viewEmployeeAssetAssignments": "Ver asignaciones de activos del empleado",
     "manageDepartmentAssetAllocations": "Gestionar asignaciones de activos del departamento",
     "updateMaintenanceSchedules": "Actualizar horarios de mantenimiento y gestionar listas de verificación",
     "viewAndManageBreakdownReports": "Ver y gestionar reportes de averías",
-    "manageWorkOrdersAndTasks": "Gestionar órdenes de trabajo y tareas"
+    "manageWorkOrdersAndTasks": "Gestionar órdenes de trabajo y tareas",
+    "trackUsageAndHistory": "Registrar uso y revisar historial"
   },
   "home": {
     "welcomeBack": "¡Bienvenido de nuevo!",
@@ -693,5 +695,17 @@
     "title": "Notificaciones",
     "noNotifications": "Aún no hay notificaciones",
     "errorLoading": "Error al cargar las notificaciones"
+  },
+  "recordUsage": {
+    "title": "Registrar uso del activo",
+    "usageLabel": "Uso (km)",
+    "enterUsageKm": "Ingresa el valor de uso (km)",
+    "selectAssetPrompt": "Selecciona un activo para ver el historial de uso.",
+    "loadingHistory": "Cargando historial de uso...",
+    "failedToLoadHistory": "No se pudo cargar el historial de uso.",
+    "unknownUser": "Usuario desconocido",
+    "invalidUsageCounter": "El uso debe ser un número entero no negativo.",
+    "submitSuccess": "Uso registrado correctamente.",
+    "submitError": "No se pudo registrar el uso."
   }
 }

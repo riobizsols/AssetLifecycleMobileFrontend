@@ -60,12 +60,14 @@
     "maintenanceSupervisor": "Maintenance Supervisor",
     "reportBreakdown": "Report Breakdown",
     "workOrderManagement": "Work Order Management",
+    "usageBasedAsset": "Usage-Based Asset",
     "scanAndManageAssets": "Scan and manage assets",
     "viewEmployeeAssetAssignments": "View employee asset assignments",
     "manageDepartmentAssetAllocations": "Manage department asset allocations",
     "updateMaintenanceSchedules": "Update maintenance schedules and manage checklists",
     "viewAndManageBreakdownReports": "View and manage breakdown reports",
-    "manageWorkOrdersAndTasks": "Manage work orders and tasks"
+    "manageWorkOrdersAndTasks": "Manage work orders and tasks",
+    "trackUsageAndHistory": "Record usage and review history"
   },
   "home": {
     "welcomeBack": "Welcome Back!",
@@ -693,5 +695,17 @@
     "title": "Notifications",
     "noNotifications": "No notifications yet",
     "errorLoading": "Failed to load notifications"
+  },
+  "recordUsage": {
+    "title": "Record Asset Usage",
+    "usageLabel": "Usage (km)",
+    "enterUsageKm": "Enter usage value (km)",
+    "selectAssetPrompt": "Select an asset to view usage history.",
+    "loadingHistory": "Loading usage history...",
+    "failedToLoadHistory": "Failed to load usage history.",
+    "unknownUser": "Unknown User",
+    "invalidUsageCounter": "Usage must be a non-negative whole number.",
+    "submitSuccess": "Usage recorded successfully.",
+    "submitError": "Failed to record usage."
   }
 }

@@ -60,12 +60,14 @@
     "maintenanceSupervisor": "Wartungsaufsicht",
     "reportBreakdown": "Ausfallbericht",
     "workOrderManagement": "Arbeitsauftragsverwaltung",
+    "usageBasedAsset": "Nutzungsbasierte Anlage",
     "scanAndManageAssets": "Anlagen scannen und verwalten",
     "viewEmployeeAssetAssignments": "Mitarbeiteranlagenzuweisungen anzeigen",
     "manageDepartmentAssetAllocations": "Abteilungsanlagenzuweisungen verwalten",
     "updateMaintenanceSchedules": "Wartungspläne aktualisieren und Checklisten verwalten",
     "viewAndManageBreakdownReports": "Ausfallberichte anzeigen und verwalten",
-    "manageWorkOrdersAndTasks": "Arbeitsaufträge und Aufgaben verwalten"
+    "manageWorkOrdersAndTasks": "Arbeitsaufträge und Aufgaben verwalten",
+    "trackUsageAndHistory": "Nutzung erfassen und Verlauf prüfen"
   },
   "home": {
     "welcomeBack": "Willkommen zurück!",
@@ -651,5 +653,17 @@
     "title": "Benachrichtigungen",
     "noNotifications": "Noch keine Benachrichtigungen",
     "errorLoading": "Fehler beim Laden der Benachrichtigungen"
+  },
+  "recordUsage": {
+    "title": "Anlagennutzung erfassen",
+    "usageLabel": "Nutzung (km)",
+    "enterUsageKm": "Nutzungswert eingeben (km)",
+    "selectAssetPrompt": "Wählen Sie eine Anlage aus, um den Nutzungsverlauf anzuzeigen.",
+    "loadingHistory": "Nutzungsverlauf wird geladen...",
+    "failedToLoadHistory": "Nutzungsverlauf konnte nicht geladen werden.",
+    "unknownUser": "Unbekannter Benutzer",
+    "invalidUsageCounter": "Der Nutzungswert muss eine nicht negative ganze Zahl sein.",
+    "submitSuccess": "Nutzung erfolgreich erfasst.",
+    "submitError": "Nutzung konnte nicht erfasst werden."
   }
 }

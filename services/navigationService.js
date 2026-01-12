@@ -135,6 +135,7 @@ export const navigationService = {
       'MAINTENANCE SUPERVISER': 'MaintenanceSupervisor',
       'REPORTBREAKDOWN': 'REPORTBREAKDOWN',
       'WORKORDERMANAGEMENT': 'WorkOrderManagement',
+      'USAGEBASEDASSET': 'RecordUsage',
         'FCMDEBUG': 'FCMDebug',
         'FCMTEST': 'FCMTest',
         'NOTIFICATIONSETTINGS': 'NotificationSettings',
@@ -153,6 +154,7 @@ export const navigationService = {
       'MAINTENANCE SUPERVISER': 'navigation.maintenanceSupervisor',
       'REPORTBREAKDOWN': 'navigation.reportBreakdown',
       'WORKORDERMANAGEMENT': 'navigation.workOrderManagement',
+      'USAGEBASEDASSET': 'navigation.usageBasedAsset',
         'FCMDEBUG': 'FCM Debug',
         'FCMTEST': 'FCM Test',
         'NOTIFICATIONSETTINGS': 'Notification Settings',
@@ -171,6 +173,7 @@ export const navigationService = {
       'MAINTENANCE SUPERVISER': 'navigation.updateMaintenanceSchedules',
       'REPORTBREAKDOWN': 'navigation.viewAndManageBreakdownReports',
       'WORKORDERMANAGEMENT': 'navigation.manageWorkOrdersAndTasks',
+      'USAGEBASEDASSET': 'navigation.trackUsageAndHistory',
     };
     return subtitleMap[appId] || 'navigation.scanAndManageAssets';
   },
@@ -184,6 +187,7 @@ export const navigationService = {
       'MAINTENANCE SUPERVISER': 'wrench',
       'REPORTBREAKDOWN': 'clipboard-alert',
       'WORKORDERMANAGEMENT': 'clipboard-list',
+      'USAGEBASEDASSET': 'clipboard-text-clock',
         'FCMDEBUG': 'bug',
         'FCMTEST': 'bell-ring',
         'NOTIFICATIONSETTINGS': 'cog',
