@@ -1,11 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import DeviceInfo from 'react-native-device-info';
 import { Platform } from 'react-native';
-import { API_CONFIG, getApiHeaders } from '../config/api';
+import { getServerUrl, getApiHeaders } from '../config/api';
 
 class FCMApiClient {
   constructor() {
-    this.baseURL = `${API_CONFIG.BASE_URL}/api`; // Use existing API configuration
     this.authToken = null;
   }
 
@@ -13,7 +12,7 @@ class FCMApiClient {
   async initialize() {
     try {
       // Use existing auth system instead of separate authToken
-      console.log('FCM API Client initialized with base URL:', this.baseURL);
+      console.log('FCM API Client initialized with base URL:', `${getServerUrl()}/api`);
     } catch (error) {
       console.error('Error initializing FCM API client:', error);
     }
@@ -46,7 +45,7 @@ class FCMApiClient {
   // Make HTTP request with error handling
   async makeRequest(endpoint, method = 'GET', body = null) {
     try {
-      const url = `${this.baseURL}${endpoint}`;
+      const url = `${getServerUrl()}/api${endpoint}`;
       const headers = await this.getHeaders();
       
       const options = {

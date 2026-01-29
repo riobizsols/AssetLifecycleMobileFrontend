@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { StatusBar } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { API_CONFIG, getApiHeaders, findWorkingServer, API_ENDPOINTS } from '../../config/api';
+import { API_CONFIG, setServerUrl, API_ENDPOINTS } from '../../config/api';
 import { authUtils } from '../../utils/auth';
 import { safeFetch, getErrorMessage } from '../../utils/responseHandler';
 import CustomAlert from '../../components/CustomAlert';
@@ -83,6 +83,9 @@ const LoginScreen = ({ navigation }) => {
       console.log('Primary server URL:', API_CONFIG.BASE_URL);
       console.log('Login endpoint:', API_ENDPOINTS.LOGIN());
 
+      // Track which server actually succeeds so we can reuse it for subsequent API calls
+      let successfulBaseUrl = API_CONFIG.BASE_URL;
+
       // Try primary server first
       let result = await safeFetch(`${API_CONFIG.BASE_URL}${API_ENDPOINTS.LOGIN()}`, {
         method: 'POST',
@@ -108,12 +111,16 @@ const LoginScreen = ({ navigation }) => {
           
           if (result.success) {
             console.log(`Successfully connected to fallback server: ${fallbackUrl}`);
+            successfulBaseUrl = fallbackUrl;
             break;
           }
         }
       }
 
       if (result.success) {
+        // Ensure all subsequent API calls (navigation, FCM, etc.) use the working server
+        setServerUrl(successfulBaseUrl);
+
         const data = result.data;
         
         // Store the token and user data if provided in the response

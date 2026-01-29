@@ -1,5 +1,11 @@
 import { Platform } from 'react-native';
 
+// Development server settings
+// - Android emulator should use 10.0.2.2
+// - Physical Android device should use your computer's LAN IP (same WiFi)
+const DEV_ANDROID_LAN_URL = 'http://192.168.0.111:4000';
+const DEV_ALLOW_PRODUCTION_FALLBACK = false; // set true only if you want to fall back to production in dev
+
 // API Configuration
 export const API_CONFIG = {
   // Multiple server options for different environments
@@ -9,7 +15,7 @@ export const API_CONFIG = {
     // Alternative local IPs (common for different network setups)
     LOCAL_ALT1: 'http://10.0.2.2:4000', // Android emulator
     LOCAL_ALT2: 'http://127.0.0.1:4000', // Localhost alternative
-    LOCAL_ALT3: 'http://192.168.0.114:4000', // Network IP (if needed)
+    LOCAL_ALT3: DEV_ANDROID_LAN_URL, // Network IP (if needed)
     // Production server
     PRODUCTION: 'http://103.27.234.248:5000',
   },
@@ -19,7 +25,7 @@ export const API_CONFIG = {
   // For development, use local server
   BASE_URL: __DEV__
     ? (Platform.OS === 'android'
-        ? 'http://192.168.0.114:4000'  // Development: Use your computer's IP for Android
+        ? DEV_ANDROID_LAN_URL          // Development: physical device over WiFi (update IP if it changes)
         : 'http://localhost:4000')      // Development: Localhost for iOS
     : 'http://103.27.234.248:5000',     // Production: Production server
 
@@ -27,16 +33,17 @@ export const API_CONFIG = {
   FALLBACK_URLS: __DEV__
     ? (Platform.OS === 'android'
         ? [
-            'http://192.168.0.114:4000', // Your computer's IP
             'http://10.0.2.2:4000',    // Android emulator localhost
-            'http://192.168.1.3:4000', // Alternative network IP
-            'http://localhost:4000',   // Localhost fallback
-            'http://103.27.234.248:5000', // Production fallback
+            'http://localhost:4000',   // If using adb reverse on a physical device
+            'http://127.0.0.1:4000',   // Localhost alternative
+            DEV_ANDROID_LAN_URL,       // Your computer's IP (physical device on WiFi)
+            'http://192.168.1.3:4000', // Alternative network IP (if needed)
+            ...(DEV_ALLOW_PRODUCTION_FALLBACK ? ['http://103.27.234.248:5000'] : []), // Optional production fallback
           ]
         : [
             'http://localhost:4000',
             'http://127.0.0.1:4000',
-            'http://103.27.234.248:5000', // Production fallback
+            ...(DEV_ALLOW_PRODUCTION_FALLBACK ? ['http://103.27.234.248:5000'] : []), // Optional production fallback
           ])
     : [
         'http://103.27.234.248:5000',   // Production primary
@@ -47,22 +54,41 @@ export const API_CONFIG = {
   TIMEOUT: 8000, // 8 seconds
 };
 
+const normalizeBaseUrl = (url) => (url || '').replace(/\/+$/, '');
+
 // Function to get the current server URL
 export const getServerUrl = () => {
-  return API_CONFIG.BASE_URL;
+  return normalizeBaseUrl(API_CONFIG.BASE_URL);
+};
+
+// Update the active server URL at runtime (e.g., after a fallback succeeds)
+export const setServerUrl = (url) => {
+  const nextUrl = normalizeBaseUrl(url);
+  if (!nextUrl) {
+    return;
+  }
+
+  if (nextUrl !== API_CONFIG.BASE_URL) {
+    console.log('Switching active API server to:', nextUrl);
+    API_CONFIG.BASE_URL = nextUrl;
+  }
 };
 
 // Function to test server connectivity
 export const testServerConnection = async (url = null) => {
   const testUrl = url || API_CONFIG.BASE_URL;
   try {
-    const response = await fetch(`${testUrl}/api/health`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      timeout: 5000,
-    });
+    const response = await Promise.race([
+      fetch(`${testUrl}/api/health`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Request timeout')), 5000)
+      ),
+    ]);
     return response.ok;
   } catch (error) {
     console.log(`Server test failed for ${testUrl}:`, error.message);
@@ -118,6 +144,7 @@ export const API_ENDPOINTS = {
   GET_BREAKDOWN_REPORTS: () => '/api/reportbreakdown/reports',
   UPDATE_BREAKDOWN_REPORT: (id) => `/api/reportbreakdown/update/${id}`,
   GET_BREAKDOWN_REASON_CODES: (orgId) => `/api/reportbreakdown/reason-codes?org_id=${orgId}`,
+  CREATE_BREAKDOWN_REASON_CODE: () => '/api/breakdown-reason-codes',
   GET_ASSET_TYPES_MAINT_REQUIRED: () => '/api/asset-types/maint-required',
   GET_ASSET_TYPES_FOR_USER: () => '/api/asset-types/assignment-type/user',
   GET_ASSET_TYPES_FOR_DEPARTMENT: () => '/api/asset-types/assignment-type/department',
