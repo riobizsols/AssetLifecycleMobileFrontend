@@ -19,28 +19,33 @@ export const API_CONFIG = {
   // For development, use local server
   BASE_URL: __DEV__
     ? (Platform.OS === 'android'
-        ? 'http://192.168.0.114:4000'  // Development: Use your computer's IP for Android
-        : 'http://localhost:4000')      // Development: Localhost for iOS
+        ? 'http://192.168.0.114:5000'  // Development: Use your computer's IP for Android (port 5000)
+        : 'http://localhost:5000')      // Development: Localhost for iOS (port 5000)
     : 'http://103.27.234.248:5000',     // Production: Production server
 
   // Fallback servers to try if the main one fails - Platform specific
   FALLBACK_URLS: __DEV__
     ? (Platform.OS === 'android'
         ? [
-            'http://192.168.0.114:4000', // Your computer's IP
-            'http://10.0.2.2:4000',    // Android emulator localhost
-            'http://192.168.1.3:4000', // Alternative network IP
-            'http://localhost:4000',   // Localhost fallback
+            'http://192.168.0.114:5000', // Your computer's IP (port 5000)
+            'http://10.0.2.2:5000',    // Android emulator localhost (port 5000)
+            'http://192.168.1.3:5000', // Alternative network IP (port 5000)
+            'http://localhost:5000',   // Localhost fallback (port 5000)
+            'http://192.168.0.114:4000', // Fallback to port 4000 if needed
+            'http://10.0.2.2:4000',    // Android emulator fallback port 4000
             'http://103.27.234.248:5000', // Production fallback
           ]
         : [
-            'http://localhost:4000',
-            'http://127.0.0.1:4000',
+            'http://localhost:5000',   // Primary localhost (port 5000)
+            'http://127.0.0.1:5000',   // Alternative localhost (port 5000)
+            'http://localhost:4000',   // Fallback to port 4000 if needed
+            'http://127.0.0.1:4000',   // Fallback port 4000
             'http://103.27.234.248:5000', // Production fallback
           ])
     : [
         'http://103.27.234.248:5000',   // Production primary
-        'http://localhost:4000',        // Local fallback (if testing locally)
+        'http://localhost:5000',        // Local fallback (port 5000)
+        'http://localhost:4000',        // Legacy fallback (port 4000)
       ],
 
   ACCESS_TOKEN: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJvcmdfaWQiOiJPUkcwMDEiLCJ1c2VyX2lkIjoiVVNSMDAyIiwiZW1haWwiOiJuYXJlbnJpbzc1NkBnbWFpbC5jb20iLCJqb2Jfcm9sZV9pZCI6bnVsbCwiZW1wX2ludF9pZCI6IkVNUF9JTlRfMDAwMiIsImlhdCI6MTc1OTcyODA2NSwiZXhwIjoxNzYwMzMyODY1fQ.BveUrzctoFiVNtT1CrLqaUjpsXg7kXKILjI327_3FSg',
