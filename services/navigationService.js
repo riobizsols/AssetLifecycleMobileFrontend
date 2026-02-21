@@ -1,4 +1,4 @@
-import { API_CONFIG, getApiHeaders } from '../config/api';
+import { API_CONFIG, setServerUrl } from '../config/api';
 import { authUtils } from '../utils/auth';
 
 export const navigationService = {
@@ -48,6 +48,7 @@ export const navigationService = {
             ]);
             serverUrl = fallbackUrl;
             console.log(`Successfully connected to fallback server: ${fallbackUrl}`);
+            setServerUrl(fallbackUrl);
             break;
           } catch (fallbackError) {
             console.log(`Fallback server ${fallbackUrl} also failed:`, fallbackError.message);

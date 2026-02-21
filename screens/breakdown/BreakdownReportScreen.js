@@ -6,6 +6,9 @@ import {
   TouchableOpacity,
   ScrollView,
   TextInput,
+  Modal,
+  TouchableWithoutFeedback,
+  KeyboardAvoidingView,
   Dimensions,
   Platform,
   StatusBar,
@@ -221,6 +224,9 @@ const BreakdownReportScreen = () => {
   const [upcomingMaintenanceDate, setUpcomingMaintenanceDate] = useState(null);
   const [loadingMaintenance, setLoadingMaintenance] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showCreateReasonModal, setShowCreateReasonModal] = useState(false);
+  const [newReasonText, setNewReasonText] = useState('');
+  const [creatingReason, setCreatingReason] = useState(false);
 
   // Fetch breakdown reason codes and upcoming maintenance on component mount
   useEffect(() => {
@@ -293,6 +299,93 @@ const BreakdownReportScreen = () => {
       console.error('Error fetching breakdown reason codes:', error);
       // Fallback to empty array on error
       setBreakdownCodes([]);
+    }
+  };
+
+  const handleOpenCreateReason = () => {
+    setShowBreakdownCodeDropdown(false);
+    setNewReasonText('');
+    setShowCreateReasonModal(true);
+  };
+
+  const handleCloseCreateReason = () => {
+    if (creatingReason) return;
+    setShowCreateReasonModal(false);
+    setNewReasonText('');
+  };
+
+  const handleCreateBreakdownReasonCode = async () => {
+    const assetTypeId = assetData.assetTypeId;
+    const text = (newReasonText || '').trim();
+
+    if (!assetTypeId) {
+      showAlert(t('alerts.validationError'), 'Asset type ID is required', 'error');
+      return;
+    }
+
+    if (!text) {
+      showAlert(t('alerts.validationError'), 'Reason code text is required', 'error');
+      return;
+    }
+
+    setCreatingReason(true);
+    try {
+      const serverUrl = getServerUrl();
+      const endpoint = API_ENDPOINTS.CREATE_BREAKDOWN_REASON_CODE();
+      const url = `${serverUrl}${endpoint}`;
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: await getApiHeaders(),
+        body: JSON.stringify({
+          asset_type_id: assetTypeId,
+          text,
+        }),
+      });
+
+      const responseText = await response.text();
+      let data = null;
+      try {
+        data = responseText ? JSON.parse(responseText) : null;
+      } catch (e) {
+        data = null;
+      }
+
+      if (!response.ok) {
+        const message =
+          (data && (data.message || data.error)) ||
+          responseText ||
+          'Failed to create breakdown reason code';
+        showAlert(t('alerts.error'), message, 'error');
+        return;
+      }
+
+      const createdId =
+        data?.data?.atbrrc_id ||
+        data?.data?.id ||
+        data?.atbrrc_id ||
+        data?.id ||
+        null;
+
+      await fetchBreakdownReasonCodes();
+
+      if (createdId) {
+        updateFormData('breakdownCode', createdId);
+      }
+
+      setShowCreateReasonModal(false);
+      setNewReasonText('');
+
+      showAlert(
+        t('common.success'),
+        data?.message || 'Breakdown reason code created successfully',
+        'success'
+      );
+    } catch (error) {
+      console.error('Error creating breakdown reason code:', error);
+      showAlert(t('alerts.error'), 'Failed to create breakdown reason code', 'error');
+    } finally {
+      setCreatingReason(false);
     }
   };
 
@@ -785,6 +878,24 @@ const BreakdownReportScreen = () => {
                     showsVerticalScrollIndicator={true}
                     nestedScrollEnabled={true}
                   >
+                    <TouchableOpacity
+                      style={[styles.dropdownOption, styles.createNewOption]}
+                      onPress={handleOpenCreateReason}
+                    >
+                      <MaterialCommunityIcons
+                        name="plus-circle"
+                        size={18}
+                        color={UI_CONSTANTS.COLORS.PRIMARY}
+                      />
+                      <Text
+                        style={[styles.dropdownOptionText, styles.createNewOptionText]}
+                        numberOfLines={1}
+                        ellipsizeMode="tail"
+                      >
+                        Create New
+                      </Text>
+                    </TouchableOpacity>
+
                     {filteredBreakdownCodes.length > 0 ? (
                       filteredBreakdownCodes.map((item) => {
                         const code = typeof item === 'string' ? item : item.id;
@@ -808,17 +919,17 @@ const BreakdownReportScreen = () => {
                           </TouchableOpacity>
                         );
                       })
-                      ) : (
-                        <View style={styles.dropdownOption}>
-                          <Text 
-                            style={[styles.dropdownOptionText, { color: UI_CONSTANTS.COLORS.GRAY_DARK }]}
-                            numberOfLines={1}
-                            ellipsizeMode="tail"
-                          >
-                            {t('breakdown.noBreakdownCodesForAssetType')}
-                          </Text>
-                        </View>
-                      )}
+                    ) : (
+                      <View style={styles.dropdownOption}>
+                        <Text 
+                          style={[styles.dropdownOptionText, { color: UI_CONSTANTS.COLORS.GRAY_DARK }]}
+                          numberOfLines={2}
+                          ellipsizeMode="tail"
+                        >
+                          {t('breakdown.noBreakdownCodesForAssetType')}
+                        </Text>
+                      </View>
+                    )}
                   </ScrollView>
                 </View>
               )}
@@ -1151,6 +1262,79 @@ const BreakdownReportScreen = () => {
       />
 
       <CustomAlert {...alertConfig} />
+
+      <Modal
+        visible={showCreateReasonModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={handleCloseCreateReason}
+      >
+        <TouchableWithoutFeedback onPress={handleCloseCreateReason}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback>
+              <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                style={styles.modalCard}
+              >
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle} numberOfLines={1} ellipsizeMode="tail">
+                    Create New Breakdown Code
+                  </Text>
+                  <TouchableOpacity onPress={handleCloseCreateReason} disabled={creatingReason}>
+                    <MaterialCommunityIcons
+                      name="close"
+                      size={22}
+                      color={UI_CONSTANTS.COLORS.PRIMARY}
+                    />
+                  </TouchableOpacity>
+                </View>
+
+                <Text style={styles.modalLabel} numberOfLines={1} ellipsizeMode="tail">
+                  Reason
+                </Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={newReasonText}
+                  onChangeText={setNewReasonText}
+                  placeholder="e.g. Display Damage"
+                  placeholderTextColor={UI_CONSTANTS.COLORS.TEXT_SECONDARY}
+                  editable={!creatingReason}
+                />
+
+                <View style={styles.modalActions}>
+                  <TouchableOpacity
+                    style={[styles.modalButton, styles.modalCancelButton]}
+                    onPress={handleCloseCreateReason}
+                    disabled={creatingReason}
+                  >
+                    <Text style={styles.modalCancelText} numberOfLines={1} ellipsizeMode="tail">
+                      {t('common.cancel')}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.modalButton, styles.modalSaveButton, creatingReason && styles.disabledButton]}
+                    onPress={handleCreateBreakdownReasonCode}
+                    disabled={creatingReason}
+                  >
+                    {creatingReason ? (
+                      <View style={styles.buttonLoadingContainer}>
+                        <ActivityIndicator size="small" color="#FFFFFF" />
+                        <Text style={[styles.modalSaveText, { marginLeft: 8 }]} numberOfLines={1} ellipsizeMode="tail">
+                          {t('common.loading')}
+                        </Text>
+                      </View>
+                    ) : (
+                      <Text style={styles.modalSaveText} numberOfLines={1} ellipsizeMode="tail">
+                        {t('common.save')}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </KeyboardAvoidingView>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </View>
   );
 };
@@ -1356,6 +1540,16 @@ const styles = StyleSheet.create({
   dropdownScrollView: {
     maxHeight: 150,
   },
+  createNewOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: RESPONSIVE_CONSTANTS.SPACING.SM,
+    borderBottomColor: UI_CONSTANTS.COLORS.GRAY_MEDIUM,
+  },
+  createNewOptionText: {
+    fontWeight: '700',
+    color: UI_CONSTANTS.COLORS.PRIMARY,
+  },
   selectedDropdownOption: {
     backgroundColor: '#F0F8FF',
   },
@@ -1498,6 +1692,82 @@ const styles = StyleSheet.create({
   disabledButton: {
     backgroundColor: '#999',
     opacity: 0.7,
+  },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.XL,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 420,
+    backgroundColor: UI_CONSTANTS.COLORS.WHITE,
+    borderRadius: RESPONSIVE_CONSTANTS.CARD_BORDER_RADIUS,
+    padding: RESPONSIVE_CONSTANTS.SPACING.XL,
+    ...UI_CONSTANTS.SHADOW,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: RESPONSIVE_CONSTANTS.SPACING.LG,
+    gap: RESPONSIVE_CONSTANTS.SPACING.MD,
+  },
+  modalTitle: {
+    flex: 1,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.XL,
+    fontWeight: '700',
+    color: UI_CONSTANTS.COLORS.PRIMARY,
+  },
+  modalLabel: {
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.MD,
+    fontWeight: '600',
+    color: UI_CONSTANTS.COLORS.TEXT_PRIMARY,
+    marginBottom: RESPONSIVE_CONSTANTS.SPACING.SM,
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: UI_CONSTANTS.COLORS.GRAY_MEDIUM,
+    borderRadius: scale(10),
+    paddingHorizontal: RESPONSIVE_CONSTANTS.SPACING.LG,
+    paddingVertical: RESPONSIVE_CONSTANTS.SPACING.MD,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.LG,
+    backgroundColor: UI_CONSTANTS.COLORS.WHITE,
+    minHeight: RESPONSIVE_CONSTANTS.BUTTON_HEIGHT,
+    ...UI_CONSTANTS.SHADOW,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: RESPONSIVE_CONSTANTS.SPACING.MD,
+    marginTop: RESPONSIVE_CONSTANTS.SPACING.XL,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: RESPONSIVE_CONSTANTS.SPACING.LG,
+    borderRadius: scale(10),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCancelButton: {
+    backgroundColor: UI_CONSTANTS.COLORS.GRAY_LIGHT,
+    borderWidth: 1,
+    borderColor: UI_CONSTANTS.COLORS.GRAY_MEDIUM,
+  },
+  modalCancelText: {
+    color: UI_CONSTANTS.COLORS.TEXT_SECONDARY,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.LG,
+    fontWeight: '700',
+  },
+  modalSaveButton: {
+    backgroundColor: UI_CONSTANTS.COLORS.PRIMARY,
+  },
+  modalSaveText: {
+    color: UI_CONSTANTS.COLORS.WHITE,
+    fontSize: RESPONSIVE_CONSTANTS.FONT_SIZES.LG,
+    fontWeight: '700',
   },
 });
 
