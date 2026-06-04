@@ -28,7 +28,9 @@
     "required": "Required",
     "na": "N/A",
     "notAvailable": "Not Available",
-    "retry": "Retry"
+    "retry": "Retry",
+    "saving": "Saving...",
+    "uploading": "Uploading..."
   },
   "auth": {
     "login": "Sign In",
@@ -133,6 +135,7 @@
     "assetUnassignedSuccessfully": "Asset unassigned successfully",
     "assetUpdatedSuccessfully": "Asset updated successfully",
     "assetDeletedSuccessfully": "Asset deleted successfully",
+    "assetCreatedSuccessfully": "Asset created successfully!",
     "assetNotFound": "Asset not found",
     "invalidSerialNumber": "Invalid serial number",
     "assetAlreadyAssigned": "Asset is already assigned",
@@ -331,6 +334,8 @@
   "breakdown": {
     "reportBreakdown": "Report Breakdown",
     "breakdownReports": "Breakdown Reports",
+    "reasonCodeCreatedSuccessfully": "Breakdown reason code created successfully",
+    "failedToCreateReasonCode": "Failed to create breakdown reason code",
     "breakdownId": "Breakdown ID",
     "assetId": "Asset ID",
     "breakdownCode": "Breakdown Code",
