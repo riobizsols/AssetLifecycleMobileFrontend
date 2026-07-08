@@ -28,7 +28,9 @@
     "required": "Erforderlich",
     "na": "N/A",
     "notAvailable": "Nicht verfügbar",
-    "retry": "Wiederholen"
+    "retry": "Wiederholen",
+    "saving": "Wird gespeichert...",
+    "uploading": "Wird hochgeladen..."
   },
   "auth": {
     "login": "Anmelden",
@@ -139,6 +141,7 @@
     "assetUnassignedSuccessfully": "Anlage erfolgreich freigegeben",
     "assetUpdatedSuccessfully": "Anlage erfolgreich aktualisiert",
     "assetDeletedSuccessfully": "Anlage erfolgreich gelöscht",
+    "assetCreatedSuccessfully": "Anlage erfolgreich erstellt!",
     "assetNotFound": "Anlage nicht gefunden",
     "invalidSerialNumber": "Ungültige Seriennummer",
     "assetAlreadyAssigned": "Anlage ist bereits zugewiesen",
@@ -313,6 +316,8 @@
   "breakdown": {
     "reportBreakdown": "Störungsbericht",
     "breakdownReports": "Störungsberichte",
+    "reasonCodeCreatedSuccessfully": "Störungscode erfolgreich erstellt",
+    "failedToCreateReasonCode": "Störungscode konnte nicht erstellt werden",
     "breakdownId": "Störungs-ID",
     "assetId": "Anlagen-ID",
     "breakdownCode": "Störungscode",

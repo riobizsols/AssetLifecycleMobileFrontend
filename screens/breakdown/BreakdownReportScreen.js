@@ -147,7 +147,7 @@ const RESPONSIVE_CONSTANTS = {
 };
 
 const BreakdownReportScreen = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute();
   const { hasAccess } = useNavigationContext();
@@ -376,14 +376,22 @@ const BreakdownReportScreen = () => {
       setShowCreateReasonModal(false);
       setNewReasonText('');
 
+      const createdReasonFallback = t('breakdown.reasonCodeCreatedSuccessfully');
+      const apiMessage = typeof data?.message === 'string' ? data.message.trim() : '';
+      const shouldPreferLocalizedFallback =
+        !String(i18n?.language || '').toLowerCase().startsWith('en') &&
+        apiMessage === 'Breakdown reason code created successfully';
+
       showAlert(
         t('common.success'),
-        data?.message || 'Breakdown reason code created successfully',
+        shouldPreferLocalizedFallback
+          ? createdReasonFallback
+          : (apiMessage || createdReasonFallback),
         'success'
       );
     } catch (error) {
       console.error('Error creating breakdown reason code:', error);
-      showAlert(t('alerts.error'), 'Failed to create breakdown reason code', 'error');
+      showAlert(t('alerts.error'), t('breakdown.failedToCreateReasonCode'), 'error');
     } finally {
       setCreatingReason(false);
     }
