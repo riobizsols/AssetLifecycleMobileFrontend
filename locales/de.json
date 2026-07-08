@@ -67,7 +67,8 @@
     "updateMaintenanceSchedules": "Wartungspläne aktualisieren und Checklisten verwalten",
     "viewAndManageBreakdownReports": "Ausfallberichte anzeigen und verwalten",
     "manageWorkOrdersAndTasks": "Arbeitsaufträge und Aufgaben verwalten",
-    "trackUsageAndHistory": "Nutzung erfassen und Verlauf prüfen"
+    "trackUsageAndHistory": "Nutzung erfassen und Verlauf prüfen",
+    "warrantyExpiry": "Garantieablauf-Warnungen"
   },
   "home": {
     "welcomeBack": "Willkommen zurück!",
@@ -77,13 +78,18 @@
     "departments": "Abteilungen",
     "quickActions": "Schnellaktionen",
     "noAccess": "Kein Zugriff",
-    "contactAdministrator": "Sie haben keinen Zugriff auf Module. Bitte wenden Sie sich an Ihren Administrator."
+    "contactAdministrator": "Sie haben keinen Zugriff auf Module. Bitte wenden Sie sich an Ihren Administrator.",
+    "warrantyExpiryTitle": "Garantieablauf-Warnungen",
+    "warrantyExpirySubtitle": "Warnungen lösen, verschieben oder Garantie verlängern"
   },
   "sideMenu": {
     "version": "v1.0.0",
     "user": "Benutzer",
     "userId": "Benutzer-ID",
-    "roleId": "Rollen-ID"
+    "roleId": "Rollen-ID",
+    "orgId": "Organisations-ID",
+    "tenantId": "Mandanten-ID",
+    "domain": "Domain"
   },
   "alerts": {
     "error": "Fehler",

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Appbar } from 'react-native-paper';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import CustomAlert from '../components/CustomAlert';
 import { authUtils } from '../utils/auth';
@@ -22,6 +22,8 @@ import { useNotification } from '../context/NotificationContext';
 import { navigationService } from '../services/navigationService';
 import { UI_CONSTANTS, COMMON_STYLES, UI_UTILS } from '../utils/uiConstants';
 import { useSafeAreaConfig, getSafeAreaStyles, getContainerStyles } from '../utils/safeAreaUtils';
+import { API_CONFIG, getApiHeaders, API_ENDPOINTS } from '../config/api';
+import { safeFetch } from '../utils/responseHandler';
 
 const { width } = Dimensions.get('window');
 
@@ -31,6 +33,13 @@ const HomeScreen = () => {
   const { getSortedNavigation, clearNavigation, userNavigation, loading } = useNavigationContext();
   const { handleUserLogout, unreadCount } = useNotification();
   const [menuVisible, setMenuVisible] = useState(false);
+  const [warrantyAlertCount, setWarrantyAlertCount] = useState(0);
+  const [assetExpiryAlertCount, setAssetExpiryAlertCount] = useState(0);
+  const [dashboardStats, setDashboardStats] = useState({
+    assets: 0,
+    employees: 0,
+    departments: 0,
+  });
   const insets = useSafeAreaInsets();
   const safeAreaConfig = useSafeAreaConfig();
   const [alertConfig, setAlertConfig] = useState({
@@ -102,6 +111,86 @@ const HomeScreen = () => {
     setMenuVisible(false);
   };
 
+  const fetchDashboardStats = useCallback(async () => {
+    try {
+      const headers = await getApiHeaders();
+      const base = API_CONFIG.BASE_URL;
+      const [assetsRes, employeesRes, departmentsRes] = await Promise.all([
+        safeFetch(`${base}${API_ENDPOINTS.GET_ASSETS_COUNT()}`, { method: 'GET', headers }),
+        safeFetch(`${base}${API_ENDPOINTS.GET_EMPLOYEES()}`, { method: 'GET', headers }),
+        safeFetch(`${base}${API_ENDPOINTS.GET_DEPARTMENTS()}`, { method: 'GET', headers }),
+      ]);
+
+      setDashboardStats({
+        assets: assetsRes.success ? Number(assetsRes.data?.count ?? 0) : 0,
+        employees: employeesRes.success && Array.isArray(employeesRes.data) ? employeesRes.data.length : 0,
+        departments: departmentsRes.success && Array.isArray(departmentsRes.data) ? departmentsRes.data.length : 0,
+      });
+    } catch {
+      setDashboardStats({ assets: 0, employees: 0, departments: 0 });
+    }
+  }, []);
+
+  const fetchAlertCounts = useCallback(async () => {
+    try {
+      const user = await authUtils.getUserData();
+      const empIntId = user?.emp_int_id;
+      if (!empIntId) {
+        setWarrantyAlertCount(0);
+        setAssetExpiryAlertCount(0);
+        return;
+      }
+
+      const url = `${API_CONFIG.BASE_URL}${API_ENDPOINTS.USER_NOTIFICATIONS(empIntId)}`;
+      const headers = await getApiHeaders();
+      const result = await safeFetch(url, { method: 'GET', headers });
+      if (!result.success) {
+        setWarrantyAlertCount(0);
+        setAssetExpiryAlertCount(0);
+        return;
+      }
+
+      const raw = result.data?.data || result.data || [];
+      const list = Array.isArray(raw) ? raw : [];
+      const isActive = (item) => {
+        const status = String(item.notificationStatus || item.status || '').toUpperCase();
+        return status !== 'RESOLVED' && status !== 'DISCARDED';
+      };
+      setWarrantyAlertCount(list.filter((item) => item.workflowType === 'WARRANTY' && isActive(item)).length);
+      setAssetExpiryAlertCount(list.filter((item) => item.workflowType === 'ASSET_EXPIRY' && isActive(item)).length);
+    } catch {
+      setWarrantyAlertCount(0);
+      setAssetExpiryAlertCount(0);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchDashboardStats();
+      fetchAlertCounts();
+    }, [fetchDashboardStats, fetchAlertCounts])
+  );
+
+  const warrantyQuickAction = {
+    id: 'warranty_expiry',
+    title: t('home.warrantyExpiryTitle'),
+    subtitle: t('home.warrantyExpirySubtitle'),
+    icon: 'shield-alert-outline',
+    color: '#E65100',
+    badge: warrantyAlertCount,
+    onPress: () => navigation.navigate('WarrantyExpiryNotifications'),
+  };
+
+  const assetExpiryQuickAction = {
+    id: 'asset_expiry',
+    title: t('home.assetExpiryTitle'),
+    subtitle: t('home.assetExpirySubtitle'),
+    icon: 'calendar-alert',
+    color: '#C62828',
+    badge: assetExpiryAlertCount,
+    onPress: () => navigation.navigate('AssetExpiryNotifications'),
+  };
+
   // Generate dynamic menu items based on user navigation
   const generateMenuItems = () => {
     const navigationItems = getSortedNavigation();
@@ -113,19 +202,28 @@ const HomeScreen = () => {
       return [];
     }
     
+    // Skip nav groups / rows without a linked app_id
+    const validItems = navigationItems.filter((item) =>
+      navigationService.isValidNavigationAppId(item?.app_id) &&
+      navigationService.isMobileNavigationItem(item.app_id),
+    );
+
     // Remove duplicates based on app_id
-    const uniqueItems = navigationItems.filter((item, index, self) =>
+    const uniqueItems = validItems.filter((item, index, self) =>
       index === self.findIndex(navItem => navItem.app_id === item.app_id)
     );
     
-    return uniqueItems.map((item, index) => ({
-      id: `${item.app_id.toLowerCase()}_${index}`,
-      title: t(navigationService.getNavigationLabel(item.app_id)),
-      subtitle: t(navigationService.getNavigationSubtitle(item.app_id)),
-      icon: navigationService.getNavigationIcon(item.app_id),
+    return uniqueItems.map((item, index) => {
+      const appId = String(item.app_id).trim();
+      return {
+      id: `${appId.toLowerCase()}_${index}`,
+      title: t(navigationService.getNavigationLabel(appId)),
+      subtitle: t(navigationService.getNavigationSubtitle(appId)),
+      icon: navigationService.getNavigationIcon(appId),
       color: colors[index % colors.length],
-      onPress: () => navigation.navigate(navigationService.getScreenName(item.app_id)),
-    }));
+      onPress: () => navigation.navigate(navigationService.getScreenName(appId)),
+    };
+    });
   };
 
   const menuItems = React.useMemo(() => {
@@ -146,6 +244,13 @@ const HomeScreen = () => {
           size={UI_CONSTANTS.ICON_SIZES.XL}
           color={item.color}
         />
+        {item.badge > 0 && (
+          <View style={styles.menuItemBadge}>
+            <Text style={styles.menuItemBadgeText}>
+              {item.badge > 99 ? '99+' : item.badge}
+            </Text>
+          </View>
+        )}
       </View>
       <View style={styles.menuTextContainer}>
         <Text 
@@ -183,7 +288,7 @@ const HomeScreen = () => {
           >
             <MaterialCommunityIcons name="menu" size={24} color="#FEC200" />
           </TouchableOpacity>
-          <View style={styles.centerTitleContainer}>
+          <View style={styles.centerTitleContainer} pointerEvents="none">
             <Text 
               style={styles.appbarTitle}
               numberOfLines={1}
@@ -193,6 +298,34 @@ const HomeScreen = () => {
             </Text>
           </View>
           <View style={styles.rightIconsContainer}>
+            <TouchableOpacity
+              style={styles.notificationButton}
+              onPress={() => navigation.navigate('WarrantyExpiryNotifications')}
+              activeOpacity={0.7}
+            >
+              <MaterialCommunityIcons name="shield-alert-outline" size={24} color="#FEC200" />
+              {warrantyAlertCount > 0 && (
+                <View style={styles.warrantyHeaderBadge}>
+                  <Text style={styles.warrantyHeaderBadgeText}>
+                    {warrantyAlertCount > 99 ? '99+' : warrantyAlertCount}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.notificationButton}
+              onPress={() => navigation.navigate('AssetExpiryNotifications')}
+              activeOpacity={0.7}
+            >
+              <MaterialCommunityIcons name="calendar-alert" size={24} color="#FEC200" />
+              {assetExpiryAlertCount > 0 && (
+                <View style={styles.warrantyHeaderBadge}>
+                  <Text style={styles.warrantyHeaderBadgeText}>
+                    {assetExpiryAlertCount > 99 ? '99+' : assetExpiryAlertCount}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
             <TouchableOpacity
               style={styles.notificationButton}
               onPress={() => navigation.navigate('Notifications')}
@@ -231,7 +364,7 @@ const HomeScreen = () => {
               size={UI_CONSTANTS.ICON_SIZES.LG} 
               color={UI_CONSTANTS.COLORS.SUCCESS} 
             />
-            <Text style={styles.statNumber}>24</Text>
+            <Text style={styles.statNumber}>{dashboardStats.assets}</Text>
             <Text 
               style={styles.statLabel}
               numberOfLines={1}
@@ -246,7 +379,7 @@ const HomeScreen = () => {
               size={UI_CONSTANTS.ICON_SIZES.LG} 
               color={UI_CONSTANTS.COLORS.INFO} 
             />
-            <Text style={styles.statNumber}>30</Text>
+            <Text style={styles.statNumber}>{dashboardStats.employees}</Text>
             <Text 
               style={styles.statLabel}
               numberOfLines={1}
@@ -261,7 +394,7 @@ const HomeScreen = () => {
               size={UI_CONSTANTS.ICON_SIZES.LG} 
               color={UI_CONSTANTS.COLORS.WARNING} 
             />
-            <Text style={styles.statNumber}>6</Text>
+            <Text style={styles.statNumber}>{dashboardStats.departments}</Text>
             <Text 
               style={styles.statLabel}
               numberOfLines={1}
@@ -281,6 +414,8 @@ const HomeScreen = () => {
           >
             {t('home.quickActions')}
           </Text>
+          {renderMenuItem(warrantyQuickAction)}
+          {renderMenuItem(assetExpiryQuickAction)}
           {loading ? (
             <View style={styles.loadingContainer}>
               <Text style={styles.loadingText}>{t('common.loading')}</Text>
@@ -360,19 +495,22 @@ const styles = StyleSheet.create({
     ...COMMON_STYLES.appBar,
   },
   menuButton: {
-    padding: UI_CONSTANTS.SPACING.MD,
-    marginLeft: UI_CONSTANTS.SPACING.SM,
-    zIndex: 2,
-  },
-  rightIconsContainer: {
-    position: 'absolute',
-    right: UI_CONSTANTS.SPACING.SM,
-    height: '100%',
+    width: 48,
+    height: 48,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
+  },
+  rightIconsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexShrink: 0,
   },
   notificationButton: {
-    padding: UI_CONSTANTS.SPACING.MD,
+    width: 40,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   notificationBadge: {
     position: 'absolute',
@@ -383,15 +521,51 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: '#FF3B30',
   },
-  centerTitleContainer: {
+  warrantyHeaderBadge: {
     position: 'absolute',
-    left: 0,
-    right: 0,
+    top: 4,
+    right: 4,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#FF3B30',
     alignItems: 'center',
-    zIndex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  warrantyHeaderBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  menuItemBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#FF3B30',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  menuItemBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  centerTitleContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 0,
+    paddingHorizontal: UI_CONSTANTS.SPACING.XS,
   },
   appbarTitle: {
     ...COMMON_STYLES.appBarTitle,
+    textAlign: 'center',
+    width: '100%',
   },
   content: {
     flex: 1,
@@ -445,6 +619,7 @@ const styles = StyleSheet.create({
   },
   iconContainer: {
     ...COMMON_STYLES.iconContainer,
+    overflow: 'visible',
   },
   menuTextContainer: {
     flex: 1,

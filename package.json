@@ -4,7 +4,10 @@
   "private": true,
   "scripts": {
     "start": "react-native start",
-    "android": "react-native run-android",
+    "android": "node scripts/run-android-phone.js",
+    "android:phone": "node scripts/run-android-phone.js",
+    "android:tablet": "emulator -avd 10_WXGA_Tablet_API_34 & react-native run-android",
+    "android:pick": "react-native run-android --list-devices",
     "ios": "react-native run-ios",
     "lint": "eslint .",
     "test": "jest",

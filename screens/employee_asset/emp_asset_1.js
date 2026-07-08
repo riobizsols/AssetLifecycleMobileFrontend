@@ -33,6 +33,7 @@ import { API_CONFIG, getApiHeaders, API_ENDPOINTS } from "../../config/api";
 import { authUtils } from "../../utils/auth";
 import CustomAlert from "../../components/CustomAlert";
 import SideMenu from "../../components/SideMenu";
+import { goBackOrHome } from "../../utils/navigationUtils";
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -605,7 +606,7 @@ export default function Asset_1() {
         <View style={styles.appbarContainer}>
             <TouchableOpacity 
               style={styles.backButton} 
-              onPress={() => navigation.goBack()}
+              onPress={() => goBackOrHome(navigation)}
               activeOpacity={0.7}
             >
               <MaterialCommunityIcons name="arrow-left" size={24} color="#FEC200" />

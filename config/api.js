@@ -1,9 +1,13 @@
 import { Platform } from 'react-native';
 
-// Development server settings
+// Development server settings (ALM-tenant backend: npm run dev → port 5001)
 // - Android emulator should use 10.0.2.2
 // - Physical Android device should use your computer's LAN IP (same WiFi)
-const DEV_ANDROID_LAN_URL = 'http://192.168.0.111:4000';
+const DEV_BACKEND_PORT = 5001;
+const DEV_ANDROID_LAN_URL = `http://192.168.1.4:${DEV_BACKEND_PORT}`;
+const DEV_ANDROID_EMULATOR_URL = `http://10.0.2.2:${DEV_BACKEND_PORT}`;
+const TENANT_PROD_BASE_URL = 'https://rioassetmanagement.net';
+
 const DEV_ALLOW_PRODUCTION_FALLBACK = false; // set true only if you want to fall back to production in dev
 
 // API Configuration
@@ -11,13 +15,13 @@ export const API_CONFIG = {
   // Multiple server options for different environments
   SERVERS: {
     // Local development server
-    LOCAL: 'http://localhost:5000',
+    LOCAL: `http://localhost:${DEV_BACKEND_PORT}`,
     // Alternative local IPs (common for different network setups)
-    LOCAL_ALT1: 'http://10.0.2.2:4000', // Android emulator
-    LOCAL_ALT2: 'http://127.0.0.1:4000', // Localhost alternative
+    LOCAL_ALT1: DEV_ANDROID_EMULATOR_URL, // Android emulator
+    LOCAL_ALT2: `http://127.0.0.1:${DEV_BACKEND_PORT}`, // Localhost alternative
     LOCAL_ALT3: DEV_ANDROID_LAN_URL, // Network IP (if needed)
-    // Production server
-    PRODUCTION: 'http://103.27.234.248:5000',
+    // Production: multi-tenant ALM API (not web.* main ALM)
+    PRODUCTION: TENANT_PROD_BASE_URL,
   },
 
   // Default server to use - Platform specific
@@ -25,33 +29,26 @@ export const API_CONFIG = {
   // For development, use local server
   BASE_URL: __DEV__
     ? (Platform.OS === 'android'
-        ? 'http://192.168.0.114:5000'  // Development: Use your computer's IP for Android (port 5000)
-        : 'http://localhost:5000')      // Development: Localhost for iOS (port 5000)
-    : 'http://103.27.234.248:5000',     // Production: Production server
+        ? DEV_ANDROID_EMULATOR_URL     // Development: Android emulator → host port 5001
+        : `http://localhost:${DEV_BACKEND_PORT}`)     // Development: iOS simulator
+    : TENANT_PROD_BASE_URL,            // Production: tenant API (rioassetmanagement.net)
 
   // Fallback servers to try if the main one fails - Platform specific
   FALLBACK_URLS: __DEV__
     ? (Platform.OS === 'android'
         ? [
-            'http://192.168.0.114:5000', // Your computer's IP (port 5000)
-            'http://10.0.2.2:5000',    // Android emulator localhost (port 5000)
-            'http://192.168.1.3:5000', // Alternative network IP (port 5000)
-            'http://localhost:5000',   // Localhost fallback (port 5000)
-            'http://192.168.0.114:4000', // Fallback to port 4000 if needed
-            'http://10.0.2.2:4000',    // Android emulator fallback port 4000
-            'http://103.27.234.248:5000', // Production fallback
+            DEV_ANDROID_EMULATOR_URL,  // Android emulator host loopback
+            DEV_ANDROID_LAN_URL,       // Your computer's IP (physical device/same WiFi)
+            `http://localhost:${DEV_BACKEND_PORT}`,
+            TENANT_PROD_BASE_URL,        // Production fallback (tenant)
           ]
         : [
-            'http://localhost:5000',   // Primary localhost (port 5000)
-            'http://127.0.0.1:5000',   // Alternative localhost (port 5000)
-            'http://localhost:4000',   // Fallback to port 4000 if needed
-            'http://127.0.0.1:4000',   // Fallback port 4000
-            'http://103.27.234.248:5000', // Production fallback
+            `http://localhost:${DEV_BACKEND_PORT}`,
+            `http://127.0.0.1:${DEV_BACKEND_PORT}`,
+            TENANT_PROD_BASE_URL,      // Production fallback (tenant)
           ])
     : [
-        'http://103.27.234.248:5000',   // Production primary
-        'http://localhost:5000',        // Local fallback (port 5000)
-        'http://localhost:4000',        // Legacy fallback (port 4000)
+        TENANT_PROD_BASE_URL,            // Production primary (tenant API)
       ],
 
   ACCESS_TOKEN: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJvcmdfaWQiOiJPUkcwMDEiLCJ1c2VyX2lkIjoiVVNSMDAyIiwiZW1haWwiOiJuYXJlbnJpbzc1NkBnbWFpbC5jb20iLCJqb2Jfcm9sZV9pZCI6bnVsbCwiZW1wX2ludF9pZCI6IkVNUF9JTlRfMDAwMiIsImlhdCI6MTc1OTcyODA2NSwiZXhwIjoxNzYwMzMyODY1fQ.BveUrzctoFiVNtT1CrLqaUjpsXg7kXKILjI327_3FSg',
@@ -145,6 +142,7 @@ export const API_ENDPOINTS = {
   GET_EMPLOYEE_ACTIVE_ASSETS: (employeeId) => `/api/asset-assignments/employee/${employeeId}/active`,
   GET_EMPLOYEE_ASSET_HISTORY: (employeeId) => `/api/asset-assignments/employee-history/${employeeId}`,
   GET_ASSET_DETAILS: (assetId) => `/api/assets/${assetId}`,
+  GET_ASSETS_COUNT: () => '/api/assets/count',
   GET_BREAKDOWN_REPORTS: () => '/api/reportbreakdown/reports',
   UPDATE_BREAKDOWN_REPORT: (id) => `/api/reportbreakdown/update/${id}`,
   GET_BREAKDOWN_REASON_CODES: (orgId) => `/api/reportbreakdown/reason-codes?org_id=${orgId}`,
@@ -163,4 +161,17 @@ export const API_ENDPOINTS = {
   GET_ASSET_USAGE_ASSETS: () => '/api/asset-usage/assets',
   RECORD_ASSET_USAGE: () => '/api/asset-usage',
   GET_ASSET_USAGE_HISTORY: (assetId) => `/api/asset-usage/${assetId}/history`,
+
+  /** In-app + web notification feed (maintenance, inspection, warranty, etc.) */
+  USER_NOTIFICATIONS: (empIntId) => `/api/notifications/user/${empIntId}`,
+  WARRANTY_NOTIFICATION_OPEN: (notifyId) => `/api/notifications/warranty/${notifyId}/open`,
+  WARRANTY_NOTIFICATION_DISCARD: (notifyId) => `/api/notifications/warranty/${notifyId}/discard`,
+  WARRANTY_NOTIFICATION_SNOOZE: (notifyId) => `/api/notifications/warranty/${notifyId}/snooze`,
+  EXPIRY_NOTIFICATION_OPEN: (notifyId) => `/api/notifications/expiry/${notifyId}/open`,
+  EXPIRY_NOTIFICATION_DISCARD: (notifyId) => `/api/notifications/expiry/${notifyId}/discard`,
+  EXPIRY_NOTIFICATION_SNOOZE: (notifyId) => `/api/notifications/expiry/${notifyId}/snooze`,
+  CREATE_SCRAP_REQUEST: () => '/api/scrap-maintenance/create',
+  UPDATE_ASSET: (assetId) => `/api/assets/${assetId}`,
+  /** Service vendors for org (auth). Optional query: ?serviceOnly=true */
+  GET_VENDORS: () => '/api/get-vendors',
 };

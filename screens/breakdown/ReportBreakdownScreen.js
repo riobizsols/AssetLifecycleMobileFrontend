@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 import CustomAlert from '../../components/CustomAlert';
 import { authUtils } from '../../utils/auth';
 import SideMenu from '../../components/SideMenu';
+import { goBackOrHome } from '../../utils/navigationUtils';
 import { getServerUrl, getApiHeaders, API_ENDPOINTS } from '../../config/api';
 
 const { width, height } = Dimensions.get('window');
@@ -454,7 +455,7 @@ const ReportBreakdownScreen = () => {
         <View style={styles.appbarContainer}>
           <TouchableOpacity
             style={styles.backButton}
-            onPress={() => navigation.goBack()}
+            onPress={() => goBackOrHome(navigation)}
             activeOpacity={0.7}
           >
             <MaterialCommunityIcons

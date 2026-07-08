@@ -52,6 +52,8 @@ import NotificationTroubleshooter from "./components/NotificationTroubleshooter"
 import RecordUsageScreen from "./screens/usage/RecordUsageScreen";
 import { NotificationProvider } from "./context/NotificationContext";
 import NotificationsScreen from "./screens/NotificationsScreen";
+import WarrantyExpiryNotificationsScreen from "./screens/WarrantyExpiryNotificationsScreen";
+import AssetExpiryNotificationsScreen from "./screens/AssetExpiryNotificationsScreen";
 
 
 const Stack = createStackNavigator();
@@ -90,6 +92,8 @@ export default function App() {
                 <Stack.Screen name="Login" component={LoginScreen} />
                 <Stack.Screen name="Home" component={HomeScreen} />
                 <Stack.Screen name="Notifications" component={NotificationsScreen} />
+                <Stack.Screen name="WarrantyExpiryNotifications" component={WarrantyExpiryNotificationsScreen} />
+                <Stack.Screen name="AssetExpiryNotifications" component={AssetExpiryNotificationsScreen} />
                 <Stack.Screen name="Asset" component={Asset_1} />
                 <Stack.Screen name="EmployeeAsset" component={Employee_Asset} />
                 <Stack.Screen name="DepartmentAsset" component={Dept_Asset_1} />

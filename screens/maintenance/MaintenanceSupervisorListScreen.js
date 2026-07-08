@@ -17,6 +17,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import CustomAlert from '../../components/CustomAlert';
 import SideMenu from '../../components/SideMenu';
+import { goBackOrHome } from '../../utils/navigationUtils';
 import { authUtils } from '../../utils/auth';
 import { getServerUrl, getApiHeaders, API_ENDPOINTS } from '../../config/api';
 
@@ -616,7 +617,7 @@ const MaintenanceSupervisorListContent = () => {
                 marginLeft: RESPONSIVE_CONSTANTS.SPACING.SM,
               },
             ]}
-            onPress={() => navigation.goBack()}
+            onPress={() => goBackOrHome(navigation)}
             activeOpacity={0.7}
           >
             <MaterialCommunityIcons name="arrow-left" size={24} color="#FEC200" />

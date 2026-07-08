@@ -133,22 +133,33 @@ export const getErrorMessage = (errorResult) => {
   if (errorResult.isNetworkError) {
     return 'Network connection failed. Please check your internet connection.';
   }
-  
+
   if (errorResult.isTimeoutError) {
     return 'Request timed out. Please try again.';
   }
-  
+
+  const apiMessage =
+    errorResult.data?.message ||
+    errorResult.data?.error ||
+    (errorResult.error && !String(errorResult.error).startsWith('HTTP ')
+      ? errorResult.error
+      : null);
+
+  if (apiMessage) {
+    return apiMessage;
+  }
+
   if (errorResult.status === 401) {
     return 'Authentication failed. Please check your credentials.';
   }
-  
+
   if (errorResult.status === 404) {
     return 'Server endpoint not found. Please contact support.';
   }
-  
+
   if (errorResult.status >= 500) {
     return 'Server error. Please try again later.';
   }
-  
+
   return errorResult.error || 'An unexpected error occurred.';
 };

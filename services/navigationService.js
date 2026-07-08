@@ -1,7 +1,33 @@
 import { API_CONFIG, setServerUrl } from '../config/api';
 import { authUtils } from '../utils/auth';
 
+/** App IDs that have a real mobile screen — excludes web-only items like DASHBOARD */
+const MOBILE_SCREEN_MAP = {
+  ASSETASSIGNMENT: 'Asset',
+  EMPASSIGNMENT: 'EmployeeAsset',
+  DEPTASSIGNMENT: 'DepartmentAsset',
+  'MAINTENANCE SUPERVISER': 'MaintenanceSupervisor',
+  REPORTBREAKDOWN: 'REPORTBREAKDOWN',
+  WORKORDERMANAGEMENT: 'WorkOrderManagement',
+  USAGEBASEDASSET: 'RecordUsage',
+  FCMDEBUG: 'FCMDebug',
+  FCMTEST: 'FCMTest',
+  NOTIFICATIONSETTINGS: 'NotificationSettings',
+  STATUSBARTESTER: 'StatusBarTester',
+  NOTIFICATIONTROUBLESHOOTER: 'NotificationTroubleshooter',
+};
+
 export const navigationService = {
+  isValidNavigationAppId(appId) {
+    return Boolean(appId && String(appId).trim());
+  },
+
+  /** Web nav entries (e.g. DASHBOARD, ASSETS) must not appear as mobile quick actions */
+  isMobileNavigationItem(appId) {
+    const normalized = String(appId || '').trim().toUpperCase();
+    return Boolean(normalized && Object.prototype.hasOwnProperty.call(MOBILE_SCREEN_MAP, normalized));
+  },
+
   // Get user navigation from API
   async getUserNavigation() {
     try {
@@ -76,8 +102,11 @@ export const navigationService = {
         console.log('Navigation data loaded successfully from API');
         return {
           user_id: data.user_id,
-          data: data.data.map(item => ({
-            app_id: item.app_id,
+          data: data.data
+            .filter((item) => navigationService.isValidNavigationAppId(item?.app_id))
+            .filter((item) => navigationService.isMobileNavigationItem(item.app_id))
+            .map(item => ({
+            app_id: String(item.app_id).trim(),
             label: item.label,
             sequence: item.seq,
             access_level: item.access_level,
@@ -123,27 +152,16 @@ export const navigationService = {
     if (!userNavigation || !userNavigation.data) return [];
     
     return userNavigation.data
+      .filter((item) => navigationService.isValidNavigationAppId(item?.app_id))
+      .filter((item) => navigationService.isMobileNavigationItem(item.app_id))
       .filter(item => item.int_status === 1) // Only active items
       .sort((a, b) => a.sequence - b.sequence); // Sort by sequence
   },
 
   // Map app_id to screen name
   getScreenName(appId) {
-    const screenMap = {
-      'ASSETASSIGNMENT': 'Asset',
-      'EMPASSIGNMENT': 'EmployeeAsset',
-      'DEPTASSIGNMENT': 'DepartmentAsset',
-      'MAINTENANCE SUPERVISER': 'MaintenanceSupervisor',
-      'REPORTBREAKDOWN': 'REPORTBREAKDOWN',
-      'WORKORDERMANAGEMENT': 'WorkOrderManagement',
-      'USAGEBASEDASSET': 'RecordUsage',
-        'FCMDEBUG': 'FCMDebug',
-        'FCMTEST': 'FCMTest',
-        'NOTIFICATIONSETTINGS': 'NotificationSettings',
-        'STATUSBARTESTER': 'StatusBarTester',
-        'NOTIFICATIONTROUBLESHOOTER': 'NotificationTroubleshooter',
-    };
-    return screenMap[appId] || 'Home';
+    const normalized = String(appId || '').trim().toUpperCase();
+    return MOBILE_SCREEN_MAP[normalized] || 'Home';
   },
 
   // Get navigation label (returns translation key)

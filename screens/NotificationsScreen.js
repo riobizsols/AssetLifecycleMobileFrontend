@@ -245,6 +245,23 @@ const NotificationsScreen = () => {
         <View style={styles.spacer} />
       </View>
 
+      <TouchableOpacity
+        style={styles.warrantyLink}
+        onPress={() => navigation.navigate('WarrantyExpiryNotifications')}
+        activeOpacity={0.8}
+      >
+        <MaterialCommunityIcons name="shield-alert-outline" size={22} color={UI_CONSTANTS.COLORS.PRIMARY} />
+        <View style={styles.warrantyLinkTextWrap}>
+          <Text style={styles.warrantyLinkTitle}>
+            {t('warrantyAlerts.title', 'Warranty expiry')}
+          </Text>
+          <Text style={styles.warrantyLinkSub} numberOfLines={1}>
+            {t('warrantyAlerts.tapToManage', 'Discard, snooze, or extend — same as web')}
+          </Text>
+        </View>
+        <MaterialCommunityIcons name="chevron-right" size={22} color={UI_CONSTANTS.COLORS.GRAY_DARK} />
+      </TouchableOpacity>
+
       {loading && !refreshing ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={UI_CONSTANTS.COLORS.PRIMARY} />
@@ -309,6 +326,32 @@ const styles = StyleSheet.create({
   },
   spacer: {
     width: 48,
+  },
+  warrantyLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF8E1',
+    marginHorizontal: UI_CONSTANTS.SPACING.LG,
+    marginTop: UI_CONSTANTS.SPACING.SM,
+    marginBottom: UI_CONSTANTS.SPACING.SM,
+    padding: UI_CONSTANTS.SPACING.MD,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 179, 0, 0.35)',
+    gap: 10,
+  },
+  warrantyLinkTextWrap: {
+    flex: 1,
+  },
+  warrantyLinkTitle: {
+    fontSize: UI_CONSTANTS.FONT_SIZES.MD,
+    fontWeight: '700',
+    color: UI_CONSTANTS.COLORS.TEXT_PRIMARY,
+  },
+  warrantyLinkSub: {
+    fontSize: UI_CONSTANTS.FONT_SIZES.XS,
+    color: UI_CONSTANTS.COLORS.TEXT_SECONDARY,
+    marginTop: 2,
   },
   listContainer: {
     paddingHorizontal: UI_CONSTANTS.SPACING.LG,

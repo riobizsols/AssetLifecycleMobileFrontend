@@ -67,7 +67,8 @@
     "updateMaintenanceSchedules": "Actualizar horarios de mantenimiento y gestionar listas de verificación",
     "viewAndManageBreakdownReports": "Ver y gestionar reportes de averías",
     "manageWorkOrdersAndTasks": "Gestionar órdenes de trabajo y tareas",
-    "trackUsageAndHistory": "Registrar uso y revisar historial"
+    "trackUsageAndHistory": "Registrar uso y revisar historial",
+    "warrantyExpiry": "Alertas de vencimiento de garantía"
   },
   "home": {
     "welcomeBack": "¡Bienvenido de nuevo!",
@@ -77,13 +78,18 @@
     "departments": "Departamentos",
     "quickActions": "Acciones Rápidas",
     "noAccess": "Sin Acceso",
-    "contactAdministrator": "No tienes acceso a ningún módulo. Por favor contacta a tu administrador."
+    "contactAdministrator": "No tienes acceso a ningún módulo. Por favor contacta a tu administrador.",
+    "warrantyExpiryTitle": "Alertas de vencimiento de garantía",
+    "warrantyExpirySubtitle": "Resolver, posponer o extender garantías"
   },
   "sideMenu": {
     "version": "v1.0.0",
     "user": "Usuario",
     "userId": "ID de Usuario",
-    "roleId": "ID de Rol"
+    "roleId": "ID de Rol",
+    "orgId": "ID de Organización",
+    "tenantId": "ID de Inquilino",
+    "domain": "Dominio"
   },
   "alerts": {
     "error": "Error",

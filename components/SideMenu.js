@@ -7,7 +7,9 @@ import {
   Dimensions,
   Animated,
   Image,
+  ScrollView,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
@@ -22,8 +24,10 @@ const SideMenu = ({ visible, onClose, onLogout }) => {
   const { t } = useTranslation();
   const navigation = useNavigation();
   const { getSortedNavigation } = useNavigationContext();
+  const insets = useSafeAreaInsets();
   const slideAnim = React.useRef(new Animated.Value(-width)).current;
   const [userData, setUserData] = useState(null);
+  const [profileExpanded, setProfileExpanded] = useState(false);
 
   useEffect(() => {
     const loadUserData = async () => {
@@ -37,6 +41,8 @@ const SideMenu = ({ visible, onClose, onLogout }) => {
 
     if (visible) {
       loadUserData();
+    } else {
+      setProfileExpanded(false);
     }
   }, [visible]);
 
@@ -68,6 +74,24 @@ const SideMenu = ({ visible, onClose, onLogout }) => {
         onPress: () => {
           onClose();
           navigation.navigate('Home');
+        },
+      },
+      {
+        id: 'warranty_expiry',
+        title: t('navigation.warrantyExpiry'),
+        icon: 'shield-alert-outline',
+        onPress: () => {
+          onClose();
+          navigation.navigate('WarrantyExpiryNotifications');
+        },
+      },
+      {
+        id: 'asset_expiry',
+        title: t('navigation.assetExpiry'),
+        icon: 'calendar-alert',
+        onPress: () => {
+          onClose();
+          navigation.navigate('AssetExpiryNotifications');
         },
       },
     ];
@@ -122,20 +146,26 @@ const SideMenu = ({ visible, onClose, onLogout }) => {
         }
       );
     } else {
+      const validItems = navigationItems.filter((item) =>
+        navigationService.isValidNavigationAppId(item?.app_id) &&
+        navigationService.isMobileNavigationItem(item.app_id),
+      );
+
       // Remove duplicates based on app_id
-      const uniqueItems = navigationItems.filter((item, index, self) => 
+      const uniqueItems = validItems.filter((item, index, self) => 
         index === self.findIndex(t => t.app_id === item.app_id)
       );
       
       // Add dynamic navigation items
       uniqueItems.forEach((item, index) => {
+        const appId = String(item.app_id).trim();
         menuItems.push({
-          id: `${item.app_id.toLowerCase()}_${index}`,
-          title: t(navigationService.getNavigationLabel(item.app_id)),
-          icon: navigationService.getNavigationIcon(item.app_id),
+          id: `${appId.toLowerCase()}_${index}`,
+          title: t(navigationService.getNavigationLabel(appId)),
+          icon: navigationService.getNavigationIcon(appId),
           onPress: () => {
             onClose();
-            navigation.navigate(navigationService.getScreenName(item.app_id));
+            navigation.navigate(navigationService.getScreenName(appId));
           },
         });
       });
@@ -145,6 +175,106 @@ const SideMenu = ({ visible, onClose, onLogout }) => {
   };
 
   const menuItems = generateMenuItems();
+
+  const hasProfileDetails = Boolean(
+    userData && (
+      (userData.tenant_name && userData.org_id && userData.tenant_name !== userData.org_id) ||
+      userData.subdomain ||
+      userData.registry_org_id
+    ),
+  );
+
+  const renderProfileSection = () => {
+    if (!userData) {
+      return null;
+    }
+
+    const profileContent = (
+      <>
+        <View style={styles.userAvatar}>
+          <MaterialCommunityIcons
+            name="account-circle"
+            size={50}
+            color="#FEC200"
+          />
+        </View>
+        <View style={styles.userInfo}>
+          <Text
+            style={styles.userName}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
+            {userData.full_name || userData.name || userData.username || t('sideMenu.user')}
+          </Text>
+          <Text
+            style={styles.userEmail}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
+            {userData.email || 'user@example.com'}
+          </Text>
+          {(userData.tenant_name || userData.org_id) && (
+            <Text
+              style={styles.tenantName}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {userData.tenant_name || userData.org_id}
+            </Text>
+          )}
+          {userData.role && (
+            <Text
+              style={styles.userRole}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {userData.role}
+            </Text>
+          )}
+          {profileExpanded && hasProfileDetails && (
+            <View style={styles.profileDetails}>
+              {userData.tenant_name && userData.org_id && userData.tenant_name !== userData.org_id && (
+                <Text style={styles.profileDetailText}>
+                  {t('sideMenu.orgId')}: {userData.org_id}
+                </Text>
+              )}
+              {userData.subdomain && (
+                <Text style={styles.profileDetailText}>
+                  {t('sideMenu.domain')}: {userData.subdomain}
+                </Text>
+              )}
+              {userData.registry_org_id && (
+                <Text style={styles.profileDetailText}>
+                  {t('sideMenu.tenantId')}: {userData.registry_org_id}
+                </Text>
+              )}
+            </View>
+          )}
+        </View>
+        {hasProfileDetails && (
+          <MaterialCommunityIcons
+            name={profileExpanded ? 'chevron-up' : 'chevron-down'}
+            size={22}
+            color="#FEC200"
+          />
+        )}
+      </>
+    );
+
+    if (hasProfileDetails) {
+      return (
+        <TouchableOpacity
+          style={styles.userSection}
+          activeOpacity={0.8}
+          onPress={() => setProfileExpanded((prev) => !prev)}
+        >
+          {profileContent}
+        </TouchableOpacity>
+      );
+    }
+
+    return <View style={styles.userSection}>{profileContent}</View>;
+  };
 
   const renderMenuItem = (item) => (
     <TouchableOpacity
@@ -217,51 +347,21 @@ const SideMenu = ({ visible, onClose, onLogout }) => {
           </View>
           
           {/* User Details */}
-          {userData && (
-            <View style={styles.userSection}>
-              <View style={styles.userAvatar}>
-                <MaterialCommunityIcons
-                  name="account-circle"
-                  size={50}
-                  color="#FEC200"
-                />
-              </View>
-              <View style={styles.userInfo}>
-              <Text 
-                style={styles.userName}
-                numberOfLines={1}
-                ellipsizeMode="tail"
-              >
-                {userData.full_name || userData.name || userData.username || t('sideMenu.user')}
-              </Text>
-                <Text 
-                  style={styles.userEmail}
-                  numberOfLines={1}
-                  ellipsizeMode="tail"
-                >
-                  {userData.email || 'user@example.com'}
-                </Text>
-                {userData.role && (
-                  <Text 
-                    style={styles.userRole}
-                    numberOfLines={1}
-                    ellipsizeMode="tail"
-                  >
-                    {userData.role}
-                  </Text>
-                )}
-              </View>
-            </View>
-          )}
+          {renderProfileSection()}
         </View>
 
         {/* Menu Items */}
-        <View style={styles.menuList}>
+        <ScrollView
+          style={styles.menuList}
+          contentContainerStyle={styles.menuListContent}
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+        >
           {menuItems.map(renderMenuItem)}
-        </View>
+        </ScrollView>
 
         {/* Footer */}
-        <View style={styles.footer}>
+        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, UI_CONSTANTS.SPACING.LG) }]}>
           <View style={styles.footerContent}>
             <TouchableOpacity
               style={styles.logoutButton}
@@ -283,22 +383,6 @@ const SideMenu = ({ visible, onClose, onLogout }) => {
                 {t('auth.logout')}
               </Text>
             </TouchableOpacity>
-            
-            {/* User ID and Role Info */}
-            {userData && (
-              <View style={styles.userInfoRight}>
-                {userData.user_id && (
-                  <Text style={styles.userInfoText}>
-                    {t('sideMenu.userId')}: {userData.user_id}
-                  </Text>
-                )}
-                {userData.job_role_id && (
-                  <Text style={styles.userInfoText}>
-                    {t('sideMenu.roleId')}: {userData.job_role_id}
-                  </Text>
-                )}
-              </View>
-            )}
           </View>
         </View>
       </Animated.View>
@@ -330,6 +414,7 @@ const styles = StyleSheet.create({
     width: width * 0.8,
     height: height,
     backgroundColor: UI_CONSTANTS.COLORS.WHITE,
+    flexDirection: 'column',
     shadowColor: UI_CONSTANTS.COLORS.BLACK,
     shadowOffset: {
       width: 2,
@@ -368,7 +453,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: UI_CONSTANTS.SPACING.LG,
-    paddingHorizontal: UI_CONSTANTS.SPACING.LG,
     paddingVertical: UI_CONSTANTS.SPACING.MD,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: UI_CONSTANTS.SPACING.SM,
@@ -395,9 +479,30 @@ const styles = StyleSheet.create({
     color: UI_CONSTANTS.COLORS.WHITE,
     opacity: 0.8,
   },
+  tenantName: {
+    fontSize: UI_CONSTANTS.FONT_SIZES.SM,
+    color: '#FEC200',
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  profileDetails: {
+    marginTop: UI_CONSTANTS.SPACING.SM,
+    paddingTop: UI_CONSTANTS.SPACING.SM,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  profileDetailText: {
+    fontSize: UI_CONSTANTS.FONT_SIZES.SM,
+    color: UI_CONSTANTS.COLORS.SECONDARY,
+    marginBottom: 2,
+  },
   menuList: {
     flex: 1,
+    flexShrink: 1,
+  },
+  menuListContent: {
     paddingTop: UI_CONSTANTS.SPACING.LG,
+    paddingBottom: UI_CONSTANTS.SPACING.SM,
   },
   menuItem: {
     flexDirection: 'row',
@@ -418,23 +523,16 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   footer: {
-    padding: UI_CONSTANTS.SPACING.LG,
+    paddingHorizontal: UI_CONSTANTS.SPACING.LG,
+    paddingTop: UI_CONSTANTS.SPACING.LG,
     borderTopWidth: 1,
     borderTopColor: UI_CONSTANTS.COLORS.GRAY_LIGHT,
+    backgroundColor: UI_CONSTANTS.COLORS.WHITE,
+    flexShrink: 0,
   },
   footerContent: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-  },
-  userInfoRight: {
-    alignItems: 'flex-end',
-  },
-  userInfoText: {
-    fontSize: UI_CONSTANTS.FONT_SIZES.SM,
-    color: UI_CONSTANTS.COLORS.GRAY_DARK,
-    marginBottom: 2,
-    textAlign: 'right',
   },
   logoutButton: {
     flexDirection: 'row',
