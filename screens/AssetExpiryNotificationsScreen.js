@@ -61,6 +61,7 @@ const toIsoDateOnly = (d) => {
 export default function AssetExpiryNotificationsScreen() {
   const navigation = useNavigation();
   const { t } = useTranslation();
+  const isMountedRef = React.useRef(true);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -97,12 +98,14 @@ export default function AssetExpiryNotificationsScreen() {
   }), []);
 
   const load = useCallback(async (isRefresh = false) => {
+    if (!isMountedRef.current) return;
     try {
       if (isRefresh) setRefreshing(true);
       else setLoading(true);
       setError(null);
 
       const user = await authUtils.getUserData();
+      if (!isMountedRef.current) return;
       const empIntId = user?.emp_int_id;
       if (!empIntId) {
         setItems([]);
@@ -113,6 +116,7 @@ export default function AssetExpiryNotificationsScreen() {
       const url = `${API_CONFIG.BASE_URL}${API_ENDPOINTS.USER_NOTIFICATIONS(empIntId)}`;
       const headers = await getApiHeaders();
       const result = await safeFetch(url, { method: 'GET', headers });
+      if (!isMountedRef.current) return;
 
       if (!result.success) {
         setError(result.error || t('common.error', 'Something went wrong'));
@@ -133,13 +137,22 @@ export default function AssetExpiryNotificationsScreen() {
 
       setItems(expiryOnly);
     } catch (e) {
+      if (!isMountedRef.current) return;
       setError(e.message || t('common.error', 'Error'));
       setItems([]);
     } finally {
+      if (!isMountedRef.current) return;
       setLoading(false);
       setRefreshing(false);
     }
   }, [mapNotificationToRow, t]);
+
+  React.useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -366,6 +379,14 @@ export default function AssetExpiryNotificationsScreen() {
     }
   };
 
+  const safeGoBack = useCallback(() => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+    navigation.navigate('Home');
+  }, [navigation]);
+
   const goToAsset = (row) => {
     setActionsForId(null);
     navigation.navigate('Dept_Asset_6', { assetId: row.assetId });
@@ -481,7 +502,7 @@ export default function AssetExpiryNotificationsScreen() {
       <StatusBar barStyle="light-content" backgroundColor={UI_CONSTANTS.COLORS.PRIMARY} />
       <View style={styles.container}>
         <View style={styles.appBar}>
-          <TouchableOpacity style={styles.navButton} onPress={() => navigation.goBack()}>
+          <TouchableOpacity style={styles.navButton} onPress={safeGoBack}>
             <MaterialCommunityIcons name="arrow-left" size={24} color="#FEC200" />
           </TouchableOpacity>
           <View style={styles.titleWrap}>

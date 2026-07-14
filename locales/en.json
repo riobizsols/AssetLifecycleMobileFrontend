@@ -169,6 +169,7 @@
     "version": "v1.0.0",
     "user": "User",
     "userId": "User ID",
+    "role": "Role",
     "roleId": "Role ID",
     "orgId": "Organization ID",
     "tenantId": "Tenant ID",

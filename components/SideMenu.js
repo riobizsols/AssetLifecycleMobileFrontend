@@ -184,6 +184,8 @@ const SideMenu = ({ visible, onClose, onLogout }) => {
     ),
   );
 
+  const roleLabel = authUtils.getRoleDisplayName(userData);
+
   const renderProfileSection = () => {
     if (!userData) {
       return null;
@@ -222,17 +224,22 @@ const SideMenu = ({ visible, onClose, onLogout }) => {
               {userData.tenant_name || userData.org_id}
             </Text>
           )}
-          {userData.role && (
+          {roleLabel && (
             <Text
               style={styles.userRole}
-              numberOfLines={1}
+              numberOfLines={2}
               ellipsizeMode="tail"
             >
-              {userData.role}
+              {t('sideMenu.role')}: {roleLabel}
             </Text>
           )}
           {profileExpanded && hasProfileDetails && (
             <View style={styles.profileDetails}>
+              {roleLabel && (
+                <Text style={styles.profileDetailText}>
+                  {t('sideMenu.role')}: {roleLabel}
+                </Text>
+              )}
               {userData.tenant_name && userData.org_id && userData.tenant_name !== userData.org_id && (
                 <Text style={styles.profileDetailText}>
                   {t('sideMenu.orgId')}: {userData.org_id}

@@ -6,7 +6,43 @@ const USER_LANGUAGE_KEY = 'user_language';
 const FCM_TOKEN_KEY = 'fcm_token';
 const FCM_TOKEN_REGISTERED_KEY = 'fcm_token_registered';
 
+const getRoleDisplayName = (userData) => {
+  if (!userData) return null;
+  if (userData.role && String(userData.role).trim()) {
+    return String(userData.role).trim();
+  }
+  const names = [];
+  if (Array.isArray(userData.roles)) {
+    userData.roles.forEach((role) => {
+      const name = role?.job_role_name || role?.job_role_id;
+      if (name) names.push(name);
+    });
+  }
+  if (names.length > 0) {
+    return [...new Set(names)].join(', ');
+  }
+  if (userData.job_role_name) return userData.job_role_name;
+  if (userData.job_role_id) return userData.job_role_id;
+  return null;
+};
+
+const normalizeUserData = (userData) => {
+  if (!userData || typeof userData !== 'object') return userData;
+  const primaryRole = Array.isArray(userData.roles) && userData.roles[0]
+    ? userData.roles[0]
+    : null;
+  const role = getRoleDisplayName(userData);
+  return {
+    ...userData,
+    role: role || userData.role || null,
+    job_role_name: userData.job_role_name || primaryRole?.job_role_name || null,
+    job_role_id: userData.job_role_id || primaryRole?.job_role_id || null,
+  };
+};
+
 export const authUtils = {
+  getRoleDisplayName,
+  normalizeUserData,
   // Store authentication token
   storeToken: async (token) => {
     try {
@@ -45,7 +81,8 @@ export const authUtils = {
   // Store user data
   storeUserData: async (userData) => {
     try {
-      await AsyncStorage.setItem(USER_DATA_KEY, JSON.stringify(userData));
+      const normalized = normalizeUserData(userData);
+      await AsyncStorage.setItem(USER_DATA_KEY, JSON.stringify(normalized));
       // Store user's language preference if provided
       if (userData.language_code) {
         await AsyncStorage.setItem(USER_LANGUAGE_KEY, userData.language_code);
@@ -61,7 +98,7 @@ export const authUtils = {
   getUserData: async () => {
     try {
       const userData = await AsyncStorage.getItem(USER_DATA_KEY);
-      return userData ? JSON.parse(userData) : null;
+      return userData ? normalizeUserData(JSON.parse(userData)) : null;
     } catch (error) {
       console.error('Error getting user data:', error);
       return null;
